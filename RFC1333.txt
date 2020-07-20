@@ -1,0 +1,391 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：王奎（pywang  mailto: wangtianzhi@263.net）
+译文发布时间：2001-12-28
+版权：本翻译文档可以用于非商业用途自由转载，但必须保留本文档的翻译及组织信息。
+
+
+Network Working Group                                        		M. Simpson
+Request for Comments: 1333					        Daydreamer
+                                                     	May 1992
+
+PPP 链路质量监控
+（RFC1333——PPP Link Quality Monitoring ）
+
+备忘录状态
+   	此RFC 为internet community详细说明了 IAB 标准跟踪协议，并且请求讨论和建议
+以便改进。请参考IAB Official Protocol Standards 的当前版本，确保这个协议陈述和
+状态的标准化。此备忘录的分发不受限制。
+
+摘要
+点到点协议（the Point-to-Point Protocol）提供了一种在点到点链路上封装网络层协议
+信息的标准方法。PPP 也定义了可扩展的链路控制协议(Link Control Protocol)，它（Link 
+Control Protocol）允许在链路生存期内对链路持续监控，磋商链路质量。
+这个文档为生成链路质量报告（Link-Quality-Reports）定义了协议。
+此RFC是IETF(the Internet Engineering Task Force)的PPP协议工作组的成果。关于
+这个备忘录的建议请提交给：ietf-ppp@ucdavis.edu。
+目录
+1. 介绍	2
+2. 链路质量监控	2
+2.1 设计动机	2
+2.2 计数器	3
+2.3 计算包（packets）和八位字节（octets）	3
+2.4 处理过程	4
+2.5 配置选项格式	4
+2.6 包格式	5
+2.7 报告传输	7
+2.8 计算	8
+2.9 失败检测	8
+2.10 策略建议	8
+安全考虑	9
+参考文献	9
+致谢	9
+主席地址	9
+作者地址	10
+完整版权说明	10
+致谢	10
+
+1. 介绍
+PPP 有三个主要的组成部分：
+1．	在串行链路上封装数据报（datagrams）的方法。
+2．	建立，配置和测试数据链路链接（the data-link connection）的LCP协议（Link 
+Control Protocol）。
+3．	建立和配置不同网络层协议的一组NCP协议（Network Control Protocol）。
+为了在点到点链路（point-to-point link）上建立通信，PPP链路的一端必须在建立阶段
+（Establishment phase）首先发送LCP包（packets）配置数据链路。在鉴定和网络层协
+议阶段（Authentication and Network-Layer Protocol phases），必须检测链路以决定链路质
+量是否满足操作需要。这种检测是完全可选的。
+
+如果一个实现（implementation）要求对端（peer）使用某个特定的链路质量监控协议，
+那就必须在链路建立阶段使用质量协议配置选项（the Quality-Protocol Configuration 
+Option）磋商特定协议的使用。
+
+这个磋商机制在任一个方向上是独立的。然而，如果对端同意发送质量协议包
+（Quality-Protocol packets），那么在接受方必须适当地处理这种包，即使它没有请求这种
+包或者不需要实现这种监控策略。
+    
+2. 链路质量监控
+	数据通信链路是很少完美的。由于各种原因（例如线路噪音，设备失败，缓存溢出等等），
+链路上的包可能被丢掉或者被破坏。有时候，有必要决定什么时候链路丢数据，丢包频率。
+例如，路由器可能要暂时允许另一个路由器占的优先权。一个实现也可能使用选项断掉和切
+换到另一个替换的链路。决定数据丢失的过程被称为“链路质量监控”。
+2.1 设计动机
+有很多不同的方法测量链路质量，并且有更多的方法对链路质量测量有效。胜于指定一
+个单独的方法，链路质量监控被分为一个机制（mechanism）和一个策略（policy）。PPP
+通过定义链路质量报告包（Link-Quality-Report Packet）和指定一个处理过程，为链路质量
+监控详细说明了监控机制。PPP没有说明链路质量监控策略――如何断定链路质量或者当
+链路不充分时该怎么做。这个被留做一个实现决策，并且在链路的各端可能是有差别的。我
+们允许甚至鼓励实现（implementations）去试验各种链路质量策略。链路质量监控机制说
+明书保证了使用不同策略的两个实现可以通信和内部操作的。
+为了允许实现灵活的策略，PPP链路质量监控机制以包（packet），八位字节（octets）
+和链路质量报告（Link-Quality-Reports）为单位测量数据丢失率。每个测量方法被分别用
+来测量链路的每半部分，包括内部和外部。所有的测量方法被通知给链路的两端，以致链路
+的每一端能够为它的输入和输出链路实现自己的链路质量策略。
+最后，链路质量监控协议被设计成可以在许多不同系统上实现。尽管通常实现PPP（特
+别是链路质量监控）作为一个单独的软件过程，但是我们也预想带硬件支持的多过程实现。
+PPP链路质量监控机制通过仔细定义链路质量报告包的格式和为所有数据传输和接受测量
+方法指定参考要点，提供了多过程实现的方法。
+
+2.2 计数器
+每种链路质量监控实现维持着发送和成功接受包和八位字节的数目的计数器，并且定期
+的用链路质量报告包把这个信息发送给对端。
+这些计数器类似于序列号；它们一直增加，这指示通过外部链路的包和八位字节的数目。
+通过比较连续的LQR中的数值，LQR接受者可以计算出通过链路成功通信的包和八位字节
+的“delta”数。比较这些绝对值数然后给出链路质量的迹象。除了绝对值，相对值也被传
+输。这是因为它们能够大大的简化链路同步。
+LQR使用由SNMP MIB-II[2]定义的接口计数器。当LCP进入建立阶段时，这些计数器
+并不初始化为任何值。
+另外，LQR要求实现下面三个无符号的，单调递增的计数器，它们符合SNMP MIB计
+数器要求的类型和大小。
+OutLQRs：
+OutLQRs是一个32位的计数器。每发送一个LQR包，它递增1。在LCP进入建立阶
+段时，这个计数器必须置零，并且一直到LCP离开终止阶段它一定不得被重置。这个计数
+器在被插入LQR包前增1。
+InLQRs：
+InLQRs是一个32位的计数器。每接收一个LQR包，它递增1。在LCP进入建立阶
+段时，这个计数器必须置零，并且一直到LCP离开终止阶段它一定不得被重置。这个计数
+器在被插入LQR包（在一个依靠方式的实现中）前增1。
+InGoodOctes：
+InGoodOctes是一个32位的计数器。它每次增加每个正确接收的数据链路层包中的八
+位字节数。不像MIB的ifInOctets，在ifInDiscards和ifInErrors中计数的帧中的八位字节禁
+止被计数。这个计数器在LCP进入建立阶段时可以被初始化为任何值。但是直到LCP离开
+终止阶段前，不能被重置。
+2.3 计算包（packets）和八位字节（octets）
+		计数器的目的是为了提供一种方法来表示通过链路上的信息量，而不是实际的所用
+的带宽量。这种规范被设计成在各种环境中能够产生相同的计数。例如一个单独的设备隐式
+的为实现提供分帧和封装机制，或者在链路中同步到异步的转换器在各机制中的变化。
+在FCS计算时，所有的Octets必须被计算在内，包括包头，信息域和任何填料。
+FCS Octets也必须被计算在内，每帧的一个标志Octets也必须被计算在内。其它所有的Octets
+（例如额外的标志序列号，逃跑位或者Octets）不得计算在内。
+	当在LQR中插入包和Octets计数时，这些计数必须包括LQR本身期待得数值。
+2.4 处理过程
+	PPP链路质量监控机制希望用一个“逻辑过程”模型。如下所示，在每个双向链路的每
+一端共复制了五个逻辑过程。
+	+---------+   +-------+   +----+ Outbound
+   |         |-->|  Mux  |-->| Tx |=========>
+   | Link-   |   +-------+   +----+
+   | Manager |
+   |         |   +-------+   +----+ Inbound
+   |         |<--| Demux |<--| Rx |<=========
+   +---------+   +-------+   +----+
+
+	链路管理器：
+		链路管理器传输和接收LQR，和实现所期待的链路质量策略。LQR包以恒定的速
+率传输。这个速率是由LCP质量协议配置选项磋商得到的。
+	Mux：
+	Mux把来自各个协议（例如LCP，IP，XNS等等）的多元包处理成一个单独的，连续
+的，有优先级的包流。LQR包必须被赋予可能的最高优先级，以保证链路质量信息及时被
+传输。
+	Tx：
+	Tx过程维护着MIB计数器ifOutUniPackets 和ifOutOctets,和内部计数器OutLQRs，它
+用来测量在输出链路上传输的数据量。当Tx处理LQR包时，它把这些计数器的值插入到
+包中的PeerOut域。Tx过程必须跟在Mux过程后面以确保这些包以在链路上传输的顺序计
+数。
+	Rx：
+	Rx过程维护着MIB计数器ifInUniPackets,ifInDiscards,ifInErrors 和ifInOctets,和内部计
+数器InLQRs和InGoodOctets，它用来测量在输入链路上接收的数据量。当Tx处理LQR包
+时，它把这些计数器的值插入到包中的SaveIn域（在一个依靠方式的实现中）。
+	Demux：
+	Demux过程为各种协议分解多元包。Demux过程必须跟在Rx过程后面以确保这些包
+以在链路上接收的顺序计数。
+2.5 配置选项格式
+	描述：
+	实现者必须为LQR准备接收质量协议配置选项（Quality-Protocol Configuration Option）。
+然而，不需要磋商。仅在实现者希望保证对端传输不同于其他质量协议的LQR，或者防止
+对端维护自己的计时器，或者在LQR传输间建立最大的时间间隔，磋商是必须的。
+	下面是磋商LQR的质量协议配置选项格式的总结。各个域是由左到右传输的。
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Type      |    Length     |        Quality-Protocol       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      Reporting-Period                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+	类型：
+     4
+ 	长度：
+     8
+	质量协议：
+	c025（十六进制）（LQR）
+	报告周期：
+   	报告周期域（the Reporting-Period field）是4个Octets 和表明了在包传输间的最大时间
+间隔（以1/100秒计算）。对端可以以比商议的更快的速率传输包。
+	此值为零表明对端不需要维护计时器。作为替代，对端一旦接收LQR立即产生一个
+LQR。当对端为带零值的LQR已经发送或者将发送一个包含质量协议配置选项的配置请求
+包时，它必须不被带非零值得对端应答。
+2.6 包格式
+	LQR包被封装在PPP数据链路层帧的信息域中，此帧的协议域为c025（LQR）。下面
+是LQR包格式的总结。域名相对于包的接收者，因为是接收者请求的配置包，各个域从左
+到右传输。
+
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Magic-Number                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         LastOutLQRs                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        LastOutPackets                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        LastOutOctets                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         PeerInLQRs                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerInPackets                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerInDiscards                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerInErrors                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerInOctets                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         PeerOutLQRs                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerOutPackets                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        PeerOutOctets                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+	下面的各个域实际上并不经过输入链路传输。相反，它们逻辑上被实现者的Rx过程加
+到包上。
+	
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         SaveInLQRs                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        SaveInPackets                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        SaveInDiscards                         |
+
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        SaveInErrors                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        SaveInOctets                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+	Magic-Number：
+	魔术数（Magic-Number field）是2个Octets和辅助检测looped-back条件下的链路。除
+非由配置选项修改，魔术数必须以零值传输并且在接收端被忽略。如果磋商了魔术数，则输
+入LQR包应该被校验以保证当地端看不到自己的魔术数和looped-back链路。参考魔术数配
+置选项的进一步解释。
+	LastOutLQRs：
+	LastOutLQRs是4个Octets，是从最近接收的PeerOutLQRs复制过来的。
+	LastOutPackets：
+	LastOutPackets是4个Octets，是从最近接收的PeerOutPackets复制过来的。
+	LastOutOctets：
+	LastOutOctets是4个Octets，是从最近接收的PeerOutOctets复制过来的。
+	PeerInLQRs：
+	PeerInLQRs是4个Octets，是从最近接收的SaveInLQRs复制过来的。
+	无论何时发现PeerInLQRs域为零，LastOut域是不确定的，并且PeerIn域包含对端的
+初始化值。
+	PeerInPackets：
+	PeerInPackets是4个Octets，是从最近接收的SaveInPackets复制过来的。
+	PeerInDiscards：
+ 	PeerInDiscards是4个Octets，是从最近接收的SaveInDiscards复制过来的。
+	PeerInErrors：
+	PeerInErrors是4个Octets，是从最近接收的SaveInErrors复制过来的。
+	PeerInOctets：
+	PeerInOctets是4个Octets，是从最近接收的SaveInOctets复制过来的。
+	PeerOutLQRs：
+	PeerOutLQRs是4个Octets，是从接收的OutLQRs复制过来的。这个数必须包含此LQR。
+	PeerOutPackets：
+	PeerOutPackets是4个Octets，是从当前的MIB ifOutUniPackets 和 ifOutNUniPackets
+复制过来的。这个数必须包含此LQR。
+	PeerOutOctets：
+	PeerOutOctets是4个Octets，是从当前的MIB ifOutOctets复制过来的。这个数必须包
+含此LQR。
+	SaveInLQRs：
+	SaveInLQRs是4个Octets，是从接收的InLQRs复制过来的。这个数必须包含此LQR。
+	SaveInPackets：
+	SaveInPackets是4个Octets，是从当前接收的MIB ifInUniPackets 和 ifInNUniPackets
+复制过来的。这个数必须包含此LQR。
+	SaveInDiscards：
+	SaveInDiscards是4个Octets，是从当前接收的MIBifInDiscards复制过来的。这个数必
+须包含此LQR。
+	SaveInErrors：
+	SaveInErrors是4个Octets，是从当前接收的MIB ifInErrors复制过来的。这个数必须包
+含此LQR。
+	SaveInOctets：
+	SaveInOctets是4个Octets，是从当前接收的InGoodOctets复制过来的。这个数必须包
+含此LQR。
+	注意InGoodOctets和MIB ifInOctetes计数器不一样，因为InGoodOctets不包括被丢掉
+的或者有错的包中的Octets。
+2.7 报告传输
+	当PPP链路控制协议进入打开状态(the Opened state)，链路质量监控过程可以开始发送
+LQR。如果接收到指定LQR包的协议拒绝，LQM（链路质量管理器）过程必须终止发送
+LQR。
+	一般说来，当链路的LQR计时器超时时就发送LQR。如果没有使用LQR计数器，则
+一旦收到进入的LQR就产生一个LQR。磋商过程确保至少链路的一方使用LQR计时器。
+	另外，无论何时接收到两个连续的具有相同的PeerInLQRs值的LQR，就产生一个LQR。
+这表明一个LQR已经丢失过，或者实现者以低于对端的速率发送LQR，或者对端加速LQR
+产生以更好的量化链路错误。无论何时LQR被发送，LQR计时器必须重新启动。
+2.8 计算
+	每当从输入链路接收到LQR包，Link-Manager就比较相关的域。用当前LQR的各个域
+值减去前一个LQR的各个域值就可以得到绝对的“delta，”，这样链路的两端可以看到变化
+了。
+	如果接收的PeerInLQRs域为零，则LastOut域是不确定的，并且PeerIn域包含对端的
+初始化值。这时不作任何计算。
+	实现注意：
+	下面的计数器达到最大值后会变成0。必须注意这点，保证此时能够计算出正确的"delta"
+	LastOutLQRs。域可以直接和PeerInLQRs域比较来决定丢失了多少outbound的LQR。
+	LastOutLQRs。域可以直接和OutLQRs计数器比较来决定有多少outbound的LQR仍在
+传递中。
+	PeerInPackets的变化可以和LastOutPackets的变化比较来决定输出链路上丢失包的数
+目。
+	PeerInOctets的变化可以和LastOutOctets的变化比较来决定输出链路上丢失Octets的数
+目。
+	SaveInPackets的变化可以和PeerOutPackets的变化比较来决定输入链路上丢失包的数
+目。
+	SaveInOctets的变化可以和PeerPackets的变化比较来决定输入链路上丢失Octets的数
+目。
+	PeerInDiscards和PeerInErrors可以用来决定是否包丢失是因为对端的拥塞而不是链路
+失败。
+2.9 失败检测
+	当链路在链路的两个方向上正常工作时，LQR是多余的。传输LQR的最大时间间隔应
+该选择为最小限度的干涉传输的值。
+	当在任一个方向上存在可测量的数据丢失时，如果全部吞吐量是充分的，则这种条件是
+不足够解释链路丢失的。除了能够测量到丢失率的峰值，快速发送LQR是没有什么结果的。
+必须选择一个长时间间隔以足够保证有一个好的数据平滑影响，相应的短的时间间隔可以确
+保快速响应失败。如果链路输入正常，输出情况糟糕，则输入的LQR会表明在链路的输出
+方向上存在高丢失率。快速发送LQR是没有帮助的，因为它们可能会在到达对端的链路上
+丢失的。
+	如果链路输出正常，但输入情况糟糕，则输入LQR将会频繁丢失。在这种情况下，应
+该以更快的速率发送LQR。这主要依靠对端做的信息策略决策。对端也可以在相应中发送
+LQR（复制PeerInLQRs域），这样某些LQR也许能成功到达。
+	如果LQR在期待的时间内没有到达，或者接收的LQR表明链路情况真的很糟，则至少
+发送一个额外的LQR。算法决策需要至少两个round trip时间间隔。由于链路高负载或者输
+出LQR丢失，这个丢失率可能是暂时的。
+2.10 策略建议
+	LQR包提供了一种机制决定链路质量，但是这受限于每个实现者决定什么时候链路可
+用。建议这个策略实现一些滞留以至于链路不会摇摆。一种策略使用 K out of N 算法。在
+这个算法中考虑到好的质量，对于链路的后N周期必须有K次成功。
+	从差质量链路恢复的过程不需要被说明和对于不同的实现者可以不同。一个建议的方法
+是立即关闭所有其他的网络层协议（例如使IPCP发送一个终止请求），但是继续传输LQR。
+一旦链路质量又达到可接受的标准，就重新配置网络层协议。
+安全考虑
+	安全问题不在此备忘录讨论范围内。
+参考文献
+
+    [1]   Simpson, W., "The Point-to-Point Protocol", RFC 1331, May 1992.
+
+   	[2]   McCloghrie, K., and M. Rose, "Management Information Base for
+         Network Management of TCP/IP-based internets: MIB-II", RFC
+         1213, March 1991.
+
+    [3]   Rose, M., and K. McCloghrie, "Structure and Identification of
+         Management Information for TCP/IP-based Internets", RFC 1155,
+         May 1990.
+致谢
+	此文档的一些内容来自RFC1172，它是由 Drew Perkins of Carnegie Mellon University和
+Russ Hobby of the University of California at Davis共同制定的。
+	特别感谢Craig Fox (Network Systems), and Karl Fox (Morning Star Technologies)的基于
+实现经验的设计建议。
+主席地址
+	可以通过现任主席联系工作组。
+	Brian Lloyd
+      Lloyd & Associates
+      3420 Sudbury Road
+      Cameron Park, California 95682
+
+      Phone: (916) 676-1147
+
+      EMail: brian@ray.lloyd.com
+作者地址
+	关于此备忘录的问题可以直接联系：
+	William Allen Simpson
+      Daydreamer
+      Computer Systems Consulting Services
+      P O Box 6205
+      East Lansing, MI  48826-6025
+
+      EMail: bsimpson@ray.lloyd.com
+
+完整版权说明
+   Copyright (C) The Internet Society (2001).  All Rights Reserved.
+
+   只要在所有复本与推导性工作中包含上面的版权声明和这段文字，就可以全部地或
+者部分地且没有任何限制地复制这篇文档与其译本以及把它提供给其它文档，同样也可以准
+备、复制、出版与发行推导性工作，而且需要评述此推导性工作否则就得解释它，或者辅助
+此推导性工作的实现。然而，此文档本身不可以做任何修改，诸如删除版权声明或者因特网
+社区或其它因特网组织的涉及，除了当需要开发因特网标准的目的时之外且在此种情况下必
+须遵循在因特网标准过程中定义的版权程序，或者除了当要求把它译成其它语言（即不是英
+文）的目的时之外。
+在上面准予的有限的许可是永久性的，而且因特网社区或者它的继承者或指派者都将不
+会废除它。
+在此包含的这篇文档与信息是基于“AS IS”而提供的，并且因特网社区与因特网工程
+任务组织声明了所有的授权、表达或含义，且包含对任何授权的限制，比如这里信息的使用
+不会违反任何授权或者出于特殊目的的商品性或适切性的任何含蓄授权。
+致谢
+感谢因特网社区当前为RFC编辑提供了功能基金。
+
+
+RFC1333——PPP Link Quality Monitoring                              PPP 链路质量监控
+
+
+1
+RFC文档中文翻译计划
+
+

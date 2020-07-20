@@ -1,0 +1,5101 @@
+
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：张海斌（netdebug    internetdebug@elong.com ）
+译文发布时间：2001-7-14
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                         R. Housley
+Request for Comments: 2459                                        SPYRUS
+Category: Standards Track                                        W. Ford
+                                                                VeriSign
+                                                                 W. Polk
+                                                                    NIST
+                                                                 D. Solo
+                                                                Citicorp
+                                                            January 1999
+
+
+Internet X.509 公钥基础设施
+证书和CRL简介
+（Internet X.509 Public Key Infrastructure
+Certificate and CRL Profile）
+
+
+备忘录现状
+这份文档需要Internet社区进一步讨论和改进的Internet试验标准协议。关于这份文档
+的标准化情况和状态请参阅"Internet官方协议标准"（STD1）组织的当前版。这份备忘录分
+发不受限制。
+
+版权声明
+
+   Copyright （C） The Internet Society （1999）。版权所有。
+
+
+
+摘要
+这份备忘录描述了应用在Internet中的X.509 v3证书和X.509 v2CRL（证书撤销列表），
+以接近的综述和模型引入介绍。X.509 v3证书格式随着关于Internet名字（例如IP地址）的
+格式和语义学附加信息被描绘。标准证书扩展被描绘和新的Internet-specific（特有扩展）被
+定义。一套证书扩展被指定。同时X.509 v2 CRL格式被描绘和一套扩展被定义。一组X.509
+证书路径确认算法被描述。X.509证书中通用Internet公开密钥密码算法（即RSA，DSA和
+Diffie-Hellman）的公开密钥和数字签名的格式在补充信息中提供描述。ASN.1模块和例子
+在附录中提供。
+
+约定：
+   本文中的关键词"MUST"， "MUST NOT"， "REQUIRED"， "SHALL"， "SHALL NOT"，   
+"SHOULD"， "SHOULD NOT"， "RECOMMENDED"，  "MAY"， 以及"OPTIONAL"与
+RFC 2119【3】中的描述的意义是相同的。
+
+   请把对本文的意见邮寄给ietf-pkix@imc.org邮递清单。
+
+译者的话
+	阅读RFC2459的读者应该首先了解一下有关网络安全方面的知识，例如密码学知识（加
+密、解密、签名、验证以及安全协议等），RFC2459文档中出现的所有数据结构均采用ASN1
+语法描述以及编码与解码（具体的实现也是这样），所以读者最好对ASN1语言比较熟悉。
+RFC2459是RFC分类中的试验性文档，描述了Internet X.509公钥基础设施证书和CRL方
+面的知识，文档涉及的内容很多（文档中很多内容是建议性的），具体的细节论述的比较少，
+感兴趣的读者可以以此文档为基础指导性地去了解、学习、研究其相关内容的细节，因为这
+篇文档叙述的内容比较全面。
+	译者在翻译这篇文档时尽量保留原文的原意，采用直译的方式，对晦涩难懂或者有指导
+性的阅读其他内容的地方均有译者的注释，希望对读者有所帮助。由于翻译的时间较短以及
+译者水平有限，译文中一定会有很多不当及疏漏甚至错误的地方，希望读者来信赐教，谢谢。
+
+
+															张海斌
+
+															2001-7-9
+
+目 录
+1介绍	5
+2要求和假定	6
+2.1通讯和拓扑	6
+2.2可以接受的标准（Acceptability Criteria）	6
+2.3用户期望	7
+2.4行政管理人员期望	7
+3 概览	7
+3.1 X.509 v3证书	8
+3.2证书路径和信任	9
+3.3撤销	10
+3.4操作协议	11
+3.5管理协议	11
+4证书和证书扩展项概要	12
+4.1基本证书字段	13
+4.1.1证书字段	14
+4.1.1.1 tbsCertificate	14
+4.1.1.2 signatureAlgorithm	14
+4.1.1.3 signatureValue	15
+4.1.2 TBSCertificate	15
+4.1.2.1版本	15
+4.1.2.2序列号	15
+4.1.2.3签名	16
+4.1.2.4发行者	16
+4.1.2.5有效性	19
+4.1.2.5.1 UTCTime	19
+4.1.2.5.2 GeneralizedTime	19
+4.1.2.6主题	20
+4.1.2.7主题公开密钥信息	20
+4.1.2.8唯一标识符	21
+4.1.2.9扩展	21
+4.2标准证书扩展	21
+4.2.1标准扩展	22
+4.2.1.1权威密钥标识符	22
+4.2.1.2主题密钥标识符	23
+4.2.1.3 密钥使用	24
+4.2.1.4私有密钥使用周期	25
+4.2.1.5证书策略	26
+4.2.1.6策略映射	28
+4.2.1.7主题可替换名字	28
+4.2.1.8发行者可替换名字	30
+4.2.1.9主题目录服务系统属性	30
+4.2.1.10基本约束	31
+4.2.1.11名字约束	31
+4.2.1.12策略约束	33
+4.2.1.13扩大密钥使用领域	33
+4.2.1.14 CRL发布点	35
+4.2.2私有Internet扩展	35
+4.2.2.1权威信息存取	36
+5 CRL和CRL扩展简介	37
+5.1 CRL字段	37
+5.1.1 CertificateList字段	38
+5.1.1.1 tbsCertList	38
+5.1.1.2 signatureAlgorithm	39
+5.1.1.3 signatureValue	39
+5.1.2证书列表" To Be Signed"	39
+5.1.2.1版本	39
+5.1.2.2签名	40
+5.1.2.3发行者名字	40
+5.1.2.4更新	40
+5.1.2.5下次更新	40
+5.1.2.6撤销证书	41
+5.1.2.7扩展	41
+5.2 CRL扩展	41
+5.2.1权威密钥标识符	42
+5.2.2发行者可替换名字	42
+5.2.3 CRL Number	42
+5.2.4 Delta CRL标识符	43
+5.2.5发行发布点	43
+5.3 CRL入口扩展	44
+5.3.1理由代码	44
+5.3.2保持指示代码	45
+5.3.3无效日期	45
+5.3.4证书发行者	46
+6证书路径批准	46
+6.1基本路径批准	47
+6.2扩展路径批准	50
+7算法技术支持	50
+7.1个单向哈希函数	50
+7.1.1 MD2单向哈希函数	51
+7.1.2 MD5单向哈希函数	51
+7.1.3 SHA1单向哈希函数	51
+7.2签名算法	51
+7.2.1 RSA签名算法	52
+7.2.2 DSA签名算法	53
+7.3主题公开密钥算法	53
+7.3.1 RSA密钥	54
+7.3.2 Diffie-Hellman密钥交换密钥	54
+7.3.3 DSA签名密钥	56
+8参考资料	57
+9知识产权	59
+10安全考虑	59
+附录A. PsuedoASN.1结构和OIDs	61
+A.1 明示目标模块（Explicitly Tagged Module），1988句法	61
+A.2 隐式目标模块（Implicitly Tagged Module）, 1988 句法	76
+附录 B. 1993 ASN.1 结构 and OIDs	83
+B.1 明示目标模块（Explicitly Tagged Module）, 1993 句法	83
+B.2 隐示目标模块（Implicitly Tagged Module）, 1993 句法	101
+附录 C. ASN.1 注解	109
+附录 D. 示例	110
+D.1 证书	111
+D.2 证书	114
+D.3 RSA算法终端证书	117
+D.4 证书撤销列表	121
+附录 E. Authors' Addresses	122
+附录F.完整版权声明	123
+1介绍
+
+   	本文作为Internet中X.509公开密钥基础设施（PKI）标准家族的一部分，同时也是独
+立的文件；另外这套标准的执行可能继续同其他部分分开。
+
+   	本文介绍了应用于Internet PKI证书和证书撤销列表的格式和语义学。描述了在Internet
+环境中证书路径的处理，提供密码学算法的编码规则。最后，在附录中以ASN.1语法形式
+描述了本文出现的所有数据结构定义。
+
+   本文描绘了能激起完善本文档的激情和影响它的在部分2中（范围）的假定。第3段引
+见一个结构的模块以及描绘它们和前一IETF和ISO/IECITU标准的关系。特别是本文IETF 
+PEM描述和ISO/IEC ITU X.509文档之间的关系。
+
+   本文在部分4中介绍了X.509 v3证书；在部分5中介绍了X.509 v2证书撤销列表（CRL）。
+包括在Internet PKI中有效的ISO/IEC/ITU和ANSI扩展的定义。本文使用的是1988年定义
+的摘要句法注释1（ASN.1），而不是在1994年在ISO/IEC/ITU定义的语法标准。
+
+  	本文还在部分6中说明了路径确认过程。这些过程基于在ISOIEC/ITU上的定义，但是
+颁发假定一个或多个自我签名受信任的CA证书，只需要得到同样的结果，而不需要制定具
+体的处理过程。
+
+本文第7部分描绘公开密钥内容和数字签名的确认和编码的过程。不需要任何特别的密
+码学算法，然而需要能识别出（这些）算法，这些算法能被识别出并可编码。
+
+   	最后，四个附录中提供了implementers（应用）帮助。附录A包含所有的在本文说明以
+内或者推荐的ASN.1结构。正如上面所说的，这些数据结构的描述应用1988的摘要语法注
+释1（ASN.1），而不是1994的句法。附录B包含了同样的信息，这些信息使用作为更新的
+toolsets（工具集）的implementers（应用）服务的1994 ASN.1注释。但是，附录A采取时
+间次序以防冲突。附录C包含关于在本文说明以内使用ASN.1注释的不那么熟悉特征的笔
+记。附录D含有证书和CRL的例子。
+
+2要求和假定
+
+本文的目标是提供帮助，以方便在那些Internet社区内希望利用X.509技术申请X.509
+证书的使用。这些应用包括WWW、电子邮件、用户证明和Ipsec等。为了减轻某些使用
+X.509证书的障碍，本文定义了促进证书管理系统发展的轮廓；应用工具的发展；和按照可
+由双方共同制定的策略。
+
+   	为了附加（额外）批准，保证或者操作上的要求符合专门的应用领域、或者环境的要求，
+一些社区将需要补充、或许取代本文的（某些）描述。但是，为了基本应用，那些经常用的
+属性和共用的代表被定义出来，以便应用开发者能得到必要知识，而不管证书或者证书撤销
+列表（CRL）的发行者。
+
+   	在信赖之前，一个证书用户应该浏览证书策略，由证书权威机构（CA，以下统称CA）
+所产生的授权或者非拒绝服务，这些服务和一个特定证书中的公开密钥联系起来。为此目的，
+这标准不定义合法捆绑的规则或者职责。
+
+   	当补充授权和属性管理工具出现时，例如属性证书，它适合限制在一张证书内的授权的
+属性证明。这些（其它的、辅助的）管理工具可以提供表达很多属性授权的更适合方法。
+
+2.1通讯和拓扑
+
+使用证书的用户将在关于他们的通讯拓扑环境中，特别是安全电子邮件的用户的宽阔范
+围中操作。本文支持那些没有高带宽，实时IP连接或者高连接可用（high connection 
+availability）的可能性用户。此外，本文允许防火墙或者（其他）过滤通讯设备的存在。
+
+   	本文不假定X.500目录服务系统的展开。本文不禁止X.500目录服务系统的使用，但是
+发布证书和证书撤销列表（CRLs）的（其他）另一手段可以被使用。
+
+2.2可以接受的标准（Acceptability Criteria）
+
+   	Internet公开密钥基础设施（PKI）的目标是要满足决定论（deterministic），自动化确认，   
+认证，存取控制授权功能的需求。支持这些服务是通过包含在证书中的属性，以及一些从属
+的控制信息，例如证书中策略数据和证书路径约束。
+
+2.3用户期望
+
+   	Internet PKI的用户是在证书中使用客户软件和主题名字的人们和过程。他们包括那些
+使用电子邮件的读者和作者，WWW浏览器客户，WWW服务器和路由器中Ipsec的密钥管
+理。本文识别那些使用局限性平台和局限于老于世故和注意的用户自己。这个在极小用户配
+置责任（例如受信任的CA密钥，规则），明确在证书中的平台使用约束，证书路径约束以
+及自动的验证有效性功能，使其保护用户免受很多恶意行为。
+
+2.4行政管理人员期望
+   	和用户期望一样，Internet PKI是有结构地支持通常运作CAs的个体。为行政管理人员
+提供无边际的选择以减少CA行政管理人员微妙错误造成的宽广损害结果的机会。同时，无
+边际的选择造成处理和验证由CA中心签发证书的有效性软件的复杂化。
+3 概览
+   	下面是按照PKIX标准本文说明的假定结构模范视图。
+       +---+
+       | C |                       +------------+
+       | e | <-------------------->| End entity |
+       | r |       Operational     +------------+
+       | t |       transactions          ^
+       |   |      and management         |  Management
+       | / |       transactions          |  transactions
+       |   |                             |                PKI users
+       | C |                             v
+       | R |       -------------------+--+-----------+----------------
+       | L |                          ^              ^
+       |   |                          |              |  PKI management
+       |   |                          v              |      entities
+       | R |                       +------+          |
+       | e | <---------------------| RA   | <---+    |
+       | p |  Publish certificate  +------+     |    |
+       | o |                                    |    |
+       | s |                                    |    |
+       | I |                                    v    v
+       | t |                                +------------+
+       | o | <------------------------------|     CA     |
+       | r |   Publish certificate          +------------+
+       | y |   Publish CRL                         ^
+       |   |                                       |
+       +---+                        Management     |
+                                    transactions   |
+                                                   v
+                                               +------+
+                                               |  CA  |
+                                               +------+
+
+图1-PKI实体
+
+   这个模型组成部分包括：
+?	末端实体（end entity）：PKI证书或者最终用户证书主题系统的用户；
+?	CA：证书授权中心；
+?	RA：证书登记中心，即一个可选的由CA委派的具有管理功能的代表系统；
+?	存储：一个系统或者收集的分配系统，存储分配给末端实体的证书和CRLs以及服
+务。
+
+3.1 X.509 v3证书
+
+   	公开密钥的用户将是对结合私有密钥被确定的远程主体（人或者系统），这些实体将使
+用加密或者签名算法。信任是通过证书中公开密钥的使用而得到，证书是绑定公开密钥到主
+题信息的数据结构。捆绑通过信任的CA数字签名的证书，CA可以基于这样的技术手段
+（a.k.a.，posession的通过“挑战反应”协议证明）断言，或者有关一个按照主题断言的私
+有密钥的描述上。每张证书在它的签名内容中都有生命期。因为每张证书的签名和生命期在
+证书使用的客户端是独立检查的，证书能够（可以）在不受信任的通讯和服务器系统中传输
+也能在证书使用系统中非安全存储。
+
+   	ITU TX.509（过去CCITT X.509）或者ISO/IEC ITU9594-8定义一标准证书格式[X.509]，
+首先在1988年作为X.500目录服务系统推荐的一部分出版。在1988标准中证书格式称为版
+本1（v1）格式。当X.500在1993年修正的时候，在版本2（v2）格式中增加一额外的两个
+字段。这两个字段可以使用来支持目录服务系统的存取控制。
+
+   	在1993年出版的Internet隐私增强邮递（PEM）RFCs，包含在X.509 v1证书[RFC 1422]
+的基础上公开密钥基础设施建立说明。在部署RFC 1422的尝试中获得经验明确表示v1和
+v2证书格式在几个方面不足。最重要的是在PEM设计和应用经验已证明需要携带更多的信
+息。面对这些新的要求，ISO IEC/ITU和ANSI X9开发了X.509版本3（v3）证书格式。v3
+格式在v2基础上通过扩展添加额外的字段（扩展字段）。特殊的扩展字段类型可以在标准中
+或者可以由任何组织或者社区定义和注册。在1996年6月，基本v3格式的标准化被完成
+[X.509]。
+
+   	同时ISO IEC/ITU和ANSI X9为在v3扩展字段[X.509][X9.55]中使用发展标准范围。这
+些扩展能表达像附加主题确认信息、密钥属性信息、策略信息和证书路径约束这样的数据。
+
+   	然而ISO IEC/ITU和ANSI X9标准扩展在他们的应用中是非常宽广的。为了开发Internet
+使用X.509 v3系统可由双方共同操作的工具，指定一本文作为使X.509 v3扩展适合Internet
+的使用是必要的。它是本文的一个目标，指定一本文作为Internet WWW，电子邮件和IPsec
+应用。同时随着附加要求环境的改变可以建设本文或者可以取代它。
+
+3.2证书路径和信任
+
+   	作为安全服务的用户通常需要公开密钥如何获得以及需要公开密钥验证证书有效性方
+面的知识。如果公开密钥用户还没有一份由CA签发的证书的公开密钥拷贝、CA的名字和
+相关信息（例如有效期和名字约束），然后它可能需要一张附加证书得到公开密钥。一般地
+说，需要经过CA签发的一系列多重证书公开密钥所有者（末端实体）和其它CAs签发的
+零张或更多附加CAs证书。这样的链被称作证书路径，因为一个公开密钥用户仅用有限CA
+的数目签发。
+
+   	CAs可以有不同的方式被配置为了公开密钥用户能查找证书路径。在PEM，RFC 1422
+定义了CAs的严格等级制度的结构。有三类型的PEM证明授权中心：
+
+(a)	Internet策略注册授权中心（IPRA）：这个授权中心，作为PEM证书等级制度的
+根（等级1），预兆Internet社会的权力。为下一级发行证书，称为PCAs。所有
+的证书路径以IPRA开始。
+
+(b)	策略授权中心（PCAs）：每个PCA由IPRA等级制度中授权，PCAs在等级制定
+中处于2级。PCA将建立和发表它关于确认用户或者下属认证权威（当局）策略
+的声明。不同PCAs目标是符合不同用户的需要。例如，一PCA（一组织的PCA）
+可以支持普遍电子邮件商业组织的需求，而另一PCA（一高保证（high-assurance ）
+PCA）可以有一更严格策略设计去符合合法捆绑的数字的签名要求。
+
+(c)	授权中心（CAs）：CAs是在等级制度的第3级，可能也是在低水平方面。在第3
+级被PCAs授权。CAs代表特殊组织， 例如特定组织的单位（例如区，组织，
+部门）或者特定地理区域。
+
+   	此外RFC 1422还有一名字下级定义规则，其要求一CA仅能为名字是CA本身从属的
+实体（在X.500命名树中）颁发证书。使用PCA名字意味着把信任和一PEM证书路径联系
+起来。名字下级定义规则保证在PCA以下的CAs针对他们从属能验证的实体是敏感强迫的
+（例如，一CA仅能验证在那个特定组织名字树中的实体）。证书用户系统有能力用机器检
+查遵守名字下级定义的规则。
+
+   	RFC 1422使用X.509 v1证书格式。X.509 v1的局限性要求征收对清楚地限制结合的策
+略或者限制证书的功用的几个结构上。这些限制包含：
+
+(a)	伴随所有的从IPRA开始的证书路径的纯粹上下（top-down）等级制度；
+
+(b)	限制一CA的主题名字下级命名规则；以及
+
+(c)	使用需要个人PCAs的知识构建证书逻辑的验证链条的概念。个人PCAs的知识
+决定是否链条能被接受。
+
+  	经过RFC 1422的呼吁请求使用证书扩展，使用X.509 v3不需要限制使用CA结构的使
+用。特别是，和证书政策相关联的证书扩展排除PCAs的需要以及扩展约束排除下级名字定
+义规则的需要。因此，本文支持更有弹性的证书结构，包含：
+
+(a)	证书路径可以在一个用户的自己领域中CA的公开密钥或者等级制度顶部的公开
+密钥开始。开始于一个用户的自己领域中CA的公开密钥确实有优势。在一些环
+境中，本地领域是最受信任的。
+
+(b)	名字约束可以通过在证书中的名字约束扩展的明确被接收，但不作为要求。
+
+(c)	策略扩展和策略映射代替允许一定程度的自动化PCA概念。应用程序应该能决
+定是否接受把证书路径建立在代替PCAs的先验知识的证书的目录的基础上。这
+允许证书链条处理的自动化。
+
+3.3撤销
+
+   	当一张证书被颁发的时候，预期它是在它的整个有效期内使用。但是，各种各样境况可
+能导致一张证书在有效期满期之前变得无效。这样境况包含名字的改变，在主题和CA之间
+联合的改变（例如，一雇员结束在一个组织的工作），以及损害或者怀疑相应的私有密钥。
+在这样情况下，CA需要撤销证书。
+
+   	X.509定义一种证书撤销的方法。这方法需要CA周期性地发布称为证书撤销列表
+（CRL）的由CA签名的数据结构。CRL是盖了时间印章的经过CA签名的自由发布长期有
+效的能识别出被撤销证书的清单。每一个撤销证书在CRL中通过证书序列号识别出。当一
+证书使用系统使用证书（例如，验证一个远程用户的数字签名），那个系统不仅需要检验证
+书签名和有效性而且需要在最近发布的CRL中检验证书序列号不在其中。"最近发布"的意
+思是可能随着本地策略改变，但是它通常意味着最近一次发行的CRL。CA按照正常周期（例
+如，每隔一小时，每天或者每周）发行一次新的CRL。也有可能随着撤销通知的到来而发
+布下一个新的信息被加入到CRL。这个时刻可能出现在一正常CRL发布周期之后不久，而
+远离下一次发布的周期。
+
+   	这种撤销算法的优势是CRLs可以准确地和证书发布同样的做法经由不受信任的通讯
+和服务器系统传播。
+
+   	CRL撤销算法的一个局限是在不受信任的通讯和服务器限制CRL颁发周期撤销的时间
+粒度。例如，如果撤销现在发布，那撤销将不能保证通知证书应用系统，直到下一个周期
+CRL被发布，这可能是一个小时、一天或者一星期，CA发行CRLs取决于频率。
+
+   	和X.509 v3证书格式一样，为了便于（支持）从多重销售商共同操作的工具，X.509 
+v2CRL格式应该是为Internet使用描述轮廓。这是（指定）本文的一个目标。但是，本文不
+要求CAs发行CRLs。支持联机（On-line）撤销通知信息格式和协议可以在其它PKIX文本
+中定义（中找到）。撤销通知的联机方法可以是适用于一些可选择X.509 CRL的环境。联机
+撤销检查可以在相当大的程度上减少在（一份）撤销报告之间和信息分配依赖双方的潜伏。
+CA一旦接受的报告是可靠的和有效的，任何联机服务问题将正确反映出撤销的证书批准影
+响。但是，这些方法需要新的安全要求；当仓库（repository）不应该受信任的同时，证书
+生效者将指望联机批准服务。
+
+3.4操作协议
+
+   	操作协议要求将证书和CRLs （或者状况信息）传递给客户证书应用系统。为各种各
+样的证书和CRL提供不同传递，包括基于LDAP、HTTP、FTP和X.500的发布过程。支持
+这些操作的草案在其它PKIX文本说明中被解释。这些本文说明可以包含信息格式和支持全
+部的上述操作的环境，包含适合MIME内容类型的定义或者参考过程的定义。
+
+3.5管理协议
+
+   	管理协议需要支持在PKI用户和管理实体之间联机相互作用。例如，管理协议随着相
+关联的密钥对可以在CA和客户系统之间被使用，或者在两CAs之间的交叉认证。这套功
+能应该潜在地按照管理协议支持，包含：
+
+(a)	登记：这是一个过程，通过它用户自身先于CA发布证书给那个用户知道CA在
+哪 （直接或者通过RA）。
+
+(b)	初始化：在一客户系统能安全运作之前，把密钥安装在其适合储藏密钥的其它地
+方是必要的。例如，客户应该安全地在受信任的CA（s）的公开密钥和另一被保
+险人信息初始化有效证书路径方面被使用。此外，一个客户（典型）应该用它自
+己的密钥对初始化。
+
+(c)	认证：这是个过程，其中CA为一个用户的公开密钥发行一张证书，并且把那张
+证书传递到用户的客户系统和/或在仓库中张贴那张证书。
+
+(d)	密钥对恢复：作为一个选项，用户客户密钥（用于加密的用户私有密钥）可以被
+CA或者密钥备份系统备份。如果用户需要恢复这些备份密钥，（例如，当忘记密
+码或者失去密钥链文件的时候）一个支持这样恢复的联机交流协议是所需要的。
+
+(e)	密钥对更新：所有的密钥对需要定期更新。例如，替换新的密钥对，发布新的证
+书。
+
+(f)	撤销请求：一个授权人通知CA要求将处于不正常处境的证书被撤销。
+
+(g)	交叉认证：两CAs交换知识用于建立交叉认证证书。交叉认证证书是一张经过
+一CA给另一个包括签名密钥的CA颁发的证书。
+
+   	注意联机协议不是唯一的执行上述功能的方式，还有取得同样结果的离线方法，这在本
+文说明为不托管联机协议的使用。例如，当硬件设备（hardware tokens）使用的时候，很多
+功能可以作为物理设备传递的一部分而实现。此外，某些上述功能可以合并成为一种协议交
+换（protocol exchange）。特别的，两个或者多个登记、初始化和证书功能可以合并为一种协
+议交换。
+
+   	PKIX系列的文本说明可以定义一套标准信息格式，支持上述功能的将来文本中说明。
+如果那样，表达这些在不同环境中信息（例如联机、文件传输、e-mail和WWW）的协议将
+在那些文本被描绘。
+
+4证书和证书扩展项概要
+
+   	这部分提出公开密钥证书概要，将帮助发展可由双方共同操作和可再用PKI体系。这
+部分基于X.509 v3证书标准格式和在[X.509]上定义标准证书扩展。ISO IEC/ITU文件使用
+1993版本的ASN.1语法；然而本文使用1988 ASN.1语法，但是证书编码和标准扩展是等同
+的。这部分也定义支持Internet社区PKI体系的私有扩展。
+
+   	证书可以在宽广的应用环境中使用，其覆盖宽广的可由双方共同操作为目标和更宽阔范
+围中的操作上的和认证要求的环境。本文的目标是为宽广的由双方共同操作和有限特殊目的
+要求的环境建立一条共用基线。特别是强调支持X.509 v3证书应用在非正式的Internet电子
+邮件、IPsec和WWW上。
+
+4.1基本证书字段
+
+   	X.509 v3证书基本语法如下。为签名计算，将证书按照ASN.1语法（DER） [X.208]
+规则进行编码传递。ASN.1 DER编码是对每个元素对应的标签、长度、值编码系统。
+
+   Certificate  ::=  SEQUENCE  {
+        tbsCertificate       TBSCertificate，
+        signatureAlgorithm   AlgorithmIdentifier，
+        signatureValue       BIT STRING  }
+
+ TBSCertificate  ::=  SEQUENCE  {
+        version         [0]  EXPLICIT Version DEFAULT v1，
+        serialNumber         CertificateSerialNumber，
+        signature            AlgorithmIdentifier，
+        issuer               Name，
+        validity             Validity，
+        subject              Name，
+        subjectPublicKeyInfo SubjectPublicKeyInfo，
+        issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL，
+                             -- If present， version shall be v2 or v3
+        subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL，
+                             -- If present， version shall be v2 or v3
+        extensions      [3]  EXPLICIT Extensions OPTIONAL
+                             -- If present， version shall be v3
+        }
+
+   Version  ::=  INTEGER  {  v1（0）， v2（1）， v3（2）  }
+
+   CertificateSerialNumber  ::=  INTEGER
+
+   Validity ::= SEQUENCE {
+        notBefore      Time，
+        notAfter       Time }
+
+   Time ::= CHOICE {
+        utcTime        UTCTime，
+        generalTime    GeneralizedTime }
+
+   UniqueIdentifier  ::=  BIT STRING
+
+   SubjectPublicKeyInfo  ::=  SEQUENCE  {
+        algorithm            AlgorithmIdentifier，
+        subjectPublicKey     BIT STRING  }
+
+   Extensions  ::=  SEQUENCE SIZE （1..MAX） OF Extension
+
+   Extension  ::=  SEQUENCE  {
+        extnID      OBJECT IDENTIFIER，
+        critical    BOOLEAN DEFAULT FALSE，
+        extnValue   OCTET STRING  }
+
+   下面几个小段的项目定义了在Internet中使用的X.509 v3证书。
+
+4.1.1证书字段
+
+   	证书是三个连串（SEQUENCE）的字段。这些字段将在下列部分中详细描绘。
+
+4.1.1.1 tbsCertificate
+
+   	这个字段含有主题和发行者的名字，主题联系起来的公开密钥，有效期和其他相关信息。
+字段在部分4.1.2中详细被描述；字段tbscertificate也可以包括在部分4.2中描述的扩展项。
+
+4.1.1.2 signatureAlgorithm
+
+   	signatureAlgorithm字段含有CA签发证书使用的密码学算法标识符。第7.2段列出支持
+的签名算法。
+
+   	由下列的ASN.1结构确定一个算法标识符：
+
+   AlgorithmIdentifier  ::=  SEQUENCE  {
+        algorithm               OBJECT IDENTIFIER，
+        parameters              ANY DEFINED BY algorithm OPTIONAL  }
+
+   	算法标识符用于识别出密码学的算法。算法标识符（OBJECT IDENTIFIER）成分识别
+出（例如SHA 1的DSA）算法。可选参数字段的内容将根据识别出的算法改变。第7.2段
+列出了本文支持的算法。
+
+   	这个字段必须（MUST）含有在序列tbsCertificate（见4.1.2.3）中签名字段算法标识符
+同样的算法标识符。
+
+4.1.1.3 signatureValue
+
+   	signatureValue字段包括对tbsCertificate的ASN.1 DER编码的数字签名。TbsCertificate
+的ASN.1 DER编码作为签名函数的输入参数。这个签名结果值然后作为BIT STRING 类型
+的ASN.1编码，并且包括在证书的签名字段中。这个过程在7.2段中针对每种支持算法（进
+行了）详细描述。
+
+   	通过产生数字签名，CA能证明在tbsCertificate字段中信息的有效性。特别是，CA能
+够认证在证书中公开密钥和证书的主题的绑定。
+
+4.1.2 TBSCertificate
+
+   	序列TBSCertificate含有和CA发行证书的主题联系起来的信息。每一个TBSCertificate
+含有主题和发行者的名字；以及和主题联系起来的公开密钥、有效期、版本号和序列号；一
+些可选的唯一标识符字段。这部分余下的部分描述这些字段的句法和语义学。TBSCertificate
+也可以包含扩展项。扩展部分在Internet PKI（在部分）4.2中被描绘。
+
+4.1.2.1版本
+
+   	这个字段描绘编码证书的版本。当扩展被使用的时候，如同在本文中预期那样，使用
+X.509版本3（值是2）。但是如果没有扩展项，UniqueIdentifier将存在，这时使用版本2（值
+是1）。如果仅仅基本字段存在，使用版本1（作为缺省值，版本号将在证书中删掉）。
+
+   	（证书系统应用）工具应该（SHOULD）有准备接受任何版本的证书。最低限度，工
+具（MUST）必须能够识别出第3版的证书。
+
+   	第2版证书的产生不是本文预期的描述对象。
+
+4.1.2.2序列号
+
+   	序列号是CA给每一个证书分配一个整数。它必须（MUST）是特定CA签发的证书唯
+一识别（即，发行者名字和序列号唯一识别一张证书）。
+
+4.1.2.3签名
+
+   	这字段含有算法标识符，这个算法是CA在证书上签名使用的算法。
+
+   	这个字段必须（MUST）含有作为在序列Certificate （见4.1.1.2）中signatureAlgorithm
+字段同样的算法标识符。可选参数字段的内容将根据识别出的算法改变。第7.2段列出支持
+的签名算法。
+
+4.1.2.4发行者
+
+   	发行者字段用来标识在证书上签名和发行的实体。发行者字段必须（MUST）含有一非
+空的能辨别出的名字（DN）。把发行者字段定义为X.501类型名字。[X.501]名字由下列的
+ASN.1结构确定：
+
+   Name ::= CHOICE {
+     	RDNSequence }
+
+   RDNSequence ::= SEQUENCE OF RelativeDistinguishedName
+
+   
+   RelativeDistinguishedName ::=
+     SET OF AttributeTypeAndValue
+
+   AttributeTypeAndValue ::= SEQUENCE {
+     type     AttributeType，
+     value    AttributeValue }
+
+   AttributeType ::= OBJECT IDENTIFIER
+
+   AttributeValue ::= ANY DEFINED BY AttributeType
+
+   
+   DirectoryString ::= CHOICE {
+         teletexString           TeletexString （SIZE （1..MAX）），
+         printableString         PrintableString （SIZE （1..MAX）），
+         universalString         UniversalString （SIZE （1..MAX）），
+         utf8String              UTF8String （SIZE （1.. MAX）），
+         bmpString               BMPString （SIZE （1..MAX）） }
+
+   	名字（Name）描绘了一等级制度的名字属性组成，例如国家名字和对应的值，例如US。
+类型AttributeValue的成分由AttributeType决定；一般地说它将是一DirectoryString（类型）。
+
+   	DirectoryString类型定义为一个对PrintableString、TeletexString、BMPString、UTF8String
+和UniversalString（类型）的选择。UTF8String编码是DirectoryString的首选编码，以及所
+有的在2003年12月31日之后签发的证书必须（MUST）使用UTF8String编码（正如同下
+面指出那样）。直到那日期，当创建一个可辨别的名字时CAs必须（MUST）在下列的选择
+中挑选，包括他们自己：
+
+（a）	如果字符集是足够的，字符可以（MAY）被描述为一PrintableString；
+
+（b）	失败（a），如果BMPString字符集是足够的，字符可以被描述为一BMPString；
+和
+
+（c）	失败（a）和（b），字符必须（MUST）被描述为一UTF8String。如果（a）
+或者（b）是满足的，CA可以（MAY）仍然宁愿选择把字符描述为一
+UTF8String。
+
+   	2003年12月31日 UTF8编码要求的例外如下：
+
+（a）	CAs可以（MAY）签发“名字滚翻”（"name rollover"）支持一向UTF8String
+编码整齐的迁移证书。这样证书将包含CA的作为发行者UTF8String编码名
+字和作为主题的老名字编码，或者反之亦然。
+
+（b）	CAs在部分4.1.2.6中表明，主题字段必须（MUST）存在由主题CA不管如
+何编码签发的所有证书中发行者字段的内容相配的一非空的可识别名字。
+
+   	TeletexString和UniversalString为向后兼容（性）被包含，并且不应该为新主题的证书
+使用。但是，这些类型可以在名字以前就存在的证书中被使用。证书用户应该（SHOULD）
+是有准备的以这些类型接受证书。
+
+   	此外，很多遗留工具支持名字在ISO 8859-1字符集（Latin1String）中的编码，但是使
+用TeletexString作为他们的标签。Latin1String包含在西方欧洲人国家中使用并不是部分
+TeletexString 字符集的字符。加工TeletexString的工具应该（SHOULD）是有准备的处理整
+个ISO 8859-1字符集。[ISO 8859-1]
+
+   	同样，可识别名字由属性组成。本文说明不限制可以出现在名字的属性类型。但是，工
+具必须（MUST）是有准备的以发行者名字接受证书，发行者名字含有下面确定的属性类型。
+本文说明也支持额外的属性类型。
+
+   	标准套装属性被定义在X.500系列的文档中。本文说明的[X.520]工具必须（MUST）是
+有准备接受在发行者名字中（包括的）下列标准属性类型：国家、组织、组织的单位
+（organizational-unit）、限定语的可识别名字、国家或者省名字和普通名字（common name）
+（例如" Susan Housley"）。此外，本文说明的工具应该（SHOULD）是有准备的收到下列的
+在发行者名字中标准属性类型：地区、题目、姓、名字、开头的字母和产生限定语（例如"Jr.""， 
+3rd"或者"IV"）。这些属性类型句法和相结合对象标识符（OIDs）在附录A和B中ASN.1模
+块中提供说明。
+
+   	此外，本文说明的工具必须（MUST）是有准备的如同[RFC 2247]定义的那样接受
+domainComponent属性。域名（Nameserver）系统（DNS）提供为系统贴上标签等级制度的
+方法。这个属性提供为希望使用DNS和他们的DNS名字平行的组织一个方便的机制。这不
+是用作替换名字字段的dNSName成分的替代。工具不需要把这样名字变成DNS名字。这
+属性类型句法和相结合的OID在附录A和B中ASN.1模块中提供。
+
+   	证书用户必须（MUST）是有准备处理发行者可识别名字和主题识别名字（见4.1.2.6）
+去执行证书有效路径的名字链（部分6）。名字链由相匹配的随CA证书主题名字的在一张
+证书中可识别的名字签发者执行。
+
+   	本文说明仅要求在X.500系列文档中指定功能相似的一子集名字。使工具遵照的要求如
+下：
+
+（a）	可以被假定代表不同字符，属性值在不同类型（例如PrintableString和
+BMPString）中编码；
+
+（b）	除了PrintableString类型，属性值是区分大小写的（这个允许属性值和二进
+制对象匹配）；
+
+（c）	在PrintableString中属性值不区分大小写（例如，" Marianne Swanson"和" 
+MARIANNE SWANSON"相同）；和
+
+（d）	在去除头部和尾部的空格以及去转换在内部子串中一个或多个连续空格为一
+个单一的空格后，在PrintableString中属性值可被比较。
+
+   	这些名字比较规则允许一个证书用户验证使用证书用户所不熟悉的语言或者编码签发
+的证书的有效性。
+
+  	此外，本文说明的工具可以（MAY）使用这些比较规则为名字链处理不熟悉的属性类
+型。这允许工具随着在发行者名字中不熟悉的属性处理证书。
+
+   	注意在X.500系列文档中定义的比较规则指出用于在可识别名字中数据编码的字符集
+是无关紧要的。字符（他们）自身被比较而不关心编码。允许本文的工具使用定义在X.500
+系列文档中的比较算法。这样工具将通过前面指定算法认出相匹配的名字超集。
+
+4.1.2.5有效性
+
+   	证书有效期是时间间隔，在这期间CA保证它将保持关于证书的状况的信息。把字段描
+述为一连串（SEQUENCE）的两个日期：日期证书有效期开始（notBefore）和日期证书有
+效期结束（notAfter）。notBefore和notAfter可以作为UTCTime或者GeneralizedTime类型编
+码。
+
+   	在本文中CAs必须（MUST）在2049年以前证书有效日期总是作为UTCTime类型编
+码；在2050年或者以后证书有效性日期必须（MUST）作为GeneralizedTime类型编码。
+
+4.1.2.5.1 UTCTime
+
+   	世界时间（universal time）类型，UTCTime是作为国际应用的一标准ASN.1类型，因
+为本地时间不适合国际应用。UTCTime通过两个低次序数字指定年以及指定精确（性）到
+一分钟或者一秒钟。UTCTime包含（Zulu或者格林威治标准时间）Z或者一时间微分。
+
+   	在本文描述中，UTCTime值必须（MUST）是格林威治标准时间表示（Zulu）并且必须
+（MUST）包含秒（即，时间（格式）是YYMMDDHHMMSSZ），甚至秒的数目等于零。
+系统必须（MUST）如下解释年字段（YY）：
+
+      当YY大于等于50，年将被认为是19YY；和
+
+      当YY不到50，年将被认为是20YY。
+
+4.1.2.5.2 GeneralizedTime
+
+   	普遍时间类型，GeneralizedTime为时间的可变精确性的标准ASN.1类型。随意地，
+GeneralizedTime字段能包含一在本地和格林威治标准时间之间时间微分的代表。
+
+   	为了本文的目标，GeneralizedTime值必须（MUST）是格林威治标准时间表示（Zulu）
+并且必须（MUST）包含秒（即，时间格式是YYYYMMDDHHMMSSZ），甚至其秒的数目
+等于零。GeneralizedTime值必须不（MUST NOT）包含小数部分秒（fractional seconds）。
+
+4.1.2.6主题
+
+   	主题字段标识符与存储在主题公开密钥字段中相关联的密钥实体。主题名字和/或在
+subjectAltName扩展中被附带。如果主题是一CA（例如，如同在4.2.1.10讨论那样，基本
+约束扩展存在和cA的值是真的（TRUE）），那么主题字段必须（MUST）是随着一非空的
+可识别的名字存在，在所有的主题CA签发的证书和发行者字段（见4.1.2.4）的目录相匹配。
+如果主题命名信息仅存在subjectAltName扩展（例如一把密钥局限于一电子邮件地址或者
+URI）中，那么主题名字必须（MUST）是一空的序列并且subjectAltName扩展一定是关键
+的。
+
+   	在它非空的地方，主题字段必须（MUST）含有一X.500可识别名字 （DN）。DN必须
+（MUST）对于每一主题实体是唯一的通过被签发者名字字段定义的一CA证明。一CA可
+以用同样的DN向同样的主题实体签发多个证书。
+
+   	主题名字字段定义为X.501类型名字。工具（应用）要求这字段是那些签发者字段定义
+的 （见4.1.2.4）。当将类型DirectoryString的属性值编码的时候，关于签发者字段的编码规
+则必须（MUST）被执行。本文说明的工具一定是有准备的接收包含为签发者字段推荐的属
+性类型的主题名字。本文说明的工具应该（SHOULD）是有准备的接收含有为签发人字段
+建议属性类型的主题名字。这些属性类型句法和相结合的对象标识符（OIDs）在附录A和
+BASN.1模块中被提供。本文说明的工具可以（MAY）使用这些相似规则去处理不熟悉属性
+类型（例如，对于名字链条）。这允许工具在不熟悉属性的主题名字中处理证书。
+
+   	此外，遗留工具存在于一RFC 822名字作为EmailAddress属性被嵌入在可识别的名字
+中。作为IA5String类型的EmailAddress属性值允许包含字符'@'，其不在PrintableString字
+符集中。EmailAddress属性值是不区分大小写的（例如，"fanfeedback@redsox.com"与
+FANFEEDBACK@REDSOX.COM是一样的）。
+
+   	随着电子邮件地址使产生新证书工具必须（MUST）在主题字段可能的选择中使用
+rfc822Name （见4.2.1.7）的名字描绘。同时包含在主题中可识别名字的EmailAddress属性
+值去支持遗留工具被反对，但是允许（即不禁止）。
+
+4.1.2.7主题公开密钥信息
+
+   	使用这字段携带公开密钥和密钥使用算法的标识符。算法使用在部分4.1.1.2中指定
+AlgorithmIdentifier结构被标识。在部分7.3中指定对象标识符作为将公开密钥材料（公开密
+钥和参数）支持的编码算法和方法。
+
+4.1.2.8唯一标识符
+
+   	这些字段可能仅出现在版本2或者3中（见4.1.2.1）。主题和发行者的唯一标识符存在
+于证书中去处理在超出（有效）时间主题和/或发行者名字的再使用的可能性。本文推荐名
+字不在不同实体中重用以及Internet证书唯一标识符不被使用。CAs遵从本文不应该
+（SHOULD NOT）使用唯一标识符产生证书。遵从本文应用（程序）应该（SHOULD）是
+能解析唯一标识符的语法并且作比较。
+
+4.1.2.9扩展
+
+   	这字段可能如果仅出现在版本3（见4.1.2.1）中。如果存在，这字段是一连串
+（SEQUENCE）的一个或多个证书扩展。在Internet PKI中证书扩展的格式和内容将在4.2
+定义。
+
+4.2标准证书扩展
+
+   	在X.509 v3证书扩展定义中提供为用户或者公开密钥和证书管理等级制度相结合的附
+加属性的方法。X.509 v3证书格式也允许社区（一个具体应用环境――译者注）定义私有范
+围为那些社区携带所特有信息。在一张证书中的每一扩展可以是关键的或者非关键的。如果
+遇到一项不能识别的关键扩展，那么应用系统必须（MUST）拒绝接受此证书；但是，如果
+不被认出的项是非关键扩展则可以被忽视。下面章节推荐在Internet证书和标准信息以内使
+用扩展。然而社区可以选择使用附加扩展（针对具体应用环境的自定义扩展――译者注）；
+但是，应该谨慎采用在证书中的任何关键扩展，其可以阻碍在一般背景（证书比较普遍的应
+用环境――译者注）中的证书应用。
+
+   	每一项扩展包含一OID和一ASN.1结构。当一扩展出现在一张证书中的时候，OID作
+为字段extnID和相应的ASN.1结构按照八位字符（octet string ）extnValue的值编码。仅一
+特定扩展的事例可以出现在一张特定证书中。例如，一张证书可以含有仅一当局密钥标识符
+扩展（见4.2.1.1）。一扩展包含boolean类型关键值，缺省值为FALSE。文本为每一扩展指
+定可接受作为关键字段的值。
+
+   	CAs必须（MUST）支持密钥标识符（见4.2.1.1和4.2.1.2）、基本约束（见4.2.1.10）、
+密钥应用（见4.2.1.3，）和证书策略（见4.2.1.5）扩展。如果CA颁发空序列主题证书，CA
+必须（MUST）支持可选择的名字扩展 （见4.2.1.7）。支持余下的扩展是可选的。CAs可以
+支持在本文说明以内不被识别的扩展标识符；提醒证书发行者把这样的扩展标记关键可以抑
+制双方的共同操作。
+
+   	最低限度，本文的应用必须（MUST）能够识别在本文中必须或者可能的扩展。这些扩
+展是：密钥应用（见4.2.1.3）、证书策略（见4.2.1.5）、主题可替换名字（见4.2.1.7）、基本
+约束（见4.2.1.10）、名字约束（见4.2.1.11）、策略约束（见4.2.1.12）和密钥应用扩展（见
+4.2.1.13）。
+
+   	此外，本文推荐（RECOMMENDS）支持权威和主题密钥标识符（见4.2.1.1和4.2.1.2） 
+的应用扩展。
+
+4.2.1标准扩展
+
+   	这部分介绍在Internet PKI应用中[X.509]定义的标准证书。[X.509] 定义中的每一扩展
+和一OID联系起来。这些OIDs 是id-arc的成员，定义如下：
+
+译者注：OID是OBJECT IDENTIFIER（对象标识符）的简称，其是国际性组织定义的全球
+标准的对象定义，是一树结构，id-arc是树结构中ISO组织定义的一枝，感兴趣的
+读者请阅读相关文档。
+
+   id-ce   OBJECT IDENTIFIER ::=  {joint-iso-ccitt（2） ds（5） 29}
+
+4.2.1.1权威密钥标识符
+
+   	权威密钥标识符扩展提供一识别出对使用私有密钥在一张证书上签名相对应的公开密
+钥的手段。这个扩展用于一个发行者有多个签名密钥（也由于多重同时发生的密钥对或者由
+于密钥更换）。标识符可以建立在任一个密钥标识符（在发行者的证书中的主题密钥标识符）
+或者有关发行者名字和序列号的基础上。
+
+   	authorityKeyIdentifier扩展的keyIdentifier字段必须（MUST）是包含在所有的由CAs
+遵照便于链条构建所产生的证书内。有一例外：一CA以一张"自我签名"证书的形式分配它
+的公开密钥，权威密钥标识符可以被删掉。在这个情况中，主题和权威密钥标识符将是完全
+相同的（等价的）。
+
+   	keyIdentifier字段的值应该（SHOULD）从验证证书签名的公开密钥或者产生唯一值的
+方法中得到（keyIdentifier字段的值产生算法――译者注）。两个从公开密钥产生密钥标识符
+的通用方法描述在4.2.1.2。一个产生唯一值的通用方法在4.2.1.2中描述。因为一个密钥标
+识符还没有先前建立，本文推荐使用这些方法中的一种产生keyIdentifiers。
+
+   	本文推荐（使用）经过所有的证书用户支持密钥标识符的算法。
+
+   	这扩展必须不（MUST NOT）要被标记为关键。
+
+  id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
+
+   AuthorityKeyIdentifier ::= SEQUENCE {
+      keyIdentifier             [0] KeyIdentifier           OPTIONAL,
+      authorityCertIssuer       [1] GeneralNames            OPTIONAL,
+      authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
+
+   KeyIdentifier ::= OCTET STRING
+
+4.2.1.2主题密钥标识符
+
+   	主题密钥标识符扩展提供一种识别出包含一特定公开密钥的证书的手段。
+
+   	为了便于链条（证书链）构建，这个扩展必须（MUST）出现在所有CA证书中，也就
+是说所有证书中包含基本约束扩展证书（见4.2.1.10）它的cA的值是TRUE。主题密钥标识
+符的值必须（MUST）是按照这张证书的主题值放入权威密钥标识符扩展（见4.2.1.1）的证
+书的发出的密钥标识符字段。
+
+   	同CA证书一样，主题密钥标识符应该（SHOULD）从公开密钥或者产生唯一值方法中
+得到。两种从公开密钥产生密钥标识符的通用方法如下：
+
+（1）	keyIdentifier由BIT STRING subjectPublicKey的值的160位SHA1哈希值
+组成（排除标签，长度和不在使用的bits数目）。
+
+（2）	keyIdentifier 四bit类型字段值为0100以及随后的由BIT STRING  
+subjectPublicKey的值SHA 1哈希的值中最后60 bits连接组成。
+
+   	一个产生唯一值通用方法是一整数的monotomically递增序列。
+
+   	为末端实体证书，主题密钥标识符扩展提供一识别出包含在一种应用中使用特定公开密
+钥的证书的手段。一末端实体已经得到多重证书，特别从多重CAs，主题密钥标识符提供一
+迅速识别出包含一特定公开密钥证书的手段。为帮助在应用方面识别适合末端实体证书，这
+扩展应该包含在所有的末端实体证书内。
+
+   	为末端实体证书，主题密钥标识符应该（SHOULD）从公开密钥得到。从公开密钥产
+生密钥标识符的两个通用方法在上面描述了。
+
+   	因为一个密钥标识符还没有先前建立，本文说明推荐使用这些方法中的一种产生密钥标
+识符。
+
+   	这扩展必须不（MUST NOT）要标记为关键。
+
+   id-ce-subjectKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 14 }
+
+   SubjectKeyIdentifier ::= KeyIdentifier
+
+4.2.1.3 密钥使用
+
+   	密钥使用扩展定义包含在证书的密钥的目的（例如加密，签名，签名证书）。当一把能
+被用于超出一个操作时候（超出了密钥应用范围――译者注），密钥使用限制可以被使用。
+例如，当一RSA密钥应该是仅用于签名使用的时候，digitalSignature和/或nonRepudiation
+位（bits）将被断言（有效，置为1――译者注）。同样，当一RSA密钥应该是仅用于密钥
+管理使用的时候，keyEncipherment位将被断言。当使用的时候，这扩展应该（SOULD）被
+标记为关键。
+
+      id-ce-keyUsage OBJECT IDENTIFIER ::=  { id-ce 15 }
+
+      KeyUsage ::= BIT STRING {
+           digitalSignature        （0）,
+           nonRepudiation          （1）,
+           keyEncipherment         （2）,
+           dataEncipherment        （3）,
+           keyAgreement            （4）,
+           keyCertSign             （5）,
+
+           cRLSign                 （6）,
+           encipherOnly            （7）,
+           decipherOnly            （8） }
+
+   	在KeyUsage类型中位（Bits）使用如下：
+
+    digitalSignature位被断言，当主题公开密钥用一数字的签名算法来支持安全服务而非抗
+抵赖性（位1）、签名证书（位5）或者签名撤销信息（位6） 的时候。数字的签名算法常
+常为实体和数据起源（做）完整性验证。
+
+    nonRepudiation位被断言，当主题公开密钥被用于验证提供抗抵赖性服务的数字签名的
+时候，其签名实体避免虚假拒绝的一些行动所造成的危害，这些行动排除签名证书或者
+CRL。
+
+    keyEncipherment位被断言，当主题公开密钥被用于密钥传输的时候。例如，当一RSA
+密钥用于密钥管理时候，那么这位将被断言。
+
+    当主题公开密钥用于（除了密码学的密钥）将用户数据加密使用的时候，
+dataEncipherment位被断言。
+
+    keyAgreement位被断言，当主题公开密钥为用于密钥协议的时候。例如，当一Diffie 
+Hellman密钥是要为密钥管理被使用的时候，那么这位将被断言。
+
+    当主题公开密钥用于验证在证书上的签名使用的时候，keyCertSign位被断言。这位可
+以仅在CA证书中被断言。
+
+    当主题公开密钥用于验证有关撤销信息（例如一CRL）签名使用的时候，cRLSign位被
+断言。
+
+    encipherOnly位的意思是在没有keyAgreement位（缺席）时定义的。当encipherOnly
+位被断言和keyAgreement位也被设定的时候，主题公开密钥可以仅用于将数据加密（加密）
+被使用，同时履行密钥协议。
+
+    decipherOnly位的意思是在没有keyAgreement位（缺席）时定义的。当decipherOnly
+位被断言和keyAgreement位也被设定的时候，主题公开密钥可以仅用于译解出数据（解密）
+被使用，同时履行密钥协议。
+
+   	本文不限制在keyUsage扩展实例中那些位的结合。但是，在部分7.3中将指定适合值
+作为为特定算法keyUsage扩展。
+
+4.2.1.4私有密钥使用周期
+
+   	本文推荐反对这扩展的使用。CAs遵从本文一定不（MUST NOT）要私有密钥使用周
+期为关键扩展时产生证书。
+
+   	私有密钥使用周期扩展允许证书发行者与证书相比，为私有密钥明确不同的有效性周
+期。这扩展打算用于给数字的签名密钥的使用。这扩展由两个可选成分组成，notBefore和
+notAfter。和证书联系起来的私有密钥不应该在两个成分指定的时间提前或者过后对对象签
+名使用。CAs除非至少两个成分之一存在，遵从本文一定不（MUST NOT）要在私有密钥
+使用周期扩展存在时产生证书。
+
+  	使用的地方，如同在部分4.1.2.5.2中定义那样，描述为GeneralizedTime必须（MUST）
+指定notBefore和notAfter。
+
+   id-ce-privateKeyUsagePeriod OBJECT IDENTIFIER ::=  { id-ce 16 }
+
+   PrivateKeyUsagePeriod ::= SEQUENCE {
+        notBefore       [0]     GeneralizedTime OPTIONAL,
+        notAfter        [1]     GeneralizedTime OPTIONAL }
+
+4.2.1.5证书策略
+
+   	证书策略扩展包含一连串的一个或多个策略信息条目，每一个由一对象标识符（OID）
+和可选的限定语（组成）。这些策略信息条款指示在其之下证书被签发的策略和证书可以被
+使用的目的。可以存在的可选的限定语不预期改变策略的定义。
+
+   	预期随着特有策略需求的应用有那些他们将接受的策略的清单以及把在证书中策略
+OIDs和那清单比较。如果这扩展是关键的，路径验证软件必须（MUST）是能理解这（包
+含可选的限定语）扩展的，否则必须丢弃证书。
+
+   	为促进双方的互操作性，本文推荐（RECOMMENDS）策略信息条目由仅一OID构成。
+单独OID不足的地方，本文强烈建议在这部分中识别出那些限制使用限定语。
+
+   	本文为经过证书策略书写者（writers）和证书发行者使用定义的两个策略限定语。限定
+语类型是CPS  Pointer和User Notice 。
+
+    CPS Pointer限定语含有一指向经过CA发布的（Certification Practice Statement）
+证书实施声明（CPS）的指针。指针是URI的格式。
+
+   	当证书被使用的时候，User notice将展示依靠部分。应用（软件）应该（SHOULD）在
+所有的证书上展示所有的使用证书路径的用户注意（User notice），除了如果那个注意（notes）
+被复制，仅一复制品需求被展示的情况下。为阻碍这样复制，这个限定语应该（SHOULD）
+仅是存在于末端实体（end-entity）证书和签发给其它组织的CA证书中。
+
+   	用户注意（user notice）有两个可选字段：noticeRef字段和explicitText字段。
+
+    如果使用noticeRef字段通过数字（经过那组织准备的特殊原文的陈述）给一组织命名。
+例如，它可以识别出组织"CertsRUs"和注意数字（notice number ）1。在一典型工具中，应
+用（软件）将有一为含有当前一套注意（notices）CertsRUs文件：应用将从文件摘取注意文
+本并且展示它。信息可以是用多种语言表达的允许软件为它的自己环境选择特定语言信息。
+
+    explicitText字段在证书中直接包含原文的声明。explicitText字段是一个最大为200个字
+符的字符串。
+
+   	如果在noticeRef和explicitText两个可选项中包含在一个限定语内并且如果应用软件能
+找到按照noticeRef可选项指示注意的文本，那么那文本应该被展示；除此之外，explicitText
+字符应该被展示。
+
+   id-ce-certificatePolicies OBJECT IDENTIFIER ::=  { id-ce 32 }
+
+   certificatePolicies ::= SEQUENCE SIZE （1..MAX） OF PolicyInformation
+
+   PolicyInformation ::= SEQUENCE {
+        policyIdentifier   CertPolicyId,
+        policyQualifiers   SEQUENCE SIZE （1..MAX） OF
+                                PolicyQualifierInfo OPTIONAL }
+
+   CertPolicyId ::= OBJECT IDENTIFIER
+
+   PolicyQualifierInfo ::= SEQUENCE {
+        policyQualifierId  PolicyQualifierId,
+        qualifier          ANY DEFINED BY policyQualifierId }
+
+   -- policyQualifierIds for Internet policy qualifiers
+
+   id-qt          OBJECT IDENTIFIER ::=  { id-pkix 2 }
+   id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 }
+   id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 }
+
+   PolicyQualifierId ::=
+        OBJECT IDENTIFIER （ id-qt-cps | id-qt-unotice ）
+
+   Qualifier ::= CHOICE {
+        cPSuri           CPSuri,
+        userNotice       UserNotice }
+
+   CPSuri ::= IA5String
+
+   UserNotice ::= SEQUENCE {
+        noticeRef        NoticeReference OPTIONAL,
+        explicitText     DisplayText OPTIONAL}
+
+   NoticeReference ::= SEQUENCE {
+        organization     DisplayText,
+        noticeNumbers    SEQUENCE OF INTEGER }
+
+   DisplayText ::= CHOICE {
+        visibleString    VisibleString  （SIZE （1..200））,
+        bmpString        BMPString      （SIZE （1..200））,
+        utf8String       UTF8String     （SIZE （1..200）） }
+
+4.2.1.6策略映射
+
+   	这扩展使用在CA证书中。它列出一对或多对OIDs；每一对包含issuerDomainPolicy和
+subjectDomainPolicy。配对指示签发CA认为它的issuerDomainPolicy等于主题CA的
+subjectDomainPolicy。
+
+   	为特定应用签发CA的用户可以接受一issuerDomainPolicy。策略映射对发行与主题CA
+相联系的策略的CA用户是可以与他们接受的策略相比较起作用。
+
+   	这扩展可以被CAs和/或应用支持，并且它必须（MUST）是非关键的。
+
+   id-ce-policyMappings OBJECT IDENTIFIER ::=  { id-ce 33 }
+
+   PolicyMappings ::= SEQUENCE SIZE （1..MAX） OF SEQUENCE {
+        issuerDomainPolicy      CertPolicyId,
+        subjectDomainPolicy     CertPolicyId }
+
+4.2.1.7主题可替换名字
+
+   	主题可替换名字扩展允许附加与证书的主题相同的标识符。定义可选项包含Internet电
+子邮件地址、DNS名字、IP地址和uniform resource identifier （URI）。其它可选项存在，
+并且包含完全的本地定义。每一名字形式的多重名字形式和多重事例可以被包含。每当这样
+相同的标识符是要被绑定成一张证书，主题可选名字（或者发行者可替换名字）扩展必须
+（MUST）被使用。
+
+   	因为主题可替换名字被认为是与公开密钥结合，主题可选名字所有的部分必须（MUST）
+被CA验证。
+
+   	进一步，如果在证书中仅包含有主题身份是一可替换名字形式（例如一电子邮件地址），
+那么主题可识别名字必须（MUST）为空（一空序列）以及subjectAltName扩展必须（MUST）
+存在。如果主题字段包含一空序列，subjectAltName扩展必须（MUST）是标记为关键。
+
+   当subjectAltName扩展含有一Internet邮递地址的时候，地址必须（MUST）是作为一
+rfc822Name包含。rfc822Name的格式是一" addr-spec "，如同在RFC 822[RFC 822]中定
+义那样。addr-spec格式为" local-part@domain "。注意在addr-spec之前没有（例如一
+通用名字）短语，在它之后没有comment （text surrounded in parentheses）并且没有
+"<"和">"包围。注意在RFC 822 addr-spec中大写和小写体字符是允许的，这种情况不区分
+大小写。
+
+   	当subjectAltName扩展含有一iPAddress的时候，地址必须（MUST）是如同在RFC 
+791[RFC 791]中指定那样，在"network byte order"八位字符中储藏。每一八位的最低有效位
+（LSB）是在网络地址中相应字节的LSB。如同在RFC 791中指定的IP版本4那样，八位
+字符必须（MUST）含有正好四个八位。如同在RFC 1883中指定的IP版本6那样，八位字
+符必须（MUST）含有正好十六个八位[RFC 1883]。
+
+   	当subjectAltName扩展含有一个域名服务标签的时候，域名必须（MUST）是在dNSName
+（IA5String）中储藏。名字一定是如同经过RFC 1034[RFC 1034]指定那样，在" preferred name 
+syntax "中。注意在域名中允许大写和小写体字符，并且在这种情况下不分大小写。另外“ ”
+（空格）在域名中是一个合法的字符的同时，dNSName的subjectAltName扩展“ ” （空
+格）是不允许的。最后，DNS代表Internet邮递地址 （以wpolk.nist.gov代替wpolk@nist.gov）
+的使用是不允许的；这样的标识符是要作为rfc822Name被编码。
+
+   	当subjectAltName扩展含有一URI的时候，名字必须（MUST）存储在
+uniformResourceIdentifier（IA5String）中。名字必须（MUST）是无关的（non-relative） URL
+并且必须（MUST）按照[RFC 1738] 定义的URL句法和编码规则。名字必须包含两种模式
+（例如"http"或者"ftp"）和scheme-specific-part。scheme-specific-part必须包含作为主机完全
+合格域名或者IP地址。
+
+   	如同在[RFC 1738]定义的那样，模式（scheme）名字不是大小写敏感的（case-sensitive ）
+（例如，"http"是等于"HTTP"）。主机部分也不是大小写敏感的，但是scheme-specific-part
+的其它成分可以是大小写敏感的。当比较URIs的时候，保证工具必须（MUST）比较scheme
+和主机而不管大小写，但是认为scheme-specific-part的剩下的部分是大小写敏感的。
+
+   	主题可替换名字如同在部分4.2.1.11中描绘那样主题识别名字使用名字约束扩展同样的
+方式被约束。
+
+   	如果subjectAltName扩展存在，序列必须（MUST）含有至少一入口。不像主题字段，
+使CAs遵照必须不（MUST NOT）颁发subjectAltNames含有空GeneralName字段的证书。
+例如，把rfc822Name描述为IA5String。在一个空字符串是有效IA5String的同时，这样的
+rfc822Name在本文不被允许。当客户（软件）加工一证书路径的时候，不由本文定义客户
+（软件）的行为。
+
+   	最后，包括通配符（例如，是为一套名字的占位符号）的主题替换名字语义学不在本文
+说明。随着具体需求应用可以使用这样的名字，但是要定义语义学。
+
+      id-ce-subjectAltName OBJECT IDENTIFIER ::=  { id-ce 17 }
+
+      SubjectAltName ::= GeneralNames
+
+      GeneralNames ::= SEQUENCE SIZE （1..MAX） OF GeneralName
+
+      GeneralName ::= CHOICE {
+           otherName                       [0]     OtherName,
+           rfc822Name                      [1]     IA5String,
+           dNSName                         [2]     IA5String,
+           x400Address                     [3]     ORAddress,
+           directoryName                   [4]     Name,
+           ediPartyName                    [5]     EDIPartyName,
+           uniformResourceIdentifier       [6]     IA5String,
+           iPAddress                       [7]     OCTET STRING,
+           registeredID                    [8]     OBJECT IDENTIFIER}
+
+      OtherName ::= SEQUENCE {
+           type-id    OBJECT IDENTIFIER,
+           value      [0] EXPLICIT ANY DEFINED BY type-id }
+
+      EDIPartyName ::= SEQUENCE {
+           nameAssigner            [0]     DirectoryString OPTIONAL,
+           partyName               [1]     DirectoryString }
+
+4.2.1.8发行者可替换名字
+
+   	和4.2.1.7一样，使用这扩展把Internet类型标识符和证书发行者联系起来。发行者可替
+换名字必须（MUST）是4.2.1.7中描述的方式编码。
+
+   	目前的情况，这扩展不应该（SHOULD NOT）被标记为关键。
+
+      id-ce-issuerAltName OBJECT IDENTIFIER ::=  { id-ce 18 }
+
+      IssuerAltName ::= GeneralNames
+
+4.2.1.9主题目录服务系统属性
+
+   	主题目录服务系统属性扩展不推荐作为本文的必须的部分，但是它可以在本地环境中被
+使用。这扩展一定是非关键的。
+
+   id-ce-subjectDirectoryAttributes OBJECT IDENTIFIER ::=  { id-ce 9 }
+
+   SubjectDirectoryAttributes ::= SEQUENCE SIZE （1..MAX） OF Attribute
+
+4.2.1.10基本约束
+
+   	基本约束扩展识别出是否证书的主题一CA以及一证书路径通过CA可以存在的深度。
+
+   	仅当如果cA被设置为TRUE，那么pathLenConstraint字段是有意义的。在这个情况中，
+它给出最大CA证书的数目（证书链的长度――译者注），其可以随着这张在一证书路径中
+证书来到的。零值指示仅一张末端实体证书沿着路径可以进入。它出现的地方，
+pathLenConstraint字段必须（MUST）是大于等于零。pathLenConstraint不出现的地方，事
+实上没有对证书路径的允许长度进行限制。
+
+   	这个扩展必须（MUST）似乎在所有的CA证书中是关键扩展。这扩展不应该（SHOULD 
+NOT）出现在末端实体证书中。
+
+   id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
+
+   BasicConstraints ::= SEQUENCE {
+        cA                      BOOLEAN DEFAULT FALSE,
+        pathLenConstraint       INTEGER （0..MAX） OPTIONAL }
+
+4.2.1.11名字约束
+
+   	名字约束扩展指示一名字空间，必须（MUST）是仅在一张CA证书中使用的，在一证
+书路径中以内所有的随后证书中主题名字将被找到的。限制可以施加可识别名字或者主题可
+替换名字于主题。仅当指定的名字形式存在的时候，限制提出申请。如果没有类型的名字在
+证书中，证书是可接受。
+
+   	限制按照允许或者排除名字子树中被定义。不管出现在permittedSubtrees的信息，任何
+在excludedSubtrees字段限制相配的名字是无效的。这扩展必须（MUST）是关键的。
+
+   	在本文以内，最低的和最大的字段域不随着任何名字形式被应用，因此最低的总是零，
+和最大的限度总是不存在。
+
+   	约束向主机部分名字申请URIs。约束可以指定一个主机或者域。例子可以是
+"foo.bar.com"和".xyz.com"。什么时候约束以一分隔符开始，它可以是一或更多子域
+（subdomains）膨胀。也就是说约束".xyz.com"被abc.xyz.com和abc.def.xyz.com满足。但是，
+约束".xyz.com"不被"xyz.com"满足。当约束不以一分隔符开始的时候，它指定一个主机。
+
+   	为Internat邮递地址名字约束可以指定一个特定邮箱、所有的在一个特定主机地址或者
+所有的在一域中的邮箱。指示一个特定邮箱，约束是完整邮递地址。例如，"root@xyz.com"
+指示在主机"xyz.com"上根邮箱。说明所有的在一个特定主机上Internet邮递地址，指定约束
+作为主机名字。例如，约束"xyz.com"在主机"xyz.com"被任何邮递地址满足。指定任何在域
+以内的地址，用一领头的分隔符约束（和URIs）一样被指定。例如，".xyz.com"指示所有的
+Internet邮递地址在"xyz.com"域中，但是Internet邮递地址在主机"xyz.com"上。
+
+   	DNS名字限制作为foo.bar.com被表示。任何子域满足名字约束。例如，www.foo.bar.com
+将满足约束，但是bigfoo.bar.com不满足。
+
+   	遗留工具存在于RFC 822名字嵌入的在一个类型EmailAddress（见4.1.2.6）的属性中
+可识别名字主题。当rfc822名字是限制的，但是证书不包含主题可替换名字的时候，rfc822
+名字约束必须（MUST）是在主题识别名字中施加于EmailAddress类型的属性。对
+EmailAddress ASN.1句法和相应的OID在附录A和B中被补充。
+
+   	形式directoryName的限制必须（MUST）是施加于在证书中主题字段和directoryName
+类型的subjectAltName扩展。形式x400Address的限制必须（MUST）是施加于类型
+x400Address的subjectAltName扩展。
+
+   	当应用形式directoryName的限制的时候，工具必须（MUST）比较DN属性。在一最
+低限度，工具必须（MUST）履行在部分4.1.2.4中指定DN比较规则。CAs颁发的形式
+directoryName限制的证书不应该（SHOULD NOT）信赖完全ISO DN名字比较算法的工具
+上。这个暗示名字限制将向在主题字段或者subjectAltName扩展中使用的编码同一地陈述。
+
+   	iPAddress的句法必须（MUST）是如同在第4.2.1.7段中那样，对于名字约束被特别描
+绘。对于IPv4地址，generalName的ipAddress字段必须（MUST）含有八（8） octets，在
+RFC 1519（CIDR）的款式中编码表现为地址范围。对于IPv6 地址，ipAddress字段必须
+（MUST）包含同样的32 octets编码。例如对于" class C "名字约束亚网10.9.8.0将是0A 09 08 
+00 FF FF FF 00octets描述为八位代表，CIDR注释代表为10.9.8.0/255.255.255.0。
+
+   	不由本文定义为otherName，ediPartyName和registeredID名字约束句法和语义学。
+
+      id-ce-nameConstraints OBJECT IDENTIFIER ::=  { id-ce 30 }
+
+      NameConstraints ::= SEQUENCE {
+           permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+           excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+
+      GeneralSubtrees ::= SEQUENCE SIZE （1..MAX） OF GeneralSubtree
+
+      GeneralSubtree ::= SEQUENCE {
+           base                    GeneralName,
+           minimum         [0]     BaseDistance DEFAULT 0,
+           maximum         [1]     BaseDistance OPTIONAL }
+
+      BaseDistance ::= INTEGER （0..MAX）
+
+4.2.1.12策略约束
+
+   	策略约束扩展能在颁发的CAs证书中被使用。策略约束扩展在两种方式中强迫路径验
+证。它能用于禁止策略映射或者要求每一在路径中证书含有一个可接受策略标识符。
+
+   	如果inhibitPolicyMapping字段存在，在策略映射是不再允许之前，值指示附加证书可
+以出现在路径的数目。例如，一值指示策略映射可以在这张证书的主题发出的证书中处理，
+但是不在路径中附加。
+
+   	如果requireExplicitPolicy字段存在，随后的证书将包含一个可接受策略标识符。在一
+显示策略被要求之前，requireExplicitPolicy的值指示可以出现在路径的附加证书的数目。一
+个可接受策略标识符是一经过证书路径或者标识符的用户对一通过策略映射被宣布是等于
+策略需求标识符的。
+
+   	使CAs遵照一定不（MUST NOT）要颁发在策略约束空序列时的证书。也就是说在
+inhibitPolicyMapping字段或者requireExplicitPolicy字段中最少一个必须（MUST）存在。当
+遭遇一空的策略约束字段时，客户（软件）的行为不在本文中描述。
+
+   	这扩展可以是关键或者非关键。
+
+   id-ce-policyConstraints OBJECT IDENTIFIER ::=  { id-ce 36 }
+
+   PolicyConstraints ::= SEQUENCE {
+        requireExplicitPolicy           [0] SkipCerts OPTIONAL,
+        inhibitPolicyMapping            [1] SkipCerts OPTIONAL }
+
+   SkipCerts ::= INTEGER （0..MAX）
+
+4.2.1.13扩大密钥使用领域
+
+   	这字段指示一或更多确认的公开密钥增加或者代替基本密钥使用扩展字段中表明的目
+的。这字段定义如下：
+
+   id-ce-extKeyUsage OBJECT IDENTIFIER ::= {id-ce 37}
+
+   ExtKeyUsageSyntax ::= SEQUENCE SIZE （1..MAX） OF KeyPurposeId
+
+   KeyPurposeId ::= OBJECT IDENTIFIER
+
+   	密钥目的可以由任何有需求的组织定义。使用对象标识符识别出密钥目的将与IANA或
+者ITU TRec.X.660|ISO IEC/ITU 9834-1一致被分配。
+
+   	这扩展在证书发行者的可选项方面可以扩展，是既关键又非关键。
+
+   	如果扩展被标志为关键，那么证书必须（MUST）是仅用于目的标志之一使用。
+
+   	如果扩展被标志为非关键，那么它指示密钥的预设目的或者可以在发现在有多重密钥/
+证书的实体中恰当的密钥/证书方面被使用。它是一顾问字段并且不暗示密钥的使用被证书
+权威机构目的指示的限制。尽管如此证书应用可以要求一特殊目的被表明为了证书能对那种
+应用是可接受的。
+
+   	如果一张证书含有一关键的密钥使用字段和一关键的扩展密钥使用字段，那么在两字段
+必须（MUST）被独立处理并且证书必须（MUST）仅对两个字段一致目的被使用。如果事
+实上没有和两个字段一致目的，那么证书一定不要（MUST NOT）用于任何目的。
+
+   	本文确定下列的密钥使用目的：
+
+   id-kp OBJECT IDENTIFIER ::= { id-pkix 3 }
+
+   id-kp-serverAuth              OBJECT IDENTIFIER ::=   {id-kp 1}
+   -- TLS Web server authentication
+   -- Key usage bits that may be consistent: digitalSignature,
+   --                         keyEncipherment or keyAgreement
+   --
+   id-kp-clientAuth              OBJECT IDENTIFIER ::=   {id-kp 2}
+   -- TLS Web client authentication
+   -- Key usage bits that may be consistent: digitalSignature and/or
+   --                            keyAgreement
+   --
+   id-kp-codeSigning             OBJECT IDENTIFIER ::=   {id-kp 3}
+   -- Signing of downloadable executable code
+   -- Key usage bits that may be consistent: digitalSignature
+   --
+   id-kp-emailProtection         OBJECT IDENTIFIER ::=   {id-kp 4}
+   -- E-mail protection
+   -- Key usage bits that may be consistent: digitalSignature,
+   --                         nonRepudiation, and/or （keyEncipherment
+   --                         or keyAgreement）
+   --
+   id-kp-timeStamping    OBJECT IDENTIFIER ::= { id-kp 8 }
+   -- Binding the hash of an object to a time from an agreed-upon time
+   -- source. Key usage bits that may be consistent: digitalSignature,
+   --                         nonRepudiation
+
+4.2.1.14 CRL发布点
+
+   	CRL发布点扩展标识出CRL信息如何得到。扩展应该（SHOULD）是非关键，但是本
+文建议由CAs和应用（程序）支持这扩展。CRL管理的进一步讨论包含在部分5中。
+
+   	如果cRLDistributionPoints扩展含有一类型URI的DistributionPointName，下列的语义
+学必须被假定：URI为相关的理由和将结合cRLIssuer被发出的指向当前CRL。为URI预期
+值在4.2.1.7部分定义。处理关于其它值的规则不由本文定义。如果distributionPoint删掉理
+由，CRL必须（MUST）撤销所有理由。如果distributionPoint删掉cRLIssuer，CRL必须（MUST）
+是由发行证书的CA发出的。
+
+   id-ce-cRLDistributionPoints OBJECT IDENTIFIER ::=  { id-ce 31 }
+
+   cRLDistributionPoints ::= {
+        CRLDistPointsSyntax }
+
+   CRLDistPointsSyntax ::= SEQUENCE SIZE （1..MAX） OF DistributionPoint
+
+   DistributionPoint ::= SEQUENCE {
+        distributionPoint       [0]     DistributionPointName OPTIONAL,
+        reasons                 [1]     ReasonFlags OPTIONAL,
+        cRLIssuer               [2]     GeneralNames OPTIONAL }
+
+   DistributionPointName ::= CHOICE {
+        fullName                [0]     GeneralNames,
+        nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
+
+   ReasonFlags ::= BIT STRING {
+        unused                  （0）,
+        keyCompromise           （1）,
+        cACompromise            （2）,
+        affiliationChanged      （3）,
+        superseded              （4）,
+        cessationOfOperation    （5）,
+        certificateHold         （6） }
+
+4.2.2私有Internet扩展
+
+   	这部分为在Internet公开密钥基础中的使用定义一新扩展。这扩展可以被直接应用
+（direct applications）识别出一联机批准服务的申请支撑的发行CA。当信息可以是在多重形
+式有效时，每一扩展是一连串的IA5String值、每一个代表一URI。URI不言明地指定关于
+得到信息的信息和方法的位置和格式。
+
+   	一个对象标识符为私有扩展被定义。把对象标识符和私有扩展联系起来在id-pkix名字
+空间以内的arc id-pe下面被定义。任何为Internet PKI定义的未来扩展将也在arc id-pe 下面
+被定义。
+
+      id-pkix  OBJECT IDENTIFIER  ::=
+               { iso（1） identified-organization（3） dod（6） internet（1）
+                       security（5） mechanisms（5） pkix（7） }
+
+      id-pe  OBJECT IDENTIFIER  ::=  { id-pkix 1 }
+
+4.2.2.1权威信息存取
+
+   	权威信息存取扩展指示怎样访问CA关于扩展出现在证书的发行人的信息和服务。信息
+和服务可以包含联机授权服务和CA策略数据。（CRLs的位置不在这扩展中被指定；那信息
+被cRLDistributionPoints扩展提供）这扩展可以包含在主题或者CA证书内，并且它一定是
+非关键的。
+
+   id-pe-authorityInfoAccess OBJECT IDENTIFIER ::= { id-pe 1 }
+
+   AuthorityInfoAccessSyntax  ::=
+           SEQUENCE SIZE （1..MAX） OF AccessDescription
+
+   AccessDescription  ::=  SEQUENCE {
+           accessMethod          OBJECT IDENTIFIER,
+           accessLocation        GeneralName  }
+
+   id-ad OBJECT IDENTIFIER ::= { id-pkix 48 }
+
+   id-ad-caIssuers OBJECT IDENTIFIER ::= { id-ad 2 }
+
+   	每一在序列AuthorityInfoAccessSyntax入口中描绘附加关于CA的信息的格式和位置，
+其发行这扩展出现的证书。信息的类型和格式被accessMethod字段指定；accessLocation字
+段指定信息的位置。恢复机制意味着可以用accessMethod或者由accessLocation指定。
+
+   	本文为accessMethod定义一OID。当附加信息列出CAs其已发行的比发行证书的CA
+地位高证书的时候，id-ad-caIssuers OID被使用含有这扩展。参照CA发行者描绘在选择一
+由证书用户信任终止点的证书路径中帮助证书用户。
+
+   	当id-ad-caIssuers作为accessInfoType出现的时候，accessLocation字段描绘推荐服务器
+和存取协议去得到参照描绘。把accessLocation字段定义为能采取几种格式的   
+GeneralName。经由http，ftp或者ldap信息可用的地方，accessLocation必须（MUST）是
+一uniformResourceIdentifier。信息可用的地方经由目录服务系统存取协议（dap），
+accessLocation必须（MUST）是一directoryName。当信息经由电子邮件可用的时候，
+accessLocation必须（MUST）是一rfc822Name。不由本文说明确定accessLocation的其它名
+字格式（当accessMethod是id-ad-caIssuers）的语义学。
+
+   	附加存取描述符可以在其它PKIX文本说明中被定义。
+
+5 CRL和CRL扩展简介
+
+   	如同前面描绘那样，X.509 v2CRL本文的一个目标是要帮助发展创造一可由双方共同操
+作的和可再用的Internet PKI。达到这目标，扩展使用的指南被指定和一些关于包含在CRL
+中本质的假定信息。
+
+   	CRLs可以被使用在覆盖宽广范围的可由双方共同操作目标和甚至更宽广范围的应用和
+环境的宽阔范围中的操作上的和担保需求。本文为要求宽广可由双方共同操作的应用建立一
+条共用基线。本文定义一基线套能在每一个CRL中被预期的信息。同时，本文定义为以及
+为这些属性共用代表经常用过的属性在CRL以内的通用位置。
+
+   	本文不定义任何私有InternetCRL扩展或者CRL入口扩展。
+
+   	随着附加或者特殊目的需求环境可以建立在本文基础上或者可以取代它。
+
+   	如果其它撤销或者证书状况算法被提供，遵照CAs不需要发行CRLs。发行CRLs的
+CAs必须（MUST）遵照发行第2版CRLs，以及CAs必须在nextUpdate字段中包含日期（下
+一个CRL被发出的日前）（见5.1.2.5），CRL号扩展（见5.2.3）和权威密钥标识扩展（见
+5.2.1）。遵照应用所需要的去处理第1版和2 版CRLs。
+
+5.1 CRL字段
+
+   	X.509 v2CRL句法如下。为签名计算，要被签名的数据是ASN.1 DER编码。ASN.1 DER
+编码是一标签、长度、为每一元素值的编码系统。
+
+   CertificateList  ::=  SEQUENCE  {
+        tbsCertList          TBSCertList,
+        signatureAlgorithm   AlgorithmIdentifier,
+        signatureValue       BIT STRING  }
+
+   TBSCertList  ::=  SEQUENCE  {
+        version                 Version OPTIONAL,
+                                     -- if present, shall be v2
+        signature               AlgorithmIdentifier,
+        issuer                  Name,
+        thisUpdate              Time,
+        nextUpdate              Time OPTIONAL,
+        revokedCertificates     SEQUENCE OF SEQUENCE  {
+             userCertificate         CertificateSerialNumber,
+             revocationDate          Time,
+             crlEntryExtensions      Extensions OPTIONAL
+                                           -- if present, shall be v2
+                                  }  OPTIONAL,
+        crlExtensions           [0]  EXPLICIT Extensions OPTIONAL
+                                           -- if present, shall be v2
+                                  }
+
+   	版本，时间，CertificateSerialNumber和扩展完全在ASN.1中在第4.1段中被定义。
+
+   	AlgorithmIdentifier在第4.1.1.2段中被定义。
+
+   	下列的项目描绘X.509 v2CRL在Internet PKI中使用。
+
+5.1.1 CertificateList字段
+
+   	CertificateList是一连串（SEQUENCE）的三个需求字段（three required fields）。字段在
+下列的分部中被详细描绘。
+
+5.1.1.1 tbsCertList
+
+   	在序列中第一字段是tbsCertList。这字段是它自己的序列，含有发行者的名字、发行日
+期，下一个清单（CRL）的发行日期，撤销证书列表和可选CRL扩展。进一步，每一在撤
+销证书清单上入口是由一连串的用户证书确定序号，撤销日期和可选CRL入口扩展。
+
+5.1.1.2 signatureAlgorithm
+
+   	signatureAlgorithm字段为含有算法标识符，经过CA在CertificateList上签名使用的算
+法。字段有在部分4.1.1.2中被定义的类型AlgorithmIdentifier。第7.2段列出为本文说明支
+持的算法。CAs必须（MUST）保证当签名的时候，使用的签名算法在第7.2段中定义的算
+法标识符。
+
+   	这字段必须（MUST）含有同样的作为在序列tbsCertList（见5.1.2.2）中签名字段算法
+标识符。
+
+5.1.1.3 signatureValue
+
+   	signatureValue字段在ASN.1 DER编码tbsCertList上含有一数字的签名计算。使用ASN.1 
+DER编码tbsCertList作为签名函数的输入。那是ASN.1作为BIT STRING将这签名值编码
+并包含在CRL的signatureValue字段中。在部分7.2中对每一个支持的算法描述这过程的细
+节。
+
+5.1.2证书列表" To Be Signed"
+
+   	被签名的证书清单或者TBSCertList是一连串（SEQUENCE）的必须的和可选的字段。
+必须字段识别出CRL发行者，使用在CRL上签名的算法，CRL被发出的日期和时间以及
+在CA将发行下一个CRL的日期和时间。
+
+   	可选字段包含撤销证书和CRL扩展的清单。撤销证书清单是其CA还没有撤销任何它
+已发行未到期的证书的可选证明论据。本文需要Cas保证在发行的所有的CRLs中
+cRLNumber使用CRL扩展。
+
+5.1.2.1版本
+
+   	这个可选字段描绘编码CRL的版本。当扩展使用的时候，如同本文需要那样，这字段
+必须（MUST）是存在的和必须（MUST）指定版本2（整数值1）。
+
+5.1.2.2签名
+
+   	这个字段含有为使用在CRL上签名算法的算法标识符。第7.2段描述了在Internet PKI
+中使用的大多流行的签名算法清单OIDs。
+
+   	这字段必须（MUST）含有同样的作为在序列CertificateList（见部分5.1.1.2）中  
+signatureAlgorithm字段算法标识符。
+
+5.1.2.3发行者名字
+
+   	发行者名字标识已经在CRL上签名和发行的实体。发行者实体在发行者名字字段中被
+带着。可替换名字格式也可以出现在issuerAltName扩展（见5.2.2）。发行者名字字段必须
+（MUST）含有一X.500区别名字（DN）。发行者名字字段被定义为X.501类型名字以及必
+须（MUST）遵守在证书（见4.1.2.4）中发行者名字字段的编码规则。
+
+5.1.2.4更新
+
+   	这字段指示这CRL的发布日期。ThisUpdate可以作为UTCTime或者GeneralizedTime
+被编码。
+
+   	在2049年之前日前中遵从本文其发行CRLs的CAs必须（MUST）作为UTCTime将
+thisUpdate编码。遵从本文其发行CRLs的CAs必须作为GeneralizedTime将thisUpdate编码
+在年2050中或者以后日期中。
+
+   	作为UTCTime编码的地方，必须（MUST）是指定thisUpdate如同在部分4.1.2.5.1中
+定义和解释那样。作为GeneralizedTime编码的地方，必须（MUST）是指定thisUpdate如同
+在部分4.1.2.5.2中定义和解释那样。
+
+5.1.2.5下次更新
+
+   	这字段指示在下一个CRL被发出的日期，在指示日期以前，下一个CRL能被发出的，
+但是它将不在指示日期或者之后被发出的。CAs应该（SHOULD）发布CRLs以一nextUpdate
+时间对比向前或者与所有的前一CRLs相比以后。nextUpdate可以作为UTCTime或者
+GeneralizedTime被编码。
+
+   	本文描述必须在CAs发出的所有CRLs中包含nextUpdate。注意TBSCertList的ASN.1
+句法描绘这是可选（OPTIONAL）字段，其和在[X.509]定义的ASN.1结构一致。加工CRLs
+删掉nextUpdate的客户（软件）行为不在本文描述。
+
+   	在2049年之前日前中遵从本文其发行CRLs的CAs必须（MUST）作为UTCTime将
+thisUpdate编码。遵从本文其发行CRLs的CAs必须作为GeneralizedTime将thisUpdate编码
+在年2050中或者以后日期中。
+
+   	作为UTCTime编码的地方，必须（MUST）是指定thisUpdate如同在部分4.1.2.5.1中
+定义和解释那样。作为GeneralizedTime编码的地方，必须（MUST）是指定thisUpdate如同
+在部分4.1.2.5.2中定义和解释那样。
+
+5.1.2.6撤销证书
+
+   	撤销证书被列举。通过他们的序号给撤销证书命名。通过证书序列号唯一标识被撤销的
+证书。撤销发生的日期被指定。revocationDate时间必须（MUST）是如同在部分5.1.2.4中
+描绘那样表示。可以在CRL入口扩展中提供附加信息；CRL入口扩展在部分5.3中被讨论。
+
+5.1.2.7扩展
+
+   	这字段仅出现在版本2（或者更高版本中）（见5.1.2.1）中。如果存在，这字段是一连
+串（SEQUENCE）的一或更多CRL扩展。CRL扩展在部分5.2中被讨论。
+
+5.2 CRL扩展
+
+   	由ANSI X9和ISO/IEC/ITU为X.509 v2CRLs[X.509]定义扩展。[X9.55]提供把附加属性
+和CRLs联系起来的方法。X.509 v2CRL格式也允许社区定义私有范围携带那些社区所特有
+信息的扩展。每一在CRL中的扩展可以是关键或者非关键的。如果它遭遇一它不知道如何
+处理的关键扩展，CRL批准必须（MUST）失败。但是，未被认出的非关键扩展可以被忽视。
+下列的部分提出在InternetCRLs以内使用的那些扩展。社区可以选择在本文说明中包含在
+CRLs中不被定义的扩展。但是，应该谨慎采用任何可以在一般背景方面被运用的CRLs中
+的关键扩展。
+
+   	发行CRLs的CAs确认包含权威密钥标识符（见5.2.1）和在所有发行的CRLs中的CRL
+数字扩展（见5.2.3）。
+
+5.2.1权威密钥标识符
+
+   	权威密钥标识符扩展提供一识别出对使用私有密钥在一CRL上签名相对应的公开密钥
+的手段。确认能被建立在任一个的基础上密钥标识符（在CRL签名者的证书中的主题密钥
+标识符）或者有关发行者名字和序号。一个发行者有超过一个由于多重同时发生的密钥对或
+者由于密钥对更换的地方，这扩展特别有用。
+
+   	CAs遵照必须（MUST）使用密钥标识符方法和必须（MUST）在所有发行的CRLs中
+包含这扩展。
+
+   	这CRL扩展句法在部分4.2.1.1中被定义。
+
+5.2.2发行者可替换名字
+
+   	发行者可替换名字扩展允许额外标识和CRL的发行者联系起来。定义可选项包含一
+rfc822名字（电子邮件地址），一DNS名字，一IP地址和一URI。一名字和多重名字格式
+的多重事例可以被包含。每当这样的标识符被使用，发行者可替换名字扩展必须（MUST）
+被使用。
+
+   	issuerAltName扩展不应该（SHOULD NOT）被标记为关键。
+
+   	这CRL扩展OID和句法在部分4.2.1.8中被定义.
+
+5.2.3 CRL Number
+
+   	CRL Number是经过CA发出的非关键CRL扩展，其为每一CRL表达一单调地增加序
+列号的。这扩展允许用户容易决定什么时候一特定CRL取代另一CRL。CAs遵从本文必须
+（MUST）在所有的CRLs中包含这扩展。
+
+   id-ce-cRLNumber OBJECT IDENTIFIER ::= { id-ce 20 }
+
+   cRLNumber ::= INTEGER （0..MAX）
+
+5.2.4 Delta CRL标识符
+
+   	Delta CRL标识符是一识别出一delta-CRL的关键CRL扩展。delta-CRL的使用能在相
+当大的程度上为应用（程序）提高比CRL结构之外储藏撤销信息格式的处理时间。这个允
+许改变被加入本地数据库，同时忽视未改变的信息（其已经是在本地数据库中的）。
+
+   	当一delta-CRL发出的时候，CAs必须（MUST）同时发行一完整CRL。
+
+   	BaseCRLNumber的值识别出CRL号在产生这delta-CRL中使用作为起始点。delta-CRL
+含有在基（base）CRL和当前CRL之间改变（和delta-CRL一道发出的）。它是由CA决定
+是否提供delta-CRL。再次，一delta-CRL一定不（MUST NOT）要没有一相应的完整CRL
+被发出的。CRLNumber的值为delta-CRL和相应的完整CRL值必须（MUST）是完全相同
+的。
+
+   	如果收到delta-CRL的CRLNumber是最后加工的超过一的delta-CRL，一个CRL用户
+必须（MUST）认为建造从delta-CRLs 获取的CRL是不完全的和不能使用（unusable）的。
+
+   id-ce-deltaCRLIndicator OBJECT IDENTIFIER ::= { id-ce 27 }
+
+   deltaCRLIndicator ::= BaseCRLNumber
+
+   BaseCRLNumber ::= CRLNumber
+
+5.2.5发行发布点
+
+   	发行发布点是一关键CRL扩展，其为一特定CRL识别出CRL发布点的，和它指示是
+否CRL仅为末端实体证书、仅为CA证书或者一套限制（limitied）理由代码覆盖撤销。虽
+然扩展是关键，不被保证工具支持这扩展所需要的。
+
+   	在CRL上签名使用CA的私有密钥。CRL发布点没有他们的自己密钥对。如果CRL存
+储在X.500目录服务系统，它存储在与CRL发布点相对应的目录实体，可以和CA的目录
+实体不同。
+
+   	代码和发布点关联的理由将在onlySomeReasons中被指定。如果onlySomeReasons不出
+现，发布点将含有所有撤销理由代码。CAs可以使用CRL发布点基于损害和常规（compromise 
+and routine）撤销把CRL分成部分。这个情况，随着理由代码keyCompromise（1）和
+cACompromise（2）的撤销出现在一发布点，以及撤销中有其他理由代码出现在另一发布点。
+
+   	issuingDistributionPoint扩展含有一URL的地方，下列的语义学必须被假定：对象是经
+过这CA发出的指向最当前CRL的指针。URI系统ftp、http、mailto[RFC1738]和ldap[RFC1778]
+为了这目的被定义。URI必须（MUST）是一绝对的、不相关的路径名和必须（MUST）指
+定主机。
+
+   id-ce-issuingDistributionPoint OBJECT IDENTIFIER ::= { id-ce 28 }
+
+   issuingDistributionPoint ::= SEQUENCE {
+        distributionPoint       [0] DistributionPointName OPTIONAL,
+        onlyContainsUserCerts   [1] BOOLEAN DEFAULT FALSE,
+        onlyContainsCACerts     [2] BOOLEAN DEFAULT FALSE,
+        onlySomeReasons         [3] ReasonFlags OPTIONAL,
+        indirectCRL             [4] BOOLEAN DEFAULT FALSE }
+
+5.3 CRL入口扩展
+
+   	已经由ANSI X9和ISO/IEC/ITU为X.509 v2CRLs定义的CRL入口扩展提供为附加属
+性和CRL入口[X.509][X9.55]联系起来的方法。X.509 v2CRL格式也允许社区定义私有CRL
+入口扩展携带那些社区所特有信息。每一在CRL入口中的扩展可以是关键或者非关键。如
+果遭遇一它不知道如何处理的关键CRL入口扩展，CRL批准必须失败。但是，一未被认出
+的非关键CRL入口扩展可以被忽视。下列的部分提出，在InternetCRL入口和标准信息的位
+置以内使用推荐的扩展。社区可以选择使用附加CRL入口扩展；但是，应该谨慎在采用任
+何在可以被使用在一般背景中CRL的入口中的关键扩展。
+
+   	在本文说明中使用所有的CRL入口扩展是非关键的。支持这些扩展因为对CAs和应用
+保证是可选的。但是，每当这信息是可用的，发行CRLs的CAs应该（SHOULD）包含理
+由代码（见5.3.1）和无效日期（见5.3.3）。
+
+5.3.1理由代码
+
+   	reasonCode是一非关键CRL入口扩展，其识别出证书撤销的理由。CAs强烈被鼓励在
+CRL入口中包含有意义的理由代码；但是，理由代码CRL入口扩展应该（SHOULD）不存
+在而不是使用非特指的（0）reasonCode值。
+
+   id-ce-cRLReason OBJECT IDENTIFIER ::= { id-ce 21 }
+
+   -- reasonCode ::= { CRLReason }
+
+   CRLReason ::= ENUMERATED {
+        unspecified             （0）,
+        keyCompromise           （1）,
+        cACompromise            （2）,
+        affiliationChanged      （3）,
+        superseded              （4）,
+        cessationOfOperation    （5）,
+        certificateHold         （6）,
+        removeFromCRL           （8） }
+
+5.3.2保持指示代码
+
+   	保持指示代码是一非关键CRL入口扩展，其提供一个登记指示标识符，其指示行动被
+采取在遭遇一张证书之后，被放在着力点（hold）上的。
+
+   id-ce-holdInstructionCode OBJECT IDENTIFIER ::= { id-ce 23 }
+
+   holdInstructionCode ::= OBJECT IDENTIFIER
+
+   	下列的指示准则被定义。使加工这扩展的应用（程序）保持必须（MUST）承认下列的
+指示准则。
+
+   holdInstruction    OBJECT IDENTIFIER ::=
+                    { iso（1） member-body（2） us（840） x9-57（10040） 2 }
+
+   id-holdinstruction-none   OBJECT IDENTIFIER ::= {holdInstruction 1}
+   id-holdinstruction-callissuer
+                             OBJECT IDENTIFIER ::= {holdInstruction 2}
+   id-holdinstruction-reject OBJECT IDENTIFIER ::= {holdInstruction 3}
+
+   	使遭遇一id-holdinstruction- callissuer的应用（程序）保证必须（MUST）给证书发行者
+打电话或者丢弃证书。使遭遇一id- holdinstruction-reject的应用（程序）保证必须（MUST）
+丢弃证书。着力点指示id-holdinstruction-none按语义地是等于不存在一holdInstructionCode，
+而且它的使用强烈为Internet PKI所反对。
+
+5.3.3无效日期
+
+   	无效日期是一非关键CRL入口扩展，其定义日期被知道或者怀疑其私有密钥被泄露或
+者证书除此之外变得无效的。这日期可以在CRL入口中是与撤销日期相比更早，其日前是
+在其CA加工撤销的日期。当一撤销经过CA在CRL中第一次之后的时候，无效日期可以
+在更早的CRLs的日期之前，但是撤销日期不应该（SHOULD NOT）在更早的CRLs的日期
+之前。每当这信息是可用的时候，CAs强烈被促进和CRL用户共享它。
+
+   	GeneralizedTime值必须（MUST）是在格林威治标准时间中表示（Zulu）和必须（MUST）
+是指定在这字段中如同在部分4.1.2.5.2中定义和解释那样。
+
+   id-ce-invalidityDate OBJECT IDENTIFIER ::= { id-ce 24 }
+
+   invalidityDate ::=  GeneralizedTime
+
+5.3.4证书发行者
+
+   	这CRL入口扩展识别出与一间接的CRL入口联系起来的证书发行者（间接CRL是指，
+例如含有indirectCRL被指示者嵌入它的发行发布点扩展）。如果这扩展在一间接CRL中第
+一入口点上不存在，证书发行者默认CRL发行者。在一间接CRL中的随后入口点上，如果
+这扩展不存在，对入口的证书发行者和那个前面入口一样。这字段被定义如下：
+
+   id-ce-certificateIssuer   OBJECT IDENTIFIER ::= { id-ce 29 }
+
+   certificateIssuer ::=     GeneralNames
+
+   	如果CAs保证发行CRLs的使用，这扩展总是关键的。如果工具忽视这扩展，它不能
+正确地把CRL入口归于证书。本文推荐工具识别出这扩展。
+
+6证书路径批准
+
+   	把证书路径批准Internet PKI的过程建立在第12.4.3段的基础上的[X.509]。证书路径处
+理验证在主题识别名字和/或统治可用作替换名字与主题公开密钥之间绑定。绑定被约束限
+制在包括路径的证书中指定。基本约束和策略约束扩展允许证书路径处理使决策过程自动化
+的逻辑。
+
+   	这部分描绘有效证书路径的算法。本文说明的工具保证执行这算法不是必要的，但是从
+处理过程必须（MUST）官能地等于外部行为产生的结果。只要它得到正确结果任何算法可
+以被一特殊工具使用。
+
+   	在部分6.1中，文本描绘基本路径批准。文本认为所有的有效路径以经过一单一的"最
+受信任的CA"（"most-trusted CA"）发出的证书开始。算法需要CA的公开密钥、CA的名字、
+公开密钥的有效期以及任何在可以使用这密钥有效的一套路径上的约束。
+
+   "最受信任的CA"是一个策略问题：它能是一在等级制度的PKI中的根CA；发行证明者
+的自己证书（s）的CA；或者任何在一网络PKI中另一CA。路径批准过程不管对"绝大部
+分受信任的CA"（"most-trusted CA."）的选择如何都一样。
+
+   	第6.2段描绘基本路径批准算法的扩展。两种情况被讨论：一种情况指路径可以从几个
+信任的CAs之一开始；另一种情况与PEM结构兼容性被需要。
+
+6.1基本路径批准
+
+   	文本假定那个受信任的公开密钥（和相关信息）在一张"自签"（"self-signed"）证书中被
+含有这个简化路径处理过程的描绘。注意在自签证书上的签名不提供任何安全服务。受信任
+的公开密钥（和相关信息）可以在其它格式中得到；信息由于其他的过程过去经常得到它和
+保卫而被信任。
+
+   	路径批准的目标是要验证在一主题识别名字或者主题可替换名字以及如同在末端中代
+表那样的主题公开密钥之间的绑定，把实体证书建立在"最受信任的CA"（"most-trusted CA"）
+的公开密钥的基础上。这个需要得到一连串的支持那个绑定的证书。履行得到这后果手续是
+超出了这部分的描述范围。
+
+   	文本的下列部分也假定如同在本文以内建议那样，证书不使用主题或者唯一标识符字段
+或者私有关键扩展。但是，如果这些成分出现在证书中，他们必须（MUST）被加工。最后，
+策略限定语为了透明也被忽视。
+
+   	一证书路径是一连串的n个证书：
+
+      * for all x in {1,（n-1）}, the subject of certificate x is the
+      issuer of certificate x+1.
+      * certificate x=1 is the the self-signed certificate, and
+      * certificate x=n is the end entity certificate.
+
+   	这部分假定向路径处理逻辑提供下列的输入：
+
+（a）	一证书路径长度n；
+
+（b）	一套初始策略标识符（每个包括一连串的策略要素标识符），其识别出一或更
+多证书策略，任何一个的将为了证书路径处理或者特殊值"any-policy"是可接
+受的策略；
+
+（c）	当前日期/时间 （如果证书路径处理模块不可用）；和
+
+（d）	路径的有效性应该确定的时间T。（这个可以是当前日期/时间，或者一些在
+过去中指）。
+
+   	从输入，过程初始化五个状态变量：
+
+（a）	可接受的策略设置：一套包括，连同通过策略映射认为是等于策略以公开密
+钥用户承认的策略或者（多个）策略的证书策略标识符。可接受策略设置的
+初始值是特殊值"any-policy"。
+
+（b）	限制子树：一套定义在所有的在证书路径中随后证书中主题名字以内降下的
+根名字的一套子树。初始值是"unbounded"。
+
+（c）	排除子树：定义一套子树，在证书路径中随后证书中没有主题名字以内可以
+降下的根名字。初始值是"empty"。
+
+（d）	明确策略：指示如果一个明确策略标识符被需求的整数。整数指示在这个需
+求被利用的路径中第一张证书。一旦设定，这变量就可以被减少但是可以不
+被增加。（也就是说如果一张在路径需求明确策略标识符的证书，随后的证书
+不能去除这个需求）。初始值是n+1。
+
+（e）	策略映射：一指示如果策略映射被允许的整数。整数指示最后的证书（last 
+certificate）在哪一个策略映射可以被应用。一旦设定，这变量就可以被减少
+但是可以不被增加。（也就是说如果一张在路径中的证书具体指定策略映射不
+被允许，它不能被随后的证书overriden）。初始值是n+1。
+
+   	动作下面被描写，经过路径处理软件为每一张证书i=1通过n执行。自签证书是证书i=1，
+末端实体证书是i=n.处理连续地被执行，因此加工证书i对加工证书（i+1）状态变量有影响。
+注意那个行动（g）通过（l）不适合于末端实体证书（证书n）。
+
+   	被执行的路径处理行动是：
+
+（a）	验证基本证书信息，包含：
+
+(1)	在证书上签名使用从证书i-1主题公开密钥（在特殊情况i=1中，这步可以被
+删掉；如果不是这样，使用从同样的证书主题公开密钥）。
+(2)	包含时间T的证书有效期。
+(3)	证书在时刻T还没有被撤销和时间T以前保持状态（hold status）不是现时。
+（这个可以通过得到适合的CRL或者状况信息、或者out-of-band机制被决
+定）。和
+(4)	主题和发行者名字链条正确（也就是说这张证书的发行者是前一证书的主
+题）。
+
+（b）	验证那个主题名字和subjectAltName扩展（关键或者非关键）是和约束的子
+树状态变量一致。
+
+（c）	验证那个主题名字和subjectAltName扩展（关键或者非关键）是和排除子树
+状态变量一致。
+
+（d）	验证策略信息是和初始策略装置一致：
+
+（1）	如果明确策略状态变量小于获等于i，在证书中策略标识符将在初始策略
+装置中；和
+（2）	如果策略映射变量小于获等于i，策略标识可以不被映射。
+
+（e）	验证策略信息是和可接受策略装置一致：
+
+（1）	如果把证书策略扩展标记为关键，扩展和可接受策略制定的策略的交点
+将是non-null；
+
+（2）	给可接受策略装置分配结果交点（resulting intersection）作为它的新值。
+
+（f）	验证可接受策略装置和初始策略装置的交点是non-null。
+
+（g）	识别和加工任何在证书中其他关键扩展。
+
+（h）	验证（如同在一basicConstraints扩展中指定那样或者如同out-of-band验证那
+样）证书是一张CA证书。
+
+（i）	如果permittedSubtrees存在于证书中，使约束的子树状态变量为它的前一交
+点值和在扩展字段中指示值。
+
+（j）	如果excludedSubtrees存在于证书中，使排除子树状态变量为它的前一联合
+值和在扩展字段中指示值。
+
+（k）	如果一策略约束扩展包含在证书内，如下修改明确策略和策略映射状态变量：
+
+（1）	如果requireExplicitPolicy存在和有值r，明确策略状态变量被设置为
+它的当前值最小值以及r和i的总和（在序列中当前证书）。
+
+（2）	如果inhibitPolicyMapping存在和有值q，策略映射状态变量被设置为
+它的当前值最小值以及q和i的总和（在序列中当前证书）。
+
+（l）	如果密钥使用扩展标记为关键，保证keyCertSign位被设定。
+
+   	如果上述任何一项检验失败，过程结束。返回一失败指示和一适合的理由。如果上述在
+末端实体上的检验没有失败，过程终止，连同一套所有在证书中的策略限定语值返回成功指
+示。
+
+6.2扩展路径批准
+
+   	存在于6.1中的路径批准算法建立在几个简化假定的基础上（例如，所有的有效路径开
+始于一单个受信任的CA）。这算法可以扩展到假定不支持的情况。
+
+   	这过程可以被扩展到通过向批准模块提供一套自签证书的多重受信任的CAs。在这个情
+况中，一有效路径能以任何一个的自签证书开始。信任路径中的局限性可以为任何特殊密钥
+被自签证书的扩展包括进去。这样，自签证书允许路径批准模块自动把本地安全策略和要求
+包括进去。
+
+   	它也指定一上述证书路径处理过程的扩展版本，其结果是和PEM[RFC 1422]的定义完
+全相同缺省的行为的是可能的。在这扩展版本中，向过程附加的输入是一或更多策略证明权
+威（PCAs）名字的清单和一在PCA被预期证书路径中位置的指示者。在命名的PCA位置，
+CA名字与这清单作比较。如果一识别出的PCA名字被找出，那么一SubordinateToCA的约
+束不言明地为剩下的部分被假定的证书路径和处理继续。如果没有有效PCA名字被找出，
+并且如果证书路径不能基于标识出的策略有效，那么认为证书路径是无效的。
+
+7算法技术支持
+
+   	这部分描述可以在本文使用的密码学算法。这部分描绘单向哈希函数和数字签名算法，
+这些算法可以使用在证书和CRLs上签名和为包含在一张证书的公开密钥识别出OIDs。
+
+   	遵照CAs和应用不需要必须支持在这部分中描绘算法或者算法标识符。但是，使用这
+里识别出算法的CAs和应用保证必须（MUST）如同指定那样支持他们。
+
+7.1个单向哈希函数
+
+   	这部分为在Internet PKI中使用的单向哈希函数。单向哈希函数也称为信息摘要算法。
+SHA 1为Internet PKI更受欢迎的单向哈希函数。但是，PEM使用为证书MD2[RFC 1422][RFC 
+1423]和MD5在其它遗留应用中被使用。为此，MD2和MD5包含在本文内。
+
+7.1.1 MD2单向哈希函数
+
+   MD2为RSA数据安全（RSA Data Security公司）Ron Rivest发明。RSA数据安全还没
+有把MD2算法放入公开领域。还有，RSA数据安全已同意给为非商业因特网私有增强邮件
+（Internet Privacy-Enhanced Mail）使用MD2的许可。为此，MD2可以继续在PEM证书中
+使用，但是SHA 1被首选。MD2生产一输出128位"hash"。MD2在RFC 1319[RFC 1319]
+中被完整描绘。
+
+   	在1995年5月的密码学'95会议上的有选择区域（Selected Areas），Rogier和Chauvaud
+提出对MD2的攻击几乎发现冲突[RC95]。当一能找出产生同样的信息摘要的两个不同信息
+的时候，冲突发生。一在MD2中校验和操作是唯一的停留对攻击的成功障碍。为此，MD2
+在新的应用中使用是灰心丧气的。它是仍然合理的在使用MD2验证存在的签名，当在MD2
+中发现冲突时不能使一个攻击者能发现新信息与前一个计算的哈希值相同。
+
+7.1.2 MD5单向哈希函数
+
+   	MD5由RSA数据安全的Ron Rivest发展。RSA数据安全已把MD5算法放入公共领域。
+MD5生产一输出的128位"hash"。MD5在RFC 1321[RFC 1321]中被完整描绘。
+
+   	Den Boer和Bosselaers[DB94]已为MD5找到pseudo-collisions冲突，但是事实上没有其
+它可知的密码分析结果。MD5为新应用的使用是灰心丧气的。使用MD5验证现存的签名仍
+然是合乎情理的。
+
+7.1.3 SHA1单向哈希函数
+
+   	SHA 1被美国政府发展。SHA 1生产一输出的160位"hash"。SHA 1在FIPS 180-1[FIPS 
+180-1]被完整描绘。
+
+   	SHA 1是作为RSA和DSA签名算法（见7.2）的使用选择的单向哈希函数。
+
+7.2签名算法
+
+   	按照这标准描绘的证书和CRLs可以使用任何公开密钥签名算法签名。证书或者CRL
+通过一个算法标识符指示算法，其出现在一证书或者CertificateList中signatureAlgorithm字
+段。这个算法标识符是一OID和可选的已结合参数。这部分识别出算法标识符和参数，将
+在一证书或者CertificateList中signatureAlgorithm字段中被使用的。
+
+   	RSA和DSA是在Internet中使用最受欢迎的签名算法。签名算法总是和在部分7.1中
+描述的一个单向哈希函数一起被使用。
+
+   	签名算法和单向哈希函数经常在一张证书或者CRL上签名通过一个算法标识符的使用
+指示。一个算法标识符是一OID和可以包含的结合参数。这部分为RSA和DSA识别出OIDS。
+每一算法参数成分的内容变化：向每一算法提供细节。
+
+   	数据被签名（例如单向哈希函数输出值）被格式化签名算法使用。然后，一私有密钥操
+作（例如RSA加密）被执行产生签名值。签名值然后作为ASN.1中作为BIT STRING类型
+编码并且在签名字段中证书或者CertificateList中被包含。
+
+7.2.1 RSA签名算法
+
+   	关于RSA算法专利声明在本文的后面提供。
+
+   	RSA算法被命名以纪念它的发明者：Rivest，Shamir和Adleman（三个人名字头字母的
+组合――译者注）。本文包含建立在RSA非对称加密算法基础上的三种签名算法。签名算法
+把RSA与MD2，MD5或者SHA 1单向的哈希函数结合起来。
+
+   	MD2和RSA加密算法的签名算法在PKCS#1[RFC 2313]中被定义。如同在RFC 2313
+中定义那样，ASN.1 OID用于识别出这签名算法是：
+
+        md2WithRSAEncryption OBJECT IDENTIFIER  ::=  {
+            iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1）
+            pkcs-1（1） 2  }
+
+   	MD5和RSA加密算法的签名算法在PKCS#1[RFC 2313]中被定义。如同在RFC 2313
+中定义那样，ASN.1 OID用于识别出这签名算法是：
+
+        md5WithRSAEncryption OBJECT IDENTIFIER  ::=  {
+            iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1）
+            pkcs-1（1） 4  }
+
+   	SHA 1和RSA加密算法的签名算法通过使用填充或者编码被应用，其在PKCS#1[RFC 
+2313]中描绘。信息摘要被计算使用SHA 1哈希算法。使用ASN.1对象标识符识别出这签名
+算法：
+
+        sha-1WithRSAEncryption OBJECT IDENTIFIER  ::=  {
+            iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1）
+            pkcs-1（1） 5  }
+
+   	当任何这些三个OIDs出现是在ASN.1类型的AlgorithmIdentifier的时候，类型参数的
+成分将是ASN.1类型NULL。
+
+   	RSA签名产生过程和编码的结果在RFC 2313中详细被描绘。
+
+7.2.2 DSA签名算法
+
+   	关于DSA专利声明在本文的后面被描述。
+
+   	数字的签名算法（DSA）被称为数字的签名标准（DSS）。DSA被美国政府发展，DSA
+与SHA 1单向哈希函数结合使用。DSA在FIPS 186[FIPS 186]中被完整描绘。ASN.1 OIDs
+用于标识出这签名算法是：
+
+           id-dsa-with-sha1 ID  ::=  {
+                   iso（1） member-body（2） us（840） x9-57 （10040）
+                   x9cm（4） 3 }
+
+   	id-dsa-with-sha1算法标识符作为算法字段出现在AlgorithmIdentifier的地方，编码中算
+法字段将删掉参数字段。也就是说AlgorithmIdentifier将是一连串的一个成分- the OBJECT 
+IDENTIFIER id-dsa-with-sha1。
+
+在证书的subjectPublicKeyInfo字段中发行人的DSA参数将提出签名的验证申请。
+
+   当签名的时候，DSA算法产生两个值。通常把这些值观称作r和s。很容易地传递这两
+个值，他们将是ASN.1编码使用下列的ASN.1结构：
+
+           Dss-Sig-Value  ::=  SEQUENCE  {
+                   r       INTEGER,
+                   s       INTEGER  }
+
+7.3主题公开密钥算法
+
+   	按照本文描绘证书可以为任何公开密钥算法传送一公开密钥。证书通过一个算法标识符
+指示算法。这个算法标识符是一OID和可选参数的结合。
+
+   	这部分为RSA，DSA和Diffie Hellman算法识别出首选OIDs和参数。当发行证书，为
+这些算法包含公开密钥的时候，使CAs保证应用（程序）识别出OIDs。至少要识别出OID
+标识符。
+
+7.3.1 RSA密钥
+
+        pkcs-1 OBJECT IDENTIFIER ::= { iso（1） member-body（2） us（840）
+                       rsadsi（113549） pkcs（1） 1 }
+
+        rsaEncryption OBJECT IDENTIFIER ::=  { pkcs-1 1}
+
+   	打算让rsaEncryption OID在有类型AlgorithmIdentifier的值算法字段中被使用。参数字
+段将为这个算法标识符有ASN.1类型NULL。
+
+   	RSA公开密钥将被编码使用ASN.1类型RSAPublicKey：
+
+      
+      RSAPublicKey ::= SEQUENCE {
+         modulus            INTEGER, -- n
+         publicExponent     INTEGER  -- e -- }
+
+   	模n，和publicExponent是公共密钥质数e。DER编码RSAPublicKey是BIT STRING 
+subjectPublicKey的值。
+
+   	这OID在公开密钥证书中为即在RSA签名密钥，又在RSA加密密钥被同样使用。密
+钥的申请可以在密钥使用字段中被指示（见4.2.1.3）。一单一的密钥的同时用于签名和加密
+目的使用不被推荐，但是不被禁止。
+
+   	如果keyUsage扩展是存在于一张传送一RSA公开密钥的末端实体证书中，任何有下列
+值结合可以存在：digitalSignature；nonRepudiation；keyEncipherment；和dataEncipherment。
+如果keyUsage扩展是存在于一张传送一RSA公开密钥的CA证书中，任何有下列值结合可
+以存在：digitalSignature；nonRepudiation；keyEncipherment；dataEncipherment；keyCertSign；   
+和cRLSign。但是，本文推荐（RECOMMENDS）如果keyCertSign或者cRLSign存在，则
+keyEncipherment和dataEncipherment不应该存在。
+
+7.3.2 Diffie-Hellman密钥交换密钥
+
+   	在本文中Diffie HellmanOID支持由ANSI X9.42[X9.42]定义。
+
+        dhpublicnumber OBJECT IDENTIFIER ::= { iso（1） member-body（2）
+                  us（840） ansi-x942（10046） number-type（2） 1 }
+
+   	打算让dhpublicnumber OID在类型AlgorithmIdentifier的值算法字段中被使用。那个类
+型的参数字段为任何这算法定义（ANY DEFINED BY）的algorithm-specific句法、有ASN.1
+类型DomainParameters。
+
+        
+        DomainParameters ::= SEQUENCE {
+              p       INTEGER, -- odd prime, p=jq +1
+              g       INTEGER, -- generator, g
+              q       INTEGER, -- factor of p-1
+              j       INTEGER OPTIONAL, -- subgroup factor
+              validationParms  ValidationParms OPTIONAL }
+
+        ValidationParms ::= SEQUENCE {
+              seed             BIT STRING,
+              pgenCounter      INTEGER }
+
+   类型DomainParameters的字段有下列的定义：
+
+      p	识别出定义在Galois字段中素数p；
+
+      g	指定次序g的乘法子群的生产器；
+
+      q	指定因素因子p-1；
+
+      j	可选的指定值，其满足等式p=jq+1支持组参数的可选核实；
+
+      种子随意地指定作为位字符参数使用作为种子系统参数产生过程；和
+
+      pgenCounter随意地指定整数值输出作为系统参数的部分产生过程起动。
+
+   	如果任一个参数产生成分（pgencounter或者种子）被提供，其他将同样存在。
+
+   	Diffie-Hellman公开密钥将作为ASN.1整数类型编码；这个编码将是subjectPublicKey
+成分（a BIT STRING）subjectPublicKeyInfo数据元素的内容（即值）被使用。
+
+DHPublicKey ::= INTEGER -- public key, y = g^x mod p
+
+   	如果keyUsage扩展存在于一张传送一DH公开密钥的证书中，下列的值可以存在：
+keyAgreement；encipherOnly；和decipherOnly。最多一个encipherOnly和decipherOnly将在
+keyUsage扩展中存在。
+
+7.3.3 DSA签名密钥
+
+   	数字的签名算法（DSA）也是以是数字的签名标准（DSS）而闻名。DSA OID按照本
+文技术支持是
+
+        id-dsa ID ::= { iso（1） member-body（2） us（840） x9-57（10040）
+                  x9cm（4） 1 }
+
+   	id-dsa算法句法包含可选参数。通常把这些参数称作p，q和g。当删掉的时候，参数成
+分将完全被删掉。也就是说AlgorithmIdentifier将是一连串的一个成分-对象标识符id-dsa。
+
+   	如果DSA算法参数是存在于subjectPublicKeyInfo AlgorithmIdentifier，参数被包含使用
+下列的ASN.1结构：
+
+        Dss-Parms  ::=  SEQUENCE  {
+            p             INTEGER,
+            q             INTEGER,
+            g             INTEGER  }
+
+  	如果DSA算法参数是不在subjectPublicKeyInfo AlgorithmIdentifier和CA在主题证书上
+签名使用DSA，那么证书发行者的DSA参数适用于主题的DSA密钥。如果DSA算法参数
+是不在subjectPublicKeyInfo AlgorithmIdentifier和CA在主题证书上签名使用除了DSA签名
+算法，那么主题的DSA参数被另一手段发布。如果subjectPublicKeyInfo AlgorithmIdentifier
+字段删掉参数成分和CA签署主题随着一除了DSA签名算法，那么客户将丢弃证书。
+
+   	当签名的时候，DSA算法产生两个值。通常把这些值称作r和s。容易传递作为签名的
+两个值，他们的ASN.1编码使用下列的ASN.1结构：
+
+        Dss-Sig-Value  ::=  SEQUENCE  {
+            r             INTEGER,
+            s             INTEGER  }
+
+   	编码签名是在一证书或者CertificateList中以BIT STRING类型签名值被传送。
+
+   	DSA公开密钥将是ASN.1 DER作为整数（INTEGER）类型编码；这个编码将是
+subjectPublicKey成分（a BIT STRING）SubjectPublicKeyInfo数据元素的内容（即，值）被
+使用。
+
+        DSAPublicKey ::= INTEGER -- public key, Y
+
+   	如果keyUsage扩展是存在于一张传送一DSA公开密钥的末端实体证书中，任何有下列
+值结合可以存在：digitalSignature；和nonRepudiation。
+
+   	如果keyUsage扩展是存在于一张传送一DSA公开密钥的CA证书中，任何有下列值结
+合可以存在：digitalSignature；nonRepudiation；keyCertSign；和cRLSign。
+
+8参考资料
+
+   [FIPS 180-1]  Federal Information Processing Standards Publication
+                 （FIPS PUB） 180-1, Secure Hash Standard, 17 April 1995.
+                 [Supersedes FIPS PUB 180 dated 11 May 1993.]
+
+   [FIPS 186]    Federal Information Processing Standards Publication
+                 （FIPS PUB） 186, Digital Signature Standard, 18 May
+                 1994.
+
+   [RC95]        Rogier, N. and Chauvaud, P., "The compression function
+                 of MD2 is not collision free," Presented at Selected
+                 Areas in Cryptography '95, May 1995.
+
+   [RFC 791]     Postel, J., "Internet Protocol", STD 5, RFC 791,
+                 September 1981.
+
+   [RFC 822]     Crocker, D., "Standard for the format of ARPA Internet
+                 text messages", STD 11, RFC 822, August 1982.
+
+   [RFC 1034]    Mockapetris, P., "Domain names - concepts and
+                 facilities", STD 13, RFC 1034, November 1987.
+
+   [RFC 1319]    Kaliski, B., "The MD2 Message-Digest Algorithm," RFC
+                 1319, April 1992.
+
+   [RFC 1321]    Rivest, R., "The MD5 Message-Digest Algorithm," RFC
+                 1321, April 1992.
+
+   [RFC 1422]    Kent, S.,  "Privacy Enhancement for Internet Electronic
+                 Mail: Part II: Certificate-Based Key Management," RFC
+                 1422, February 1993.
+
+   [RFC 1423]    Balenson, D., "Privacy Enhancement for Internet
+                 Electronic Mail: Part III: Algorithms, Modes, and
+                 Identifiers," RFC 1423, February 1993.
+
+   [RFC 1519]    Fuller, V., Li, T., Yu, J. and K. Varadhan. "Classless
+                 Inter-Domain Routing （CIDR）: an Address Assignment and
+                 Aggregation Strategy", RFC 1519, September 1993.
+
+   [RFC 1738]    Berners-Lee, T., Masinter L., and M. McCahill.
+                 "Uniform Resource Locators （URL）", RFC 1738, December
+                 1994.
+
+   [RFC 1778]    Howes, T., Kille S., Yeong, W. and C. Robbins. "The
+                 String Representation of Standard Attribute Syntaxes,"
+                 RFC 1778, March 1995.
+
+   [RFC 1883]    Deering, S. and R. Hinden. "Internet Protocol, Version
+                 6 （IPv6） Specification", RFC 1883, December 1995.
+
+   [RFC 2119]    Bradner, S., "Key words for use in RFCs to Indicate
+                 Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC 2247]    Kille, S., Wahl, M., Grimstad, A., Huber, R. and S.
+                 Sataluri. "Using Domains in LDAP/X.500 Distinguished
+                 Names", RFC 2247, January 1998.
+
+   [RFC 2277]    Alvestrand, H., "IETF Policy on Character Sets and
+                 Languages", RFC 2277, January 1998.
+
+   [RFC 2279]    Yergeau, F., "UTF-8, a transformation format of ISO
+                 10646", RFC 2279, January 1998.
+
+   [RFC 2313]    Kaliski, B., "PKCS #1: RSA Encryption Version 1.5", RFC
+                 2313, March 1998.
+
+   [SDN.701]     SDN.701, "Message Security Protocol 4.0", Revision A
+                 1997-02-06.
+
+   [X.208]       CCITT Recommendation X.208: Specification of Abstract
+                 Syntax Notation One （ASN.1）, 1988.
+
+   [X.501]       ITU-T Recommendation X.501: Information Technology -
+                 Open Systems Interconnection - The Directory: Models,
+                 1993.
+
+   [X.509]       ITU-T Recommendation X.509 （1997 E）: Information
+                 Technology - Open Systems Interconnection - The
+                 Directory: Authentication Framework, June 1997.
+
+   [X.520]       ITU-T Recommendation X.520: Information Technology -
+                 Open Systems Interconnection - The Directory: Selected
+                 Attribute Types, 1993.
+
+   [X9.42]       ANSI X9.42-199x, Public Key Cryptography for The
+                 Financial Services Industry: Agreement of Symmetric
+                 Algorithm Keys Using Diffie-Hellman （Working Draft）,
+                 December 1997.
+
+   [X9.55]       ANSI X9.55-1995, Public Key Cryptography For The
+                 Financial Services Industry: Extensions To Public Key
+                 Certificates And Certificate Revocation Lists, 8
+                 December, 1995.
+
+   [X9.57]        ANSI X9.57-199x, Public Key Cryptography For The
+                 Financial Services Industry: Certificate Management
+                 （Working Draft）, 21 June, 1996.
+
+9知识产权
+
+   	IETF已经通知对于某些或者全部包含在本文说明的提出知识产权声明。更多信息查阅
+要求资讯权利的在线清单。
+
+   	IETF关于任何知识产权或者其它权利的有效性或者范围没有担任职务，可以被要求得
+到属于工具或者使用的技术描绘在本文中或者扩展到向其在这样权利下任何许可证可以或
+者不可以有效；它也不代表它已做出任何努力认为任何这样权利是等同的。关于IETF的关
+于标准轨迹（standards-track）和标准相关（standards-related）的信息文档能在BCP 11中被
+找出。拷贝的声明权利对于出版和任何保证的执照可用，或者尝试得到一个普遍执照结果或
+者通过工具批准能被为这样所有人的权利或者在本文说明使用的用户从IETF秘书得到。
+
+10安全考虑
+
+   	本文说明的多数是专用于证书和CRLs的格式和内容的。既然证书和CRLs是数字签名
+的，没有附加完整性服务是必然的。无论证书还是CRLs都不需求保持隐秘、和无限制的和
+匿名访问证书和CRLs的通路没有安全含意。
+
+但是，超出了本文说明范围的安全因素将影响向证书用户提供的保证。这部分强调严重
+问题，应该被使用工具者，行政管理人员和用户考虑的。
+
+   	经过CAs和Ras执行过程非常批准主题的他们的公开密钥的身份的绑定应该被放入证
+书的保证。依靠聚会可以希望审核CA的证书实践声明（certificate practice statement）。当向
+其它CAs分发证书的时候，这可以是特别重要的。
+
+   	一单一的密钥对同时用于为签名和其它目的使用是强烈阻止的。独立密钥对的为签名和
+密钥管理的使用提供对用户几点好处。和密钥管理密钥的丢失或者揭发不同，把衍生结果和
+签名密钥的丢失或者揭发联系起来。使用独立密钥对允许一平衡的和有弹性回答。同样，为
+每一密钥对不同的有效性时期或者密钥长度可以在一些应用环境中是适合的。不幸的是，一
+些遗留（传统）应用（例如SSL）为签名和密钥管理使用一单一的密钥对。
+
+   	为提供保护私有密钥是一个在保持安全方面关键因素。在一小规模，用户的未能保卫他
+们的私有密钥将允许一个攻击者假装是他们或者破译他们的个人信息。大规模，一CA的私
+有签名密钥的损害可以有一灾难的影响。如果一个攻击者得到私有密钥（不被注意到的），
+攻击者可以发行假的证书和CRLs。假的证书和CRLs的存在将损坏对系统的信赖。如果损
+害被察觉，所有的发出的CA证书将被取消，阻碍在它的其它CAs的用户和用户之间服务。
+在这样损害以后重建将是有问题的，所以建议CAs执行一强烈技术措施的组合（例如抗干
+扰性（tamper-resistant）的密码学的模块）和适合的避开这样一事件的管理过程（例如职责
+的分开）。
+
+   	一CA的私有签名密钥的丢失可能也是有问题的。CA将不能生产CRLs或者执行正常
+的密钥滚翻。建议Cas维持签名密钥的备份。密钥备份过程的安全是一个在避开密钥损害方
+面关键因素。
+
+ 	撤销信息的有效性和刷新将影响应该被放入一张证书的保证程度。在证书自然到期的同
+时，在它的自然一生事件可以发生，其在主题和公开密钥之间绑定的否定。如果撤销信息是
+不合时宜或者不可获得的，和绑定联系起来担保明显减少。同样，在第6段中描绘路径批准
+算法的删掉撤销检查的工具提供与支持它的那些相比更少的保证。
+
+   	路径批准算法取决于公开密钥（和其他信息）关于一或更多受信任的CAs的确定知识。
+当它最终确定信任一提供的证书时，决定信任一CA是一个重要的决定。授权（通常以一张
+"自我签名"证书的形式）发布受信任的CA公开密钥是一关键安全，其超出了本文说明的过
+程范围。
+
+   	此外，其一密钥损害或者CA为一受信任的CA发生失败，用户将需要修改，向路径批
+准例行工作提供信息。选择太多受信任的CAs将使受信任CA信息变得难于维持。另一方
+面，仅选择一个受信任的CA将用户限制到仅一个社区有效，除非全球性PKI出现。
+
+   	发布证书过程的工具的质量也可以影响提供保证的程度。在第6段中描绘路径批准算法
+信赖受信任的CA信息的完整性，和特别公开密钥的完整性和受信任的CAs的结合。通过
+代替公开密钥（相对其攻击者私有密钥的），一个攻击者能欺骗用户接受虚假证书。
+
+   	在一密钥和证书主题之间绑定不能是与密码学的模块工具和算法用于产生签名相比更
+强壮。短密钥长度或者弱哈希算法将限制一张证书的功用。CAs被促进指出密码学的进展，
+所以他们能使用高强度密码学的技术。此外，CAs应该拒绝向产生弱签名的CAs或者末端
+实体发行证书。
+
+   	名字比较规则的不一致应用可能产生接受的无效X.509证明路径结果或者拒绝有效的
+证书路径等。X.500系列的文本说明下定义了关于比较唯一名字的规则而不管这些情况、字
+符集、多重字符（multi-character）空白子串或者打头的和结尾的空白字符等需求比较的字
+符。本文说明放松这些需求，在一最低限度需要支持二进制比较。
+
+   	CAs将向在经过后面CA发出的证书中发行者字段中可识别名字同一地将在一张CA证
+书的主题字段中可识别名字进行编码。如果CAs使用不同encodings（规则），本文说明的
+工具可能对包含这张证书的路径识别名字链条失败。因此，有效路径将被拒绝。
+
+   	此外，将向编码同一地被陈述在主题字段或者subjectAltName扩展中使用为可识别名字
+名字约束。如果不，（1）作为excludedSubTrees名字约束陈述将不匹配以及无效路径将被接
+收，（2）和作为permittedSubtrees名字约束表示将不匹配以及有效路径将被拒绝。避免接受
+无效路径，CAs应该对可能作为permittedSubtrees出现的地方陈述可识别名字约束。
+
+附录A. PsuedoASN.1结构和OIDs
+
+   	这部分描绘数据对象，通过在"ASN.1-like"句法中PKI成分一致应用。这句法是1988
+和1993 ASN.1句法的混合。扩展了1988 ASN.1句法的1993 UNIVERSAL类型
+UniversalString，BMPString和UTF8String。
+
+   	ASN.1句法不允许在ASN.1模块中包括类型语句，和1993 ASN.1标准不允许在模块中
+使用1988句法的新UNIVERSAL类型的声明。因此，这模块不遵从任一ASN.1标准的版本。
+
+   	这附录可以通过为UNIVERSAL类型用1988捕获完全（catch-all） "ANY"代替defintions
+转变成1988 ASN.1。
+
+A.1 明示目标模块（Explicitly Tagged Module），1988句法
+
+PKIX1Explicit88 {iso（1） identified-organization（3） dod（6） internet（1）
+  security（5） mechanisms（5） pkix（7） id-mod（0） id-pkix1-explicit-88（1）}
+
+DEFINITIONS EXPLICIT TAGS ::=
+
+BEGIN
+
+-- EXPORTS ALL --
+
+-- IMPORTS NONE --
+
+-- UNIVERSAL Types defined in '93 and '98 ASN.1
+-- but required by this specification
+
+UniversalString ::= [UNIVERSAL 28] IMPLICIT OCTET STRING
+        -- UniversalString is defined in ASN.1:1993
+
+BMPString ::= [UNIVERSAL 30] IMPLICIT OCTET STRING
+      -- BMPString is the subtype of UniversalString and models
+       -- the Basic Multilingual Plane of ISO/IEC/ITU 10646-1
+
+UTF8String ::= [UNIVERSAL 12] IMPLICIT OCTET STRING
+        -- The content of this type conforms to RFC 2279.
+
+--
+-- PKIX specific OIDs
+
+id-pkix  OBJECT IDENTIFIER  ::=
+         { iso（1） identified-organization（3） dod（6） internet（1）
+
+                    security（5） mechanisms（5） pkix（7） }
+-- PKIX arcs
+
+id-pe OBJECT IDENTIFIER  ::=  { id-pkix 1 }
+        -- arc for private certificate extensions
+id-qt OBJECT IDENTIFIER ::= { id-pkix 2 }
+        -- arc for policy qualifier types
+id-kp OBJECT IDENTIFIER ::= { id-pkix 3 }
+        -- arc for extended key purpose OIDS
+id-ad OBJECT IDENTIFIER ::= { id-pkix 48 }
+        -- arc for access descriptors
+
+-- policyQualifierIds for Internet policy qualifiers
+
+id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 }
+        -- OID for CPS qualifier
+id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 }
+        -- OID for user notice qualifier
+
+-- access descriptor definitions
+
+id-ad-ocsp      OBJECT IDENTIFIER ::= { id-ad 1 }
+id-ad-caIssuers OBJECT IDENTIFIER ::= { id-ad 2 }
+
+-- attribute data types --
+
+Attribute       ::=     SEQUENCE {
+        type            AttributeType,
+        values  SET OF AttributeValue
+                -- at least one value is required -- }
+
+AttributeType           ::=   OBJECT IDENTIFIER
+
+AttributeValue          ::=   ANY
+
+AttributeTypeAndValue           ::=     SEQUENCE {
+        type    AttributeType,
+        value   AttributeValue }
+
+-- suggested naming attributes: Definition of the following
+--  information object set may be augmented to meet local
+--  requirements.  Note that deleting members of the set may
+--  prevent interoperability with conforming implementations.
+--  presented in pairs: the AttributeType followed by the
+--  type definition for the corresponding AttributeValue
+
+--Arc for standard naming attributes
+id-at           OBJECT IDENTIFIER ::= {joint-iso-ccitt（2） ds（5） 4}
+
+-- Attributes of type NameDirectoryString
+id-at-name              AttributeType   ::=     {id-at 41}
+id-at-surname           AttributeType   ::=     {id-at 4}
+id-at-givenName         AttributeType   ::=     {id-at 42}
+id-at-initials          AttributeType   ::=     {id-at 43}
+id-at-generationQualifier       AttributeType   ::=     {id-at 44}
+
+X520name        ::= CHOICE {
+      teletexString         TeletexString （SIZE （1..ub-name））,
+      printableString       PrintableString （SIZE （1..ub-name））,
+      universalString       UniversalString （SIZE （1..ub-name））,
+      utf8String            UTF8String （SIZE （1..ub-name））,
+      bmpString             BMPString （SIZE（1..ub-name））   }
+
+--
+
+id-at-commonName        AttributeType   ::=     {id-at 3}
+
+X520CommonName  ::=      CHOICE {
+      teletexString         TeletexString （SIZE （1..ub-common-name））,
+      printableString       PrintableString （SIZE （1..ub-common-name））,
+      universalString       UniversalString （SIZE （1..ub-common-name））,
+      utf8String            UTF8String （SIZE （1..ub-common-name））,
+      bmpString             BMPString （SIZE（1..ub-common-name））   }
+
+--
+
+id-at-localityName      AttributeType   ::=     {id-at 7}
+
+X520LocalityName ::= CHOICE {
+      teletexString       TeletexString （SIZE （1..ub-locality-name））,
+      printableString     PrintableString （SIZE （1..ub-locality-name））,
+      universalString     UniversalString （SIZE （1..ub-locality-name））,
+      utf8String          UTF8String （SIZE （1..ub-locality-name））,
+      bmpString           BMPString （SIZE（1..ub-locality-name））   }
+
+--
+
+id-at-stateOrProvinceName       AttributeType   ::=     {id-at 8}
+
+X520StateOrProvinceName         ::= CHOICE {
+      teletexString       TeletexString （SIZE （1..ub-state-name））,
+      printableString     PrintableString （SIZE （1..ub-state-name））,
+      universalString     UniversalString （SIZE （1..ub-state-name））,
+      utf8String          UTF8String （SIZE （1..ub-state-name））,
+      bmpString           BMPString （SIZE（1..ub-state-name））   }
+
+--
+
+id-at-organizationName          AttributeType   ::=     {id-at 10}
+
+X520OrganizationName ::= CHOICE {
+  teletexString     TeletexString （SIZE （1..ub-organization-name））,
+  printableString   PrintableString （SIZE （1..ub-organization-name））,
+  universalString   UniversalString （SIZE （1..ub-organization-name））,
+  utf8String        UTF8String （SIZE （1..ub-organization-name））,
+  bmpString         BMPString （SIZE（1..ub-organization-name））   }
+
+--
+
+id-at-organizationalUnitName    AttributeType   ::=     {id-at 11}
+
+X520OrganizationalUnitName ::= CHOICE {
+ teletexString    TeletexString （SIZE （1..ub-organizational-unit-name））,
+ printableString        PrintableString
+                      （SIZE （1..ub-organizational-unit-name））,
+ universalString        UniversalString
+                      （SIZE （1..ub-organizational-unit-name））,
+ utf8String       UTF8String （SIZE （1..ub-organizational-unit-name））,
+ bmpString        BMPString （SIZE（1..ub-organizational-unit-name））   }
+
+--
+
+id-at-title     AttributeType   ::=     {id-at 12}
+
+X520Title ::=   CHOICE {
+      teletexString         TeletexString （SIZE （1..ub-title））,
+      printableString       PrintableString （SIZE （1..ub-title））,
+      universalString       UniversalString （SIZE （1..ub-title））,
+      utf8String            UTF8String （SIZE （1..ub-title））,
+      bmpString             BMPString （SIZE（1..ub-title））   }
+
+--
+
+id-at-dnQualifier       AttributeType   ::=     {id-at 46}
+X520dnQualifier ::=     PrintableString
+
+id-at-countryName       AttributeType   ::=     {id-at 6}
+X520countryName ::=     PrintableString （SIZE （2）） -- IS 3166 codes
+
+ -- Legacy attributes
+
+pkcs-9 OBJECT IDENTIFIER ::=
+       { iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1） 9 }
+
+emailAddress AttributeType      ::= { pkcs-9 1 }
+
+Pkcs9email ::= IA5String （SIZE （1..ub-emailaddress-length））
+
+-- naming data types --
+
+Name            ::=   CHOICE { -- only one possibility for now --
+                                 rdnSequence  RDNSequence }
+
+RDNSequence     ::=   SEQUENCE OF RelativeDistinguishedName
+
+DistinguishedName       ::=   RDNSequence
+
+RelativeDistinguishedName  ::=
+                    SET SIZE （1 .. MAX） OF AttributeTypeAndValue
+
+-- Directory string type --
+
+DirectoryString ::= CHOICE {
+      teletexString             TeletexString （SIZE （1..MAX））,
+      printableString           PrintableString （SIZE （1..MAX））,
+      universalString           UniversalString （SIZE （1..MAX））,
+      utf8String              UTF8String （SIZE （1..MAX））,
+      bmpString               BMPString （SIZE（1..MAX））   }
+
+-- certificate and CRL specific structures begin here
+
+Certificate  ::=  SEQUENCE  {
+     tbsCertificate       TBSCertificate,
+     signatureAlgorithm   AlgorithmIdentifier,
+     signature            BIT STRING  }
+
+TBSCertificate  ::=  SEQUENCE  {
+     version         [0]  Version DEFAULT v1,
+     serialNumber         CertificateSerialNumber,
+     signature            AlgorithmIdentifier,
+     issuer               Name,
+     validity             Validity,
+     subject              Name,
+     subjectPublicKeyInfo SubjectPublicKeyInfo,
+     issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+                          -- If present, version shall be v2 or v3
+     subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+                          -- If present, version shall be v2 or v3
+     extensions      [3]  Extensions OPTIONAL
+                          -- If present, version shall be v3 --  }
+
+Version  ::=  INTEGER  {  v1（0）, v2（1）, v3（2）  }
+
+CertificateSerialNumber  ::=  INTEGER
+
+Validity ::= SEQUENCE {
+     notBefore      Time,
+     notAfter       Time }
+
+Time ::= CHOICE {
+     utcTime        UTCTime,
+     generalTime    GeneralizedTime }
+
+UniqueIdentifier  ::=  BIT STRING
+
+SubjectPublicKeyInfo  ::=  SEQUENCE  {
+     algorithm            AlgorithmIdentifier,
+     subjectPublicKey     BIT STRING  }
+
+Extensions  ::=  SEQUENCE SIZE （1..MAX） OF Extension
+
+Extension  ::=  SEQUENCE  {
+     extnID      OBJECT IDENTIFIER,
+     critical    BOOLEAN DEFAULT FALSE,
+     extnValue   OCTET STRING  }
+
+-- CRL structures
+
+CertificateList  ::=  SEQUENCE  {
+     tbsCertList          TBSCertList,
+     signatureAlgorithm   AlgorithmIdentifier,
+     signature            BIT STRING  }
+
+TBSCertList  ::=  SEQUENCE  {
+     version                 Version OPTIONAL,
+                                  -- if present, shall be v2
+     signature               AlgorithmIdentifier,
+     issuer                  Name,
+     thisUpdate              Time,
+     nextUpdate              Time OPTIONAL,
+     revokedCertificates     SEQUENCE OF SEQUENCE  {
+          userCertificate         CertificateSerialNumber,
+          revocationDate          Time,
+          crlEntryExtensions      Extensions OPTIONAL
+                                         -- if present, shall be v2
+                               }  OPTIONAL,
+     crlExtensions           [0] Extensions OPTIONAL
+                                         -- if present, shall be v2 -- }
+
+-- Version, Time, CertificateSerialNumber, and Extensions were
+-- defined earlier for use in the certificate structure
+
+AlgorithmIdentifier  ::=  SEQUENCE  {
+
+     algorithm               OBJECT IDENTIFIER,
+     parameters              ANY DEFINED BY algorithm OPTIONAL  }
+                                -- contains a value of the type
+                                -- registered for use with the
+                                -- algorithm object identifier value
+
+-- Algorithm OIDs and parameter structures
+
+pkcs-1 OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1） 1 }
+
+rsaEncryption OBJECT IDENTIFIER ::=  { pkcs-1 1 }
+
+md2WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 2 }
+
+md5WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 4 }
+
+sha1WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 5 }
+
+id-dsa-with-sha1 OBJECT IDENTIFIER ::=  {
+     iso（1） member-body（2） us（840） x9-57 （10040） x9algorithm（4） 3 }
+
+Dss-Sig-Value  ::=  SEQUENCE  {
+     r       INTEGER,
+     s       INTEGER  }
+
+dhpublicnumber OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） ansi-x942（10046） number-type（2） 1 }
+
+DomainParameters ::= SEQUENCE {
+     p       INTEGER, -- odd prime, p=jq +1
+     g       INTEGER, -- generator, g
+     q       INTEGER, -- factor of p-1
+     j       INTEGER OPTIONAL, -- subgroup factor, j>= 2
+     validationParms  ValidationParms OPTIONAL }
+
+ValidationParms ::= SEQUENCE {
+     seed             BIT STRING,
+     pgenCounter      INTEGER }
+
+id-dsa OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） x9-57（10040） x9algorithm（4） 1 }
+
+Dss-Parms  ::=  SEQUENCE  {
+     p             INTEGER,
+     q             INTEGER,
+     g             INTEGER  }
+
+-- x400 address syntax starts here
+--      OR Names
+
+ORAddress ::= SEQUENCE {
+   built-in-standard-attributes BuiltInStandardAttributes,
+   built-in-domain-defined-attributes
+                        BuiltInDomainDefinedAttributes OPTIONAL,
+   -- see also teletex-domain-defined-attributes
+   extension-attributes ExtensionAttributes OPTIONAL }
+--      The OR-address is semantically absent from the OR-name if the
+--      built-in-standard-attribute sequence is empty and the
+--      built-in-domain-defined-attributes and extension-attributes are
+--      both omitted.
+
+--      Built-in Standard Attributes
+
+BuiltInStandardAttributes ::= SEQUENCE {
+   country-name CountryName OPTIONAL,
+   administration-domain-name AdministrationDomainName OPTIONAL,
+   network-address      [0] NetworkAddress OPTIONAL,
+   -- see also extended-network-address
+   terminal-identifier  [1] TerminalIdentifier OPTIONAL,
+   private-domain-name  [2] PrivateDomainName OPTIONAL,
+   organization-name    [3] OrganizationName OPTIONAL,
+   -- see also teletex-organization-name
+   numeric-user-identifier      [4] NumericUserIdentifier OPTIONAL,
+   personal-name        [5] PersonalName OPTIONAL,
+   -- see also teletex-personal-name
+   organizational-unit-names    [6] OrganizationalUnitNames OPTIONAL
+   -- see also teletex-organizational-unit-names -- }
+
+CountryName ::= [APPLICATION 1] CHOICE {
+   x121-dcc-code NumericString
+                （SIZE （ub-country-name-numeric-length））,
+   iso-3166-alpha2-code PrintableString
+                （SIZE （ub-country-name-alpha-length）） }
+
+AdministrationDomainName ::= [APPLICATION 2] CHOICE {
+   numeric NumericString （SIZE （0..ub-domain-name-length））,
+   printable PrintableString （SIZE （0..ub-domain-name-length）） }
+
+NetworkAddress ::= X121Address  -- see also extended-network-address
+
+X121Address ::= NumericString （SIZE （1..ub-x121-address-length））
+
+TerminalIdentifier ::= PrintableString （SIZE （1..ub-terminal-id-length））
+
+PrivateDomainName ::= CHOICE {
+
+   numeric NumericString （SIZE （1..ub-domain-name-length））,
+   printable PrintableString （SIZE （1..ub-domain-name-length）） }
+
+OrganizationName ::= PrintableString
+                            （SIZE （1..ub-organization-name-length））
+-- see also teletex-organization-name
+
+NumericUserIdentifier ::= NumericString
+                            （SIZE （1..ub-numeric-user-id-length））
+
+PersonalName ::= SET {
+   surname [0] PrintableString （SIZE （1..ub-surname-length））,
+   given-name [1] PrintableString
+                        （SIZE （1..ub-given-name-length）） OPTIONAL,
+   initials [2] PrintableString （SIZE （1..ub-initials-length）） OPTIONAL,
+   generation-qualifier [3] PrintableString
+                （SIZE （1..ub-generation-qualifier-length）） OPTIONAL }
+-- see also teletex-personal-name
+
+OrganizationalUnitNames ::= SEQUENCE SIZE （1..ub-organizational-units）
+                                        OF OrganizationalUnitName
+-- see also teletex-organizational-unit-names
+
+OrganizationalUnitName ::= PrintableString （SIZE
+                        （1..ub-organizational-unit-name-length））
+
+--      Built-in Domain-defined Attributes
+
+BuiltInDomainDefinedAttributes ::= SEQUENCE SIZE
+                                （1..ub-domain-defined-attributes） OF
+                                BuiltInDomainDefinedAttribute
+
+BuiltInDomainDefinedAttribute ::= SEQUENCE {
+   type PrintableString （SIZE
+                        （1..ub-domain-defined-attribute-type-length））,
+   value PrintableString （SIZE
+                        （1..ub-domain-defined-attribute-value-length））}
+
+--      Extension Attributes
+
+ExtensionAttributes ::= SET SIZE （1..ub-extension-attributes） OF
+                        ExtensionAttribute
+
+ExtensionAttribute ::=  SEQUENCE {
+   extension-attribute-type [0] INTEGER （0..ub-extension-attributes）,
+   extension-attribute-value [1]
+                        ANY DEFINED BY extension-attribute-type }
+
+-- Extension types and attribute values
+--
+
+common-name INTEGER ::= 1
+
+CommonName ::= PrintableString （SIZE （1..ub-common-name-length））
+
+teletex-common-name INTEGER ::= 2
+
+TeletexCommonName ::= TeletexString （SIZE （1..ub-common-name-length））
+
+teletex-organization-name INTEGER ::= 3
+
+TeletexOrganizationName ::=
+                TeletexString （SIZE （1..ub-organization-name-length））
+
+teletex-personal-name INTEGER ::= 4
+
+TeletexPersonalName ::= SET {
+   surname [0] TeletexString （SIZE （1..ub-surname-length））,
+   given-name [1] TeletexString
+                （SIZE （1..ub-given-name-length）） OPTIONAL,
+   initials [2] TeletexString （SIZE （1..ub-initials-length）） OPTIONAL,
+   generation-qualifier [3] TeletexString （SIZE
+                （1..ub-generation-qualifier-length）） OPTIONAL }
+
+teletex-organizational-unit-names INTEGER ::= 5
+
+TeletexOrganizationalUnitNames ::= SEQUENCE SIZE
+        （1..ub-organizational-units） OF TeletexOrganizationalUnitName
+
+TeletexOrganizationalUnitName ::= TeletexString
+                        （SIZE （1..ub-organizational-unit-name-length））
+
+pds-name INTEGER ::= 7
+
+PDSName ::= PrintableString （SIZE （1..ub-pds-name-length））
+
+physical-delivery-country-name INTEGER ::= 8
+
+PhysicalDeliveryCountryName ::= CHOICE {
+   x121-dcc-code NumericString （SIZE （ub-country-name-numeric-length））,
+   iso-3166-alpha2-code PrintableString
+                        （SIZE （ub-country-name-alpha-length）） }
+
+postal-code INTEGER ::= 9
+
+PostalCode ::= CHOICE {
+
+   numeric-code NumericString （SIZE （1..ub-postal-code-length））,
+   printable-code PrintableString （SIZE （1..ub-postal-code-length）） }
+
+physical-delivery-office-name INTEGER ::= 10
+
+PhysicalDeliveryOfficeName ::= PDSParameter
+
+physical-delivery-office-number INTEGER ::= 11
+
+PhysicalDeliveryOfficeNumber ::= PDSParameter
+
+extension-OR-address-components INTEGER ::= 12
+
+ExtensionORAddressComponents ::= PDSParameter
+
+physical-delivery-personal-name INTEGER ::= 13
+
+PhysicalDeliveryPersonalName ::= PDSParameter
+
+physical-delivery-organization-name INTEGER ::= 14
+
+PhysicalDeliveryOrganizationName ::= PDSParameter
+
+extension-physical-delivery-address-components INTEGER ::= 15
+
+ExtensionPhysicalDeliveryAddressComponents ::= PDSParameter
+
+unformatted-postal-address INTEGER ::= 16
+
+UnformattedPostalAddress ::= SET {
+   printable-address SEQUENCE SIZE （1..ub-pds-physical-address-lines） OF
+           PrintableString （SIZE （1..ub-pds-parameter-length）） OPTIONAL,
+   teletex-string TeletexString
+         （SIZE （1..ub-unformatted-address-length）） OPTIONAL }
+
+street-address INTEGER ::= 17
+
+StreetAddress ::= PDSParameter
+
+post-office-box-address INTEGER ::= 18
+
+PostOfficeBoxAddress ::= PDSParameter
+
+poste-restante-address INTEGER ::= 19
+
+PosteRestanteAddress ::= PDSParameter
+
+unique-postal-name INTEGER ::= 20
+
+UniquePostalName ::= PDSParameter
+
+local-postal-attributes INTEGER ::= 21
+
+LocalPostalAttributes ::= PDSParameter
+
+PDSParameter ::= SET {
+   printable-string PrintableString
+                （SIZE（1..ub-pds-parameter-length）） OPTIONAL,
+   teletex-string TeletexString
+                （SIZE（1..ub-pds-parameter-length）） OPTIONAL }
+
+extended-network-address INTEGER ::= 22
+
+ExtendedNetworkAddress ::= CHOICE {
+   e163-4-address SEQUENCE {
+        number [0] NumericString （SIZE （1..ub-e163-4-number-length））,
+        sub-address [1] NumericString
+                （SIZE （1..ub-e163-4-sub-address-length）） OPTIONAL },
+   psap-address [0] PresentationAddress }
+
+PresentationAddress ::= SEQUENCE {
+        pSelector       [0] EXPLICIT OCTET STRING OPTIONAL,
+        sSelector       [1] EXPLICIT OCTET STRING OPTIONAL,
+        tSelector       [2] EXPLICIT OCTET STRING OPTIONAL,
+        nAddresses      [3] EXPLICIT SET SIZE （1..MAX） OF OCTET STRING }
+
+terminal-type  INTEGER ::= 23
+
+TerminalType ::= INTEGER {
+   telex （3）,
+   teletex （4）,
+   g3-facsimile （5）,
+   g4-facsimile （6）,
+   ia5-terminal （7）,
+   videotex （8） } （0..ub-integer-options）
+
+--      Extension Domain-defined Attributes
+
+teletex-domain-defined-attributes INTEGER ::= 6
+
+TeletexDomainDefinedAttributes ::= SEQUENCE SIZE
+   （1..ub-domain-defined-attributes） OF TeletexDomainDefinedAttribute
+
+TeletexDomainDefinedAttribute ::= SEQUENCE {
+        type TeletexString
+               （SIZE （1..ub-domain-defined-attribute-type-length））,
+        value TeletexString
+
+               （SIZE （1..ub-domain-defined-attribute-value-length）） }
+
+--  specifications of Upper Bounds shall be regarded as mandatory
+--  from Annex B of ITU-T X.411 Reference Definition of MTS Parameter
+--  Upper Bounds
+
+--      Upper Bounds
+ub-name INTEGER ::=     32768
+ub-common-name  INTEGER ::=     64
+ub-locality-name        INTEGER ::=     128
+ub-state-name   INTEGER ::=     128
+ub-organization-name    INTEGER ::=     64
+ub-organizational-unit-name     INTEGER ::=     64
+ub-title        INTEGER ::=     64
+ub-match        INTEGER ::=     128
+
+ub-emailaddress-length INTEGER ::= 128
+
+ub-common-name-length INTEGER ::= 64
+ub-country-name-alpha-length INTEGER ::= 2
+ub-country-name-numeric-length INTEGER ::= 3
+ub-domain-defined-attributes INTEGER ::= 4
+ub-domain-defined-attribute-type-length INTEGER ::= 8
+ub-domain-defined-attribute-value-length INTEGER ::= 128
+ub-domain-name-length INTEGER ::= 16
+ub-extension-attributes INTEGER ::= 256
+ub-e163-4-number-length INTEGER ::= 15
+ub-e163-4-sub-address-length INTEGER ::= 40
+ub-generation-qualifier-length INTEGER ::= 3
+ub-given-name-length INTEGER ::= 16
+ub-initials-length INTEGER ::= 5
+ub-integer-options INTEGER ::= 256
+ub-numeric-user-id-length INTEGER ::= 32
+ub-organization-name-length INTEGER ::= 64
+ub-organizational-unit-name-length INTEGER ::= 32
+ub-organizational-units INTEGER ::= 4
+ub-pds-name-length INTEGER ::= 16
+ub-pds-parameter-length INTEGER ::= 30
+ub-pds-physical-address-lines INTEGER ::= 6
+ub-postal-code-length INTEGER ::= 16
+ub-surname-length INTEGER ::= 40
+ub-terminal-id-length INTEGER ::= 24
+ub-unformatted-address-length INTEGER ::= 180
+ub-x121-address-length INTEGER ::= 16
+
+-- Note - upper bounds on string types, such as TeletexString, are
+-- measured in characters.  Excepting PrintableString or IA5String, a
+-- significantly greater number of octets will be required to hold
+
+-- such a value.  As a minimum, 16 octets, or twice the specified upper
+-- bound, whichever is the larger, should be allowed for TeletexString.
+-- For UTF8String or UniversalString at least four times the upper
+-- bound should be allowed.
+
+END
+
+A.2 隐式目标模块（Implicitly Tagged Module）, 1988 句法
+
+PKIX1Implicit88 {iso（1） identified-organization（3） dod（6） internet（1）
+  security（5） mechanisms（5） pkix（7） id-mod（0） id-pkix1-implicit-88（2）}
+
+DEFINITIONS IMPLICIT TAGS ::=
+
+BEGIN
+
+-- EXPORTS ALL --
+
+IMPORTS
+        id-pkix, id-pe, id-qt, id-kp, id-qt-unotice, id-qt-cps,
+            id-ad, id-ad-ocsp, id-ad-caIssuers,
+            -- delete following line if "new" types are supported --
+            BMPString, UniversalString, UTF8String, -- end "new" types
+                ORAddress, Name, RelativeDistinguishedName,
+                CertificateSerialNumber,
+                CertificateList, AlgorithmIdentifier, ub-name,
+                Attribute, DirectoryString
+                FROM PKIX1Explicit88 {iso（1） identified-organization（3）
+                dod（6） internet（1） security（5） mechanisms（5） pkix（7）
+                id-mod（0） id-pkix1-explicit（1）};
+
+-- ISO arc for standard certificate and CRL extensions
+
+id-ce OBJECT IDENTIFIER  ::=  {joint-iso-ccitt（2） ds（5） 29}
+
+-- authority key identifier OID and syntax
+
+id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
+
+AuthorityKeyIdentifier ::= SEQUENCE {
+      keyIdentifier             [0] KeyIdentifier            OPTIONAL,
+      authorityCertIssuer       [1] GeneralNames             OPTIONAL,
+      authorityCertSerialNumber [2] CertificateSerialNumber  OPTIONAL }
+    -- authorityCertIssuer and authorityCertSerialNumber shall both
+    -- be present or both be absent
+
+KeyIdentifier ::= OCTET STRING
+
+-- subject key identifier OID and syntax
+
+id-ce-subjectKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 14 }
+
+SubjectKeyIdentifier ::= KeyIdentifier
+
+-- key usage extension OID and syntax
+
+id-ce-keyUsage OBJECT IDENTIFIER ::=  { id-ce 15 }
+
+KeyUsage ::= BIT STRING {
+     digitalSignature        （0）,
+     nonRepudiation          （1）,
+     keyEncipherment         （2）,
+     dataEncipherment        （3）,
+     keyAgreement            （4）,
+     keyCertSign             （5）,
+     cRLSign                 （6）,
+     encipherOnly            （7）,
+     decipherOnly            （8） }
+
+-- private key usage period extension OID and syntax
+
+id-ce-privateKeyUsagePeriod OBJECT IDENTIFIER ::=  { id-ce 16 }
+
+PrivateKeyUsagePeriod ::= SEQUENCE {
+     notBefore       [0]     GeneralizedTime OPTIONAL,
+     notAfter        [1]     GeneralizedTime OPTIONAL }
+     -- either notBefore or notAfter shall be present
+
+-- certificate policies extension OID and syntax
+
+id-ce-certificatePolicies OBJECT IDENTIFIER ::=  { id-ce 32 }
+
+CertificatePolicies ::= SEQUENCE SIZE （1..MAX） OF PolicyInformation
+
+PolicyInformation ::= SEQUENCE {
+     policyIdentifier   CertPolicyId,
+     policyQualifiers   SEQUENCE SIZE （1..MAX） OF
+             PolicyQualifierInfo OPTIONAL }
+
+CertPolicyId ::= OBJECT IDENTIFIER
+
+PolicyQualifierInfo ::= SEQUENCE {
+       policyQualifierId  PolicyQualifierId,
+       qualifier        ANY DEFINED BY policyQualifierId }
+
+-- Implementations that recognize additional policy qualifiers shall
+-- augment the following definition for PolicyQualifierId
+
+PolicyQualifierId ::=
+    OBJECT IDENTIFIER （ id-qt-cps | id-qt-unotice ）
+
+-- CPS pointer qualifier
+
+CPSuri ::= IA5String
+
+-- user notice qualifier
+
+UserNotice ::= SEQUENCE {
+     noticeRef        NoticeReference OPTIONAL,
+     explicitText     DisplayText OPTIONAL}
+
+NoticeReference ::= SEQUENCE {
+     organization     DisplayText,
+     noticeNumbers    SEQUENCE OF INTEGER }
+
+DisplayText ::= CHOICE {
+     visibleString    VisibleString  （SIZE （1..200））,
+     bmpString        BMPString      （SIZE （1..200））,
+     utf8String       UTF8String     （SIZE （1..200）） }
+
+-- policy mapping extension OID and syntax
+
+id-ce-policyMappings OBJECT IDENTIFIER ::=  { id-ce 33 }
+
+PolicyMappings ::= SEQUENCE SIZE （1..MAX） OF SEQUENCE {
+     issuerDomainPolicy      CertPolicyId,
+     subjectDomainPolicy     CertPolicyId }
+
+-- subject alternative name extension OID and syntax
+
+id-ce-subjectAltName OBJECT IDENTIFIER ::=  { id-ce 17 }
+
+SubjectAltName ::= GeneralNames
+
+GeneralNames ::= SEQUENCE SIZE （1..MAX） OF GeneralName
+
+GeneralName ::= CHOICE {
+     otherName                       [0]     AnotherName,
+     rfc822Name                      [1]     IA5String,
+     dNSName                         [2]     IA5String,
+     x400Address                     [3]     ORAddress,
+     directoryName                   [4]     Name,
+     ediPartyName                    [5]     EDIPartyName,
+     uniformResourceIdentifier       [6]     IA5String,
+     iPAddress                       [7]     OCTET STRING,
+     registeredID                    [8]     OBJECT IDENTIFIER }
+
+-- AnotherName replaces OTHER-NAME ::= TYPE-IDENTIFIER, as
+-- TYPE-IDENTIFIER is not supported in the '88 ASN.1 syntax
+
+AnotherName ::= SEQUENCE {
+
+     type-id    OBJECT IDENTIFIER,
+     value      [0] EXPLICIT ANY DEFINED BY type-id }
+
+EDIPartyName ::= SEQUENCE {
+     nameAssigner            [0]     DirectoryString OPTIONAL,
+     partyName               [1]     DirectoryString }
+
+-- issuer alternative name extension OID and syntax
+
+id-ce-issuerAltName OBJECT IDENTIFIER ::=  { id-ce 18 }
+
+IssuerAltName ::= GeneralNames
+
+id-ce-subjectDirectoryAttributes OBJECT IDENTIFIER ::=  { id-ce 9 }
+
+SubjectDirectoryAttributes ::= SEQUENCE SIZE （1..MAX） OF Attribute
+
+-- basic constraints extension OID and syntax
+
+id-ce-basicConstraints OBJECT IDENTIFIER ::=  { id-ce 19 }
+
+BasicConstraints ::= SEQUENCE {
+     cA                      BOOLEAN DEFAULT FALSE,
+     pathLenConstraint       INTEGER （0..MAX） OPTIONAL }
+
+-- name constraints extension OID and syntax
+
+id-ce-nameConstraints OBJECT IDENTIFIER ::=  { id-ce 30 }
+
+NameConstraints ::= SEQUENCE {
+     permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+     excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+
+GeneralSubtrees ::= SEQUENCE SIZE （1..MAX） OF GeneralSubtree
+
+GeneralSubtree ::= SEQUENCE {
+     base                    GeneralName,
+     minimum         [0]     BaseDistance DEFAULT 0,
+     maximum         [1]     BaseDistance OPTIONAL }
+
+BaseDistance ::= INTEGER （0..MAX）
+
+-- policy constraints extension OID and syntax
+
+id-ce-policyConstraints OBJECT IDENTIFIER ::=  { id-ce 36 }
+
+PolicyConstraints ::= SEQUENCE {
+     requireExplicitPolicy           [0] SkipCerts OPTIONAL,
+
+     inhibitPolicyMapping            [1] SkipCerts OPTIONAL }
+
+SkipCerts ::= INTEGER （0..MAX）
+
+-- CRL distribution points extension OID and syntax
+
+id-ce-cRLDistributionPoints     OBJECT IDENTIFIER  ::=  {id-ce 31}
+
+CRLDistPointsSyntax ::= SEQUENCE SIZE （1..MAX） OF DistributionPoint
+
+DistributionPoint ::= SEQUENCE {
+     distributionPoint       [0]     DistributionPointName OPTIONAL,
+     reasons                 [1]     ReasonFlags OPTIONAL,
+     cRLIssuer               [2]     GeneralNames OPTIONAL }
+
+DistributionPointName ::= CHOICE {
+     fullName                [0]     GeneralNames,
+     nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
+
+ReasonFlags ::= BIT STRING {
+     unused                  （0）,
+     keyCompromise           （1）,
+     cACompromise            （2）,
+     affiliationChanged      （3）,
+     superseded              （4）,
+     cessationOfOperation    （5）,
+     certificateHold         （6） }
+
+-- extended key usage extension OID and syntax
+
+id-ce-extKeyUsage OBJECT IDENTIFIER ::= {id-ce 37}
+
+ExtKeyUsageSyntax ::= SEQUENCE SIZE （1..MAX） OF KeyPurposeId
+
+KeyPurposeId ::= OBJECT IDENTIFIER
+
+-- extended key purpose OIDs
+id-kp-serverAuth      OBJECT IDENTIFIER ::= { id-kp 1 }
+id-kp-clientAuth      OBJECT IDENTIFIER ::= { id-kp 2 }
+id-kp-codeSigning     OBJECT IDENTIFIER ::= { id-kp 3 }
+id-kp-emailProtection OBJECT IDENTIFIER ::= { id-kp 4 }
+id-kp-ipsecEndSystem  OBJECT IDENTIFIER ::= { id-kp 5 }
+id-kp-ipsecTunnel     OBJECT IDENTIFIER ::= { id-kp 6 }
+id-kp-ipsecUser       OBJECT IDENTIFIER ::= { id-kp 7 }
+id-kp-timeStamping    OBJECT IDENTIFIER ::= { id-kp 8 }
+
+-- authority info access
+
+id-pe-authorityInfoAccess OBJECT IDENTIFIER ::= { id-pe 1 }
+
+AuthorityInfoAccessSyntax  ::=
+        SEQUENCE SIZE （1..MAX） OF AccessDescription
+
+AccessDescription  ::=  SEQUENCE {
+        accessMethod          OBJECT IDENTIFIER,
+        accessLocation        GeneralName  }
+
+-- CRL number extension OID and syntax
+
+id-ce-cRLNumber OBJECT IDENTIFIER ::= { id-ce 20 }
+
+CRLNumber ::= INTEGER （0..MAX）
+
+-- issuing distribution point extension OID and syntax
+
+id-ce-issuingDistributionPoint OBJECT IDENTIFIER ::= { id-ce 28 }
+
+IssuingDistributionPoint ::= SEQUENCE {
+     distributionPoint       [0] DistributionPointName OPTIONAL,
+     onlyContainsUserCerts   [1] BOOLEAN DEFAULT FALSE,
+     onlyContainsCACerts     [2] BOOLEAN DEFAULT FALSE,
+     onlySomeReasons         [3] ReasonFlags OPTIONAL,
+     indirectCRL             [4] BOOLEAN DEFAULT FALSE }
+
+id-ce-deltaCRLIndicator OBJECT IDENTIFIER ::= { id-ce 27 }
+
+-- deltaCRLIndicator ::= BaseCRLNumber
+
+BaseCRLNumber ::= CRLNumber
+
+-- CRL reasons extension OID and syntax
+
+id-ce-cRLReasons OBJECT IDENTIFIER ::= { id-ce 21 }
+
+CRLReason ::= ENUMERATED {
+     unspecified             （0）,
+     keyCompromise           （1）,
+     cACompromise            （2）,
+     affiliationChanged      （3）,
+     superseded              （4）,
+     cessationOfOperation    （5）,
+     certificateHold         （6）,
+     removeFromCRL           （8） }
+
+-- certificate issuer CRL entry extension OID and syntax
+
+id-ce-certificateIssuer OBJECT IDENTIFIER ::= { id-ce 29 }
+
+CertificateIssuer ::= GeneralNames
+
+-- hold instruction extension OID and syntax
+
+id-ce-holdInstructionCode OBJECT IDENTIFIER ::= { id-ce 23 }
+
+HoldInstructionCode ::= OBJECT IDENTIFIER
+
+-- ANSI x9 holdinstructions
+
+-- ANSI x9 arc holdinstruction arc
+holdInstruction OBJECT IDENTIFIER ::=
+          {joint-iso-itu-t（2） member-body（2） us（840） x9cm（10040） 2}
+
+-- ANSI X9 holdinstructions referenced by this standard
+id-holdinstruction-none OBJECT IDENTIFIER  ::=
+                {holdInstruction 1} -- deprecated
+id-holdinstruction-callissuer OBJECT IDENTIFIER ::=
+                {holdInstruction 2}
+id-holdinstruction-reject OBJECT IDENTIFIER ::=
+                {holdInstruction 3}
+
+-- invalidity date CRL entry extension OID and syntax
+
+id-ce-invalidityDate OBJECT IDENTIFIER ::= { id-ce 24 }
+
+InvalidityDate ::=  GeneralizedTime
+
+END
+
+附录 B. 1993 ASN.1 结构 and OIDs
+
+B.1 明示目标模块（Explicitly Tagged Module）, 1993 句法
+
+PKIX1Explicit93 {iso（1） identified-organization（3） dod（6） internet（1）
+   security（5） mechanisms（5） pkix（7） id-mod（0） id-pkix1-explicit-93（3）}
+
+DEFINITIONS EXPLICIT TAGS ::=
+
+BEGIN
+
+-- EXPORTS ALL --
+
+IMPORTS
+        authorityKeyIdentifier, subjectKeyIdentifier, keyUsage,
+           extendedKeyUsage, privateKeyUsagePeriod, certificatePolicies,
+           policyMappings, subjectAltName, issuerAltName,
+           basicConstraints, nameConstraints, policyConstraints,
+           cRLDistributionPoints, subjectDirectoryAttributes,
+           cRLNumber, reasonCode, instructionCode, invalidityDate,
+           issuingDistributionPoint, certificateIssuer,
+           deltaCRLIndicator, authorityInfoAccess, id-ce
+           FROM PKIX1Implicit93 {iso（1） identified-organization（3）
+           dod（6） internet（1） security（5） mechanisms（5） pkix（7）
+           id-mod（0） id-pkix1-implicit-93（4）} ;
+
+--
+                   --  Locally defined OIDs  --
+
+id-pkix  OBJECT IDENTIFIER  ::=
+         { iso（1） identified-organization（3） dod（6） internet（1）
+                    security（5） mechanisms（5） pkix（7） }
+
+-- PKIX arcs
+-- arc for private certificate extensions
+id-pe OBJECT IDENTIFIER  ::=  { id-pkix 1 }
+ -- arc for policy qualifier types
+id-qt OBJECT IDENTIFIER ::= { id-pkix 2 }
+-- arc for extended key purpose OIDS
+id-kp OBJECT IDENTIFIER ::= { id-pkix 3 }
+-- arc for access descriptors
+id-ad OBJECT IDENTIFIER ::= { id-pkix 48 }
+
+-- policyQualifierIds for Internet policy qualifiers
+id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 }
+        -- OID for CPS qualifier
+
+id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 }
+        -- OID for user notice qualifier
+
+-- based on excerpts from AuthenticationFramework
+--    {joint-iso-ccitt ds（5） modules（1） authenticationFramework（7） 2}
+
+               -- Public Key Certificate --
+
+Certificate            ::=   SIGNED { SEQUENCE {
+   version                 [0]   Version DEFAULT v1,
+   serialNumber                  CertificateSerialNumber,
+   signature                     AlgorithmIdentifier,
+   issuer                        Name,
+   validity                      Validity,
+   subject                       Name,
+   subjectPublicKeyInfo          SubjectPublicKeyInfo,
+   issuerUniqueIdentifier  [1]   IMPLICIT UniqueIdentifier OPTIONAL,
+                              ---if present, version shall be v2 or v3--
+   subjectUniqueIdentifier [2]   IMPLICIT UniqueIdentifier OPTIONAL,
+                              ---if present, version shall be v2 or v3--
+   extensions              [3]   Extensions OPTIONAL
+                              --if present, version shall be v3--}  }
+
+UniqueIdentifier        ::=  BIT STRING
+
+Version                 ::=  INTEGER { v1（0）, v2（1）, v3（2） }
+
+CertificateSerialNumber ::=  INTEGER
+
+Validity                        ::=     SEQUENCE {
+   notBefore            Time,
+   notAfter             Time }
+
+Time ::= CHOICE {
+        utcTime         UTCTime,
+        generalTime             GeneralizedTime }
+
+SubjectPublicKeyInfo    ::=     SEQUENCE{
+   algorithm            AlgorithmIdentifier,
+   subjectPublicKey     BIT STRING}
+
+Extensions        ::=   SEQUENCE SIZE （1..MAX） OF Extension
+
+Extension         ::=   SEQUENCE {
+   extnId            EXTENSION.&id （{ExtensionSet}）,
+   critical          BOOLEAN DEFAULT FALSE,
+   extnValue         OCTET STRING }
+                -- contains a DER encoding of a value of type
+
+                -- &ExtnType for the
+                -- extension object identified by extnId --
+
+-- The following information object set is defined to constrain the
+-- set of legal certificate extensions.
+
+ExtensionSet    EXTENSION       ::=     { authorityKeyIdentifier |
+                                        subjectKeyIdentifier |
+                                        keyUsage |
+                                        extendedKeyUsage |
+                                        privateKeyUsagePeriod |
+                                        certificatePolicies |
+                                        policyMappings |
+                                        subjectAltName |
+                                        issuerAltName |
+                                        basicConstraints |
+                                        nameConstraints |
+                                        policyConstraints |
+                                        cRLDistributionPoints |
+                                        subjectDirectoryAttributes |
+                                        authorityInfoAccess }
+
+EXTENSION       ::=     CLASS {
+   &id          OBJECT IDENTIFIER UNIQUE,
+   &ExtnType }
+WITH SYNTAX  {
+   SYNTAX               &ExtnType
+   IDENTIFIED BY        &id }
+
+                  -- Certificate Revocation List --
+
+CertificateList ::=    SIGNED { SEQUENCE {
+   version                Version  OPTIONAL, -- if present, shall be v2
+   signature              AlgorithmIdentifier,
+   issuer                 Name,
+   thisUpdate             Time,
+   nextUpdate             Time OPTIONAL,
+   revokedCertificates    SEQUENCE OF SEQUENCE {
+   userCertificate        CertificateSerialNumber,
+   revocationDate         Time,
+   crlEntryExtensions     EntryExtensions OPTIONAL } OPTIONAL,
+   crlExtensions          [0]   CRLExtensions OPTIONAL }}
+
+CRLExtensions        ::=        SEQUENCE SIZE （1..MAX） OF CRLExtension
+
+CRLExtension         ::=        SEQUENCE {
+   extnId            EXTENSION.&id （{CRLExtensionSet}）,
+   critical          BOOLEAN DEFAULT FALSE,
+
+   extnValue         OCTET STRING }
+                -- contains a DER encoding of a value of type
+                -- &ExtnType for the
+                -- extension object identified by extnId --
+
+-- The following information object set is defined to constrain the
+-- set of legal CRL extensions.
+
+CRLExtensionSet EXTENSION       ::=     { authorityKeyIdentifier |
+                                        issuerAltName |
+                                        cRLNumber |
+                                        deltaCRLIndicator |
+                                        issuingDistributionPoint }
+
+-- EXTENSION defined above for certificates
+
+EntryExtensions        ::=      SEQUENCE SIZE （1..MAX） OF EntryExtension
+
+EntryExtension         ::=      SEQUENCE {
+   extnId            EXTENSION.&id （{EntryExtensionSet}）,
+   critical          BOOLEAN DEFAULT FALSE,
+   extnValue         OCTET STRING }
+                -- contains a DER encoding of a value of type
+                -- &ExtnType for the
+                -- extension object identified by extnId --
+
+-- The following information object set is defined to constrain the
+-- set of legal CRL entry extensions.
+
+EntryExtensionSet       EXTENSION       ::=     { reasonCode |
+                                                instructionCode |
+                                                invalidityDate |
+                                                certificateIssuer }
+
+         -- information object classes used in the defintion --
+                    -- of certificates and CRLs --
+
+-- Parameterized Type SIGNED --
+
+  SIGNED { ToBeSigned } ::= SEQUENCE {
+     toBeSigned  ToBeSigned,
+     algorithm   AlgorithmIdentifier,
+     signature   BIT STRING
+  }
+
+-- Definition of AlgorithmIdentifier
+-- ISO definition was:
+--
+
+-- AlgorithmIdentifier     ::=  SEQUENCE {
+--   algorithm          ALGORITHM.&id（{SupportedAlgorithms}）,
+--   parameters         ALGORITHM.&Type（{SupportedAlgorithms}
+--                                         { @algorithm}） OPTIONAL }
+-- Definition of ALGORITHM
+-- ALGORITHM    ::=     TYPE-IDENTIFIER
+
+-- The following PKIX definition replaces the X.509 definition
+--
+
+AlgorithmIdentifier     ::=  SEQUENCE {
+   algorithm            ALGORITHM-ID.&id（{SupportedAlgorithms}）,
+   parameters           ALGORITHM-ID.&Type（{SupportedAlgorithms}
+                                           { @algorithm}） OPTIONAL }
+
+-- Definition of ALGORITHM-ID
+
+ ALGORITHM-ID ::= CLASS {
+     &id    OBJECT IDENTIFIER UNIQUE,
+     &Type  OPTIONAL
+  }
+     WITH SYNTAX { OID &id [PARMS &Type] }
+
+-- The definition of SupportedAlgorithms may be modified as this
+-- document does not specify a mandatory algorithm set.  In addition,
+-- the set is specified as extensible, since additional algorithms
+-- may be supported
+
+SupportedAlgorithms     ALGORITHM-ID  ::=       { ..., -- extensible
+                                            rsaPublicKey |
+                                            rsaSHA-1  |
+                                            rsaMD5 |
+                                            rsaMD2 |
+                                            dssPublicKey |
+                                            dsaSHA-1 |
+                                            dhPublicKey }
+
+-- OIDs and parameter structures for ALGORITHM-IDs used
+-- in this specification
+
+rsaPublicKey ALGORITHM-ID ::= { OID rsaEncryption PARMS NULL }
+
+rsaSHA-1 ALGORITHM-ID ::= { OID sha1WithRSAEncryption PARMS NULL }
+
+rsaMD5 ALGORITHM-ID ::= { OID md5WithRSAEncryption PARMS NULL  }
+
+rsaMD2 ALGORITHM-ID ::= { OID md2WithRSAEncryption PARMS NULL  }
+
+dssPublicKey ALGORITHM-ID ::= { OID id-dsa PARMS Dss-Parms }
+
+dsaSHA-1 ALGORITHM-ID ::= { OID id-dsa-with-sha1 }
+
+dhPublicKey ALGORITHM-ID ::= {OID dhpublicnumber PARMS DomainParameters}
+
+-- algorithm identifiers and parameter structures
+
+pkcs-1 OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1） 1 }
+
+rsaEncryption OBJECT IDENTIFIER ::=  { pkcs-1 1 }
+
+md2WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 2 }
+
+md5WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 4 }
+
+sha1WithRSAEncryption OBJECT IDENTIFIER  ::=  { pkcs-1 5 }
+
+id-dsa-with-sha1 OBJECT IDENTIFIER ::=  {
+     iso（1） member-body（2） us（840） x9-57 （10040） x9algorithm（4） 3 }
+
+Dss-Sig-Value  ::=  SEQUENCE  {
+     r       INTEGER,
+     s       INTEGER  }
+
+dhpublicnumber OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） ansi-x942（10046） number-type（2） 1 }
+
+DomainParameters ::= SEQUENCE {
+     p       INTEGER, -- odd prime, p=jq +1
+     g       INTEGER, -- generator, g
+     q       INTEGER, -- factor of p-1
+     j       INTEGER OPTIONAL, -- subgroup factor, j>= 2
+     validationParms  ValidationParms OPTIONAL }
+
+ValidationParms ::= SEQUENCE {
+     seed             BIT STRING,
+     pgenCounter      INTEGER }
+
+id-dsa OBJECT IDENTIFIER ::= {
+     iso（1） member-body（2） us（840） x9-57（10040） x9algorithm（4） 1 }
+
+Dss-Parms  ::=  SEQUENCE  {
+     p             INTEGER,
+     q             INTEGER,
+     g             INTEGER  }
+
+     -- The ASN.1 in this section supports the Name type
+     -- and the directoryAttribute extension
+
+-- attribute data types --
+
+Attribute       ::=     SEQUENCE {
+        type            ATTRIBUTE.&id （{SupportedAttributes}）,
+        values  SET SIZE （1 .. MAX） OF ATTRIBUTE.&Type
+                        （{SupportedAttributes}{@type}）}
+
+AttributeTypeAndValue           ::=     SEQUENCE {
+        type            ATTRIBUTE.&id （{SupportedAttributes}）,
+        value   ATTRIBUTE.&Type （{SupportedAttributes}{@type}）}
+
+-- naming data types --
+
+Name            ::=     CHOICE { -- only one possibility for now --
+                                        rdnSequence  RDNSequence }
+
+RDNSequence ::= SEQUENCE OF RelativeDistinguishedName
+
+RelativeDistinguishedName       ::=
+                SET SIZE （1 .. MAX） OF AttributeTypeAndValue
+
+ID     ::=    OBJECT IDENTIFIER
+
+-- ATTRIBUTE information object class specification
+--  Note: This has been greatly simplified for PKIX !!
+
+ATTRIBUTE               ::=     CLASS {
+        &Type,
+        &id                     OBJECT IDENTIFIER UNIQUE }
+WITH SYNTAX {
+        WITH SYNTAX &Type ID &id }
+
+-- suggested naming attributes
+--      Definition of the following information object set may be
+--    augmented to meet local requirements.  Note that deleting
+--    members of the set may prevent interoperability with
+--    conforming implementations.
+
+SupportedAttributes     ATTRIBUTE       ::=     {
+                name | commonName | surname | givenName | initials |
+                generationQualifier | dnQualifier | countryName |
+                localityName | stateOrProvinceName | organizationName |
+                        organizationalUnitName | title | pkcs9email }
+
+name ATTRIBUTE  ::=     {
+
+        WITH SYNTAX                     DirectoryString { ub-name }
+        ID                              id-at-name }
+
+commonName ATTRIBUTE    ::=     {
+        WITH SYNTAX                     DirectoryString {ub-common-name}
+        ID                              id-at-commonName }
+
+surname ATTRIBUTE       ::=             {
+        WITH SYNTAX                     DirectoryString {ub-name}
+        ID                              id-at-surname }
+
+givenName ATTRIBUTE     ::=             {
+        WITH SYNTAX                     DirectoryString {ub-name}
+        ID                              id-at-givenName }
+
+initials ATTRIBUTE      ::=             {
+        WITH SYNTAX                     DirectoryString {ub-name}
+        ID                              id-at-initials }
+
+generationQualifier ATTRIBUTE   ::=             {
+        WITH SYNTAX                     DirectoryString {ub-name}
+        ID                              id-at-generationQualifier}
+
+dnQualifier ATTRIBUTE   ::=     {
+        WITH SYNTAX                     PrintableString
+        ID                              id-at-dnQualifier }
+
+countryName ATTRIBUTE   ::=     {
+        WITH SYNTAX                     PrintableString （SIZE （2））
+                                                -- IS 3166 codes only
+        ID                              id-at-countryName }
+
+localityName ATTRIBUTE  ::=     {
+        WITH SYNTAX             DirectoryString {ub-locality-name}
+        ID                      id-at-localityName }
+
+stateOrProvinceName ATTRIBUTE   ::=     {
+        WITH SYNTAX             DirectoryString {ub-state-name}
+        ID                      id-at-stateOrProvinceName }
+
+organizationName ATTRIBUTE      ::=     {
+        WITH SYNTAX             DirectoryString {ub-organization-name}
+        ID                      id-at-organizationName }
+
+organizationalUnitName ATTRIBUTE        ::=     {
+        WITH SYNTAX  DirectoryString {ub-organizational-unit-name}
+        ID                      id-at-organizationalUnitName }
+
+title ATTRIBUTE ::=                     {
+        WITH SYNTAX             DirectoryString {ub-title}
+        ID                      id-at-title }
+
+ -- Legacy attributes
+
+pkcs9email ATTRIBUTE ::= {
+        WITH SYNTAX                     PHGString,
+        ID                              emailAddress }
+
+PHGString ::= IA5String （SIZE（1..ub-emailaddress-length））
+
+pkcs-9 OBJECT IDENTIFIER ::=
+       { iso（1） member-body（2） us（840） rsadsi（113549） pkcs（1） 9 }
+
+emailAddress OBJECT IDENTIFIER ::= { pkcs-9 1 }
+
+    -- object identifiers for Name type and directory attribute support
+
+-- Object identifier assignments --
+
+id-at   OBJECT IDENTIFIER       ::=     {joint-iso-ccitt（2） ds（5） 4}
+
+-- Attributes --
+
+id-at-commonName        OBJECT IDENTIFIER       ::=     {id-at 3}
+id-at-surname           OBJECT IDENTIFIER       ::=     {id-at 4}
+id-at-countryName       OBJECT IDENTIFIER       ::=     {id-at 6}
+id-at-localityName      OBJECT IDENTIFIER       ::=     {id-at 7}
+id-at-stateOrProvinceName     OBJECT IDENTIFIER ::= {id-at 8}
+id-at-organizationName        OBJECT IDENTIFIER ::= {id-at 10}
+id-at-organizationalUnitName  OBJECT IDENTIFIER ::= {id-at 11}
+id-at-title             OBJECT IDENTIFIER       ::=     {id-at 12}
+id-at-name              OBJECT IDENTIFIER       ::=     {id-at 41}
+id-at-givenName         OBJECT IDENTIFIER       ::=     {id-at 42}
+id-at-initials          OBJECT IDENTIFIER       ::=     {id-at 43}
+id-at-generationQualifier   OBJECT IDENTIFIER   ::=     {id-at 44}
+id-at-dnQualifier       OBJECT IDENTIFIER       ::=     {id-at 46}
+
+-- Directory string type, used extensively in Name types --
+
+DirectoryString { INTEGER:maxSize } ::= CHOICE {
+        teletexString           TeletexString （SIZE （1..maxSize））,
+        printableString         PrintableString （SIZE （1..maxSize））,
+        universalString         UniversalString （SIZE （1..maxSize））,
+        bmpString               BMPString （SIZE（1..maxSize））,
+        utf8String              UTF8String （SIZE（1..maxSize））
+                            }
+
+     -- End of ASN.1 for Name type and directory attribute support --
+
+     -- The ASN.1 in this section supports X.400 style names   --
+     -- for implementations that use the x400Address component --
+     -- of GeneralName.                                        --
+
+ORAddress ::= SEQUENCE {
+   built-in-standard-attributes BuiltInStandardAttributes,
+   built-in-domain-defined-attributes
+                        BuiltInDomainDefinedAttributes OPTIONAL,
+   -- see also teletex-domain-defined-attributes
+   extension-attributes ExtensionAttributes OPTIONAL }
+
+--  The OR-address is semantically absent from the OR-name if the
+--  built-in-standard-attribute sequence is empty and the
+--  built-in-domain-defined-attributes and extension-attributes are
+--  both omitted.
+
+--      Built-in Standard Attributes
+
+BuiltInStandardAttributes ::= SEQUENCE {
+   country-name CountryName OPTIONAL,
+   administration-domain-name AdministrationDomainName OPTIONAL,
+   network-address      [0] NetworkAddress OPTIONAL,
+   -- see also extended-network-address
+   terminal-identifier  [1] TerminalIdentifier OPTIONAL,
+   private-domain-name  [2] PrivateDomainName OPTIONAL,
+   organization-name    [3] OrganizationName OPTIONAL,
+   -- see also teletex-organization-name
+   numeric-user-identifier      [4] NumericUserIdentifier OPTIONAL,
+   personal-name        [5] PersonalName OPTIONAL,
+   -- see also teletex-personal-name
+   organizational-unit-names    [6] OrganizationalUnitNames OPTIONAL
+   -- see also teletex-organizational-unit-names -- }
+
+CountryName ::= [APPLICATION 1] CHOICE {
+   x121-dcc-code NumericString
+                （SIZE （ub-country-name-numeric-length））,
+   iso-3166-alpha2-code PrintableString
+                （SIZE （ub-country-name-alpha-length）） }
+
+AdministrationDomainName ::= [APPLICATION 2] CHOICE {
+   numeric NumericString （SIZE （0..ub-domain-name-length））,
+   printable PrintableString （SIZE （0..ub-domain-name-length）） }
+
+NetworkAddress ::= X121Address
+-- see also extended-network-address
+
+X121Address ::= NumericString （SIZE （1..ub-x121-address-length））
+
+TerminalIdentifier ::= PrintableString （SIZE （1..ub-terminal-id-length））
+
+PrivateDomainName ::= CHOICE {
+   numeric NumericString （SIZE （1..ub-domain-name-length））,
+   printable PrintableString （SIZE （1..ub-domain-name-length）） }
+
+OrganizationName ::= PrintableString
+                           （SIZE （1..ub-organization-name-length））
+-- see also teletex-organization-name
+
+NumericUserIdentifier ::= NumericString
+                             （SIZE （1..ub-numeric-user-id-length））
+
+PersonalName ::= SET {
+   surname    [0] PrintableString （SIZE （1..ub-surname-length））,
+   given-name [1] PrintableString
+                        （SIZE （1..ub-given-name-length）） OPTIONAL,
+   initials   [2] PrintableString
+                        （SIZE （1..ub-initials-length）） OPTIONAL,
+   generation-qualifier [3] PrintableString
+                （SIZE （1..ub-generation-qualifier-length）） OPTIONAL}
+-- see also teletex-personal-name
+
+OrganizationalUnitNames ::= SEQUENCE SIZE （1..ub-organizational-units）
+                                        OF OrganizationalUnitName
+-- see also teletex-organizational-unit-names
+
+OrganizationalUnitName ::= PrintableString （SIZE
+                        （1..ub-organizational-unit-name-length））
+
+--      Built-in Domain-defined Attributes
+BuiltInDomainDefinedAttributes ::= SEQUENCE SIZE
+                                （1..ub-domain-defined-attributes） OF
+                                BuiltInDomainDefinedAttribute
+
+BuiltInDomainDefinedAttribute ::= SEQUENCE {
+   type PrintableString （SIZE
+                （1..ub-domain-defined-attribute-type-length））,
+   value PrintableString （SIZE
+                （1..ub-domain-defined-attribute-value-length）） }
+
+--      Extension Attributes
+
+ExtensionAttributes ::= SET SIZE （1..ub-extension-attributes）
+                                        OF ExtensionAttribute
+ExtensionAttribute ::= SEQUENCE {
+
+        extension-attribute-type [0] EXTENSION-ATTRIBUTE.&id
+                                        （{ExtensionAttributeTable}）,
+        extension-attribute-value [1] EXTENSION-ATTRIBUTE.&Type
+             （{ExtensionAttributeTable} {@extension-attribute-type}） }
+
+EXTENSION-ATTRIBUTE ::= CLASS {
+        &id     INTEGER （0..ub-extension-attributes） UNIQUE,
+        &Type }
+WITH SYNTAX {&Type IDENTIFIED BY &id}
+
+ExtensionAttributeTable EXTENSION-ATTRIBUTE ::= {
+        common-name |
+        teletex-common-name |
+        teletex-organization-name |
+        teletex-personal-name |
+        teletex-organizational-unit-names |
+        teletex-domain-defined-attributes |
+        pds-name |
+        physical-delivery-country-name |
+        postal-code |
+        physical-delivery-office-name |
+        physical-delivery-office-number |
+        extension-OR-address-components |
+        physical-delivery-personal-name |
+        physical-delivery-organization-name |
+        extension-physical-delivery-address-components |
+        unformatted-postal-address |
+        street-address |
+        post-office-box-address |
+        poste-restante-address |
+        unique-postal-name |
+        local-postal-attributes |
+        extended-network-address |
+        terminal-type }
+
+--      Extension Standard Attributes
+
+common-name EXTENSION-ATTRIBUTE ::= {CommonName IDENTIFIED BY 1}
+
+CommonName ::= PrintableString （SIZE （1..ub-common-name-length））
+
+teletex-common-name EXTENSION-ATTRIBUTE ::=
+                {TeletexCommonName IDENTIFIED BY 2}
+
+TeletexCommonName ::= TeletexString （SIZE （1..ub-common-name-length））
+
+teletex-organization-name EXTENSION-ATTRIBUTE ::=
+                {TeletexOrganizationName IDENTIFIED BY 3}
+
+TeletexOrganizationName ::=
+                TeletexString （SIZE （1..ub-organization-name-length））
+
+teletex-personal-name EXTENSION-ATTRIBUTE ::=
+                {TeletexPersonalName IDENTIFIED BY 4}
+
+TeletexPersonalName ::= SET {
+   surname [0] TeletexString （SIZE （1..ub-surname-length））,
+   given-name [1] TeletexString
+                （SIZE （1..ub-given-name-length）） OPTIONAL,
+   initials [2] TeletexString （SIZE （1..ub-initials-length）） OPTIONAL,
+   generation-qualifier [3] TeletexString （SIZE
+                （1..ub-generation-qualifier-length）） OPTIONAL }
+
+teletex-organizational-unit-names EXTENSION-ATTRIBUTE ::=
+   {TeletexOrganizationalUnitNames IDENTIFIED BY 5}
+
+TeletexOrganizationalUnitNames ::= SEQUENCE SIZE
+        （1..ub-organizational-units） OF TeletexOrganizationalUnitName
+
+TeletexOrganizationalUnitName ::= TeletexString
+                        （SIZE （1..ub-organizational-unit-name-length））
+
+pds-name EXTENSION-ATTRIBUTE ::= {PDSName IDENTIFIED BY 7}
+
+PDSName ::= PrintableString （SIZE （1..ub-pds-name-length））
+
+physical-delivery-country-name EXTENSION-ATTRIBUTE ::=
+   {PhysicalDeliveryCountryName IDENTIFIED BY 8}
+
+PhysicalDeliveryCountryName ::= CHOICE {
+   x121-dcc-code NumericString （SIZE （ub-country-name-numeric-length））,
+   iso-3166-alpha2-code PrintableString
+                        （SIZE （ub-country-name-alpha-length）） }
+
+postal-code EXTENSION-ATTRIBUTE ::= {PostalCode IDENTIFIED BY 9}
+
+PostalCode ::= CHOICE {
+   numeric-code NumericString （SIZE （1..ub-postal-code-length））,
+   printable-code PrintableString （SIZE （1..ub-postal-code-length）） }
+
+physical-delivery-office-name EXTENSION-ATTRIBUTE ::=
+                        {PhysicalDeliveryOfficeName IDENTIFIED BY 10}
+
+PhysicalDeliveryOfficeName ::= PDSParameter
+
+physical-delivery-office-number EXTENSION-ATTRIBUTE ::=
+   {PhysicalDeliveryOfficeNumber IDENTIFIED BY 11}
+
+PhysicalDeliveryOfficeNumber ::= PDSParameter
+
+extension-OR-address-components EXTENSION-ATTRIBUTE ::=
+   {ExtensionORAddressComponents IDENTIFIED BY 12}
+
+ExtensionORAddressComponents ::= PDSParameter
+
+physical-delivery-personal-name EXTENSION-ATTRIBUTE ::=
+   {PhysicalDeliveryPersonalName IDENTIFIED BY 13}
+
+PhysicalDeliveryPersonalName ::= PDSParameter
+
+physical-delivery-organization-name EXTENSION-ATTRIBUTE ::=
+   {PhysicalDeliveryOrganizationName IDENTIFIED BY 14}
+
+PhysicalDeliveryOrganizationName ::= PDSParameter
+
+extension-physical-delivery-address-components EXTENSION-ATTRIBUTE ::=
+   {ExtensionPhysicalDeliveryAddressComponents IDENTIFIED BY 15}
+
+ExtensionPhysicalDeliveryAddressComponents ::= PDSParameter
+
+unformatted-postal-address EXTENSION-ATTRIBUTE ::=
+                        {UnformattedPostalAddress IDENTIFIED BY 16}
+
+UnformattedPostalAddress ::= SET {
+   printable-address SEQUENCE SIZE （1..ub-pds-physical-address-lines） OF
+           PrintableString （SIZE （1..ub-pds-parameter-length）） OPTIONAL,
+   teletex-string TeletexString （SIZE
+                         （1..ub-unformatted-address-length）） OPTIONAL }
+
+street-address EXTENSION-ATTRIBUTE ::=
+                {StreetAddress IDENTIFIED BY 17}
+
+StreetAddress ::= PDSParameter
+
+post-office-box-address EXTENSION-ATTRIBUTE ::=
+                {PostOfficeBoxAddress IDENTIFIED BY 18}
+
+PostOfficeBoxAddress ::= PDSParameter
+
+poste-restante-address EXTENSION-ATTRIBUTE ::=
+                {PosteRestanteAddress IDENTIFIED BY 19}
+
+PosteRestanteAddress ::= PDSParameter
+
+unique-postal-name EXTENSION-ATTRIBUTE ::=
+                {UniquePostalName IDENTIFIED BY 20}
+
+UniquePostalName ::= PDSParameter
+
+local-postal-attributes EXTENSION-ATTRIBUTE ::=
+                {LocalPostalAttributes IDENTIFIED BY 21}
+
+LocalPostalAttributes ::= PDSParameter
+
+PDSParameter ::= SET {
+   printable-string PrintableString
+            （SIZE（1..ub-pds-parameter-length）） OPTIONAL,
+   teletex-string TeletexString
+            （SIZE（1..ub-pds-parameter-length）） OPTIONAL }
+
+extended-network-address EXTENSION-ATTRIBUTE ::=
+                {ExtendedNetworkAddress IDENTIFIED BY 22}
+
+ExtendedNetworkAddress ::= CHOICE {
+        e163-4-address SEQUENCE {
+                number [0] NumericString
+                   （SIZE （1..ub-e163-4-number-length））,
+                sub-address [1] NumericString
+                   （SIZE （1..ub-e163-4-sub-address-length）） OPTIONAL},
+        psap-address [0] PresentationAddress }
+
+PresentationAddress ::= SEQUENCE {
+        pSelector       [0] EXPLICIT OCTET STRING OPTIONAL,
+        sSelector       [1] EXPLICIT OCTET STRING OPTIONAL,
+        tSelector       [2] EXPLICIT OCTET STRING OPTIONAL,
+        nAddresses      [3] EXPLICIT SET SIZE （1..MAX） OF OCTET STRING}
+
+terminal-type EXTENSION-ATTRIBUTE ::= {TerminalType IDENTIFIED BY 23}
+
+TerminalType ::= INTEGER {
+   telex （3）,
+   teletex （4）,
+   g3-facsimile （5）,
+   g4-facsimile （6）,
+   ia5-terminal （7）,
+   videotex （8） } （0..ub-integer-options）
+
+--      Extension Domain-defined Attributes
+
+teletex-domain-defined-attributes EXTENSION-ATTRIBUTE ::=
+   {TeletexDomainDefinedAttributes IDENTIFIED BY 6}
+
+TeletexDomainDefinedAttributes ::= SEQUENCE SIZE
+   （1..ub-domain-defined-attributes） OF TeletexDomainDefinedAttribute
+
+TeletexDomainDefinedAttribute ::= SEQUENCE {
+    type TeletexString
+         （SIZE （1..ub-domain-defined-attribute-type-length））,
+    value TeletexString
+         （SIZE （1..ub-domain-defined-attribute-value-length）） }
+
+--  specifications of Upper Bounds
+--  shall be regarded as mandatory
+--  from Annex B of ITU-T X.411
+--  Reference Definition of MTS Parameter Upper Bounds
+
+--      Upper Bounds
+ub-name INTEGER ::=     32768
+ub-common-name  INTEGER ::=     64
+ub-locality-name        INTEGER ::=     128
+ub-state-name   INTEGER ::=     128
+ub-organization-name    INTEGER ::=     64
+ub-organizational-unit-name     INTEGER ::=     64
+ub-title        INTEGER ::=     64
+ub-match        INTEGER ::=     128
+
+ub-emailaddress-length INTEGER ::= 128
+
+ub-common-name-length INTEGER ::= 64
+ub-country-name-alpha-length INTEGER ::= 2
+ub-country-name-numeric-length INTEGER ::= 3
+ub-domain-defined-attributes INTEGER ::= 4
+ub-domain-defined-attribute-type-length INTEGER ::= 8
+ub-domain-defined-attribute-value-length INTEGER ::= 128
+ub-domain-name-length INTEGER ::= 16
+ub-extension-attributes INTEGER ::= 256
+ub-e163-4-number-length INTEGER ::= 15
+ub-e163-4-sub-address-length INTEGER ::= 40
+ub-generation-qualifier-length INTEGER ::= 3
+ub-given-name-length INTEGER ::= 16
+ub-initials-length INTEGER ::= 5
+ub-integer-options INTEGER ::= 256
+ub-numeric-user-id-length INTEGER ::= 32
+ub-organization-name-length INTEGER ::= 64
+ub-organizational-unit-name-length INTEGER ::= 32
+ub-organizational-units INTEGER ::= 4
+ub-pds-name-length INTEGER ::= 16
+ub-pds-parameter-length INTEGER ::= 30
+ub-pds-physical-address-lines INTEGER ::= 6
+ub-postal-code-length INTEGER ::= 16
+ub-surname-length INTEGER ::= 40
+ub-terminal-id-length INTEGER ::= 24
+ub-unformatted-address-length INTEGER ::= 180
+
+ub-x121-address-length INTEGER ::= 16
+
+-- Note - upper bounds on TeletexString are measured in characters.
+-- A significantly greater number of octets will be required to hold
+-- such a value.  As a minimum, 16 octets, or twice the specified upper
+-- bound, whichever is the larger, should be allowed.
+
+END
+
+B.2 隐示目标模块（Implicitly Tagged Module）, 1993 句法
+
+PKIX1Implicit93  {iso（1） identified-organization（3） dod（6） internet（1）
+   security（5） mechanisms（5） pkix（7） id-mod（0） id-pkix1-implicit-93（4）}
+
+DEFINITIONS IMPLICIT TAGS::=
+
+BEGIN
+
+--EXPORTS ALL --
+
+IMPORTS
+        id-pe, id-qt, id-kp, id-ad, id-qt-unotice,
+                ORAddress, Name, RelativeDistinguishedName,
+                CertificateSerialNumber, CertificateList,
+                AlgorithmIdentifier, ub-name, DirectoryString,
+                Attribute, EXTENSION
+                FROM PKIX1Explicit93 {iso（1） identified-organization（3）
+                dod（6） internet（1） security（5） mechanisms（5） pkix（7）
+                id-mod（0） id-pkix1-explicit-93（3）};
+
+-- Key and policy information extensions --
+
+authorityKeyIdentifier EXTENSION ::= {
+        SYNTAX          AuthorityKeyIdentifier
+        IDENTIFIED BY   id-ce-authorityKeyIdentifier }
+
+AuthorityKeyIdentifier ::= SEQUENCE {
+    keyIdentifier               [0] KeyIdentifier            OPTIONAL,
+    authorityCertIssuer         [1] GeneralNames             OPTIONAL,
+    authorityCertSerialNumber   [2] CertificateSerialNumber  OPTIONAL }
+        （ WITH COMPONENTS       {..., authorityCertIssuer PRESENT,
+                                authorityCertSerialNumber PRESENT} |
+         WITH COMPONENTS        {..., authorityCertIssuer ABSENT,
+                                authorityCertSerialNumber ABSENT} ）
+
+KeyIdentifier ::= OCTET STRING
+
+subjectKeyIdentifier EXTENSION ::= {
+        SYNTAX          SubjectKeyIdentifier
+        IDENTIFIED BY   id-ce-subjectKeyIdentifier }
+
+SubjectKeyIdentifier ::= KeyIdentifier
+
+keyUsage EXTENSION ::= {
+        SYNTAX  KeyUsage
+        IDENTIFIED BY id-ce-keyUsage }
+
+KeyUsage ::= BIT STRING {
+        digitalSignature     （0）,
+        nonRepudiation       （1）,
+        keyEncipherment      （2）,
+        dataEncipherment     （3）,
+        keyAgreement         （4）,
+        keyCertSign          （5）,
+        cRLSign              （6）,
+      encipherOnly         （7）,
+      decipherOnly         （8） }
+
+extendedKeyUsage EXTENSION ::= {
+        SYNTAX SEQUENCE SIZE （1..MAX） OF KeyPurposeId
+        IDENTIFIED BY id-ce-extKeyUsage }
+
+KeyPurposeId ::= OBJECT IDENTIFIER
+
+-- PKIX-defined extended key purpose OIDs
+id-kp-serverAuth      OBJECT IDENTIFIER ::= { id-kp 1 }
+id-kp-clientAuth      OBJECT IDENTIFIER ::= { id-kp 2 }
+id-kp-codeSigning     OBJECT IDENTIFIER ::= { id-kp 3 }
+id-kp-emailProtection OBJECT IDENTIFIER ::= { id-kp 4 }
+id-kp-ipsecEndSystem  OBJECT IDENTIFIER ::= { id-kp 5 }
+id-kp-ipsecTunnel     OBJECT IDENTIFIER ::= { id-kp 6 }
+id-kp-ipsecUser       OBJECT IDENTIFIER ::= { id-kp 7 }
+id-kp-timeStamping    OBJECT IDENTIFIER ::= { id-kp 8 }
+
+privateKeyUsagePeriod EXTENSION ::= {
+        SYNTAX  PrivateKeyUsagePeriod
+        IDENTIFIED BY { id-ce-privateKeyUsagePeriod } }
+
+PrivateKeyUsagePeriod ::= SEQUENCE {
+        notBefore       [0]     GeneralizedTime OPTIONAL,
+        notAfter        [1]     GeneralizedTime OPTIONAL }
+        （ WITH COMPONENTS       {..., notBefore PRESENT} |
+        WITH COMPONENTS         {..., notAfter PRESENT} ）
+
+certificatePolicies EXTENSION ::= {
+        SYNTAX  CertificatePoliciesSyntax
+        IDENTIFIED BY id-ce-certificatePolicies }
+
+CertificatePoliciesSyntax ::=
+                SEQUENCE SIZE （1..MAX） OF PolicyInformation
+
+PolicyInformation ::= SEQUENCE {
+        policyIdentifier   CertPolicyId,
+        policyQualifiers   SEQUENCE SIZE （1..MAX） OF
+                PolicyQualifierInfo OPTIONAL }
+
+CertPolicyId ::= OBJECT IDENTIFIER
+
+PolicyQualifierInfo ::= SEQUENCE {
+        policyQualifierId       CERT-POLICY-QUALIFIER.&id
+                                    （{SupportedPolicyQualifiers}）,
+        qualifier               CERT-POLICY-QUALIFIER.&Qualifier
+                                    （{SupportedPolicyQualifiers}
+                                    {@policyQualifierId}）OPTIONAL }
+
+SupportedPolicyQualifiers CERT-POLICY-QUALIFIER ::= { noticeToUser |
+                                                      pointerToCPS }
+
+CERT-POLICY-QUALIFIER ::= CLASS {
+        &id             OBJECT IDENTIFIER UNIQUE,
+        &Qualifier      OPTIONAL }
+WITH SYNTAX {
+        POLICY-QUALIFIER-ID     &id
+        [QUALIFIER-TYPE &Qualifier] }
+
+policyMappings EXTENSION ::= {
+        SYNTAX  PolicyMappingsSyntax
+        IDENTIFIED BY id-ce-policyMappings }
+
+PolicyMappingsSyntax ::= SEQUENCE SIZE （1..MAX） OF SEQUENCE {
+        issuerDomainPolicy           CertPolicyId,
+        subjectDomainPolicy          CertPolicyId }
+
+-- Certificate subject and certificate issuer attributes extensions --
+
+subjectAltName EXTENSION ::= {
+        SYNTAX  GeneralNames
+        IDENTIFIED BY id-ce-subjectAltName }
+
+GeneralNames ::= SEQUENCE SIZE （1..MAX） OF GeneralName
+
+GeneralName ::= CHOICE {
+        otherName                   [0] INSTANCE OF OTHER-NAME,
+        rfc822Name                  [1] IA5String,
+        dNSName                     [2] IA5String,
+        x400Address                 [3] ORAddress,
+        directoryName               [4] Name,
+        ediPartyName                [5] EDIPartyName,
+        uniformResourceIdentifier   [6] IA5String,
+        iPAddress                   [7] OCTET STRING,
+        registeredID                [8] OBJECT IDENTIFIER }
+
+OTHER-NAME ::= TYPE-IDENTIFIER
+
+EDIPartyName ::= SEQUENCE {
+        nameAssigner        [0] DirectoryString {ub-name} OPTIONAL,
+        partyName           [1] DirectoryString {ub-name} }
+
+issuerAltName EXTENSION ::= {
+        SYNTAX  GeneralNames
+        IDENTIFIED BY id-ce-issuerAltName }
+
+subjectDirectoryAttributes EXTENSION ::= {
+        SYNTAX  AttributesSyntax
+        IDENTIFIED BY id-ce-subjectDirectoryAttributes }
+
+AttributesSyntax ::= SEQUENCE SIZE （1..MAX） OF Attribute
+
+-- Certification path constraints extensions --
+
+basicConstraints EXTENSION ::= {
+        SYNTAX  BasicConstraintsSyntax
+        IDENTIFIED BY id-ce-basicConstraints }
+
+BasicConstraintsSyntax ::= SEQUENCE {
+        cA                      BOOLEAN DEFAULT FALSE,
+        pathLenConstraint       INTEGER （0..MAX） OPTIONAL }
+
+nameConstraints EXTENSION ::= {
+        SYNTAX  NameConstraintsSyntax
+        IDENTIFIED BY id-ce-nameConstraints }
+
+NameConstraintsSyntax ::= SEQUENCE {
+        permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+        excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+
+GeneralSubtrees ::= SEQUENCE SIZE （1..MAX） OF GeneralSubtree
+
+GeneralSubtree ::= SEQUENCE {
+        base                    GeneralName,
+        minimum         [0]     BaseDistance DEFAULT 0,
+        maximum         [1]     BaseDistance OPTIONAL }
+
+BaseDistance ::= INTEGER （0..MAX）
+
+policyConstraints EXTENSION ::= {
+        SYNTAX  PolicyConstraintsSyntax
+        IDENTIFIED BY id-ce-policyConstraints }
+
+PolicyConstraintsSyntax ::= SEQUENCE {
+        requireExplicitPolicy   [0] SkipCerts OPTIONAL,
+        inhibitPolicyMapping    [1] SkipCerts OPTIONAL }
+
+SkipCerts ::= INTEGER （0..MAX）
+
+-- Basic CRL extensions --
+
+cRLNumber EXTENSION ::= {
+        SYNTAX  CRLNumber
+        IDENTIFIED BY id-ce-cRLNumber }
+
+CRLNumber ::= INTEGER （0..MAX）
+
+reasonCode EXTENSION ::= {
+        SYNTAX  CRLReason
+        IDENTIFIED BY id-ce-reasonCode }
+
+CRLReason ::= ENUMERATED {
+        unspecified             （0）,
+        keyCompromise           （1）,
+        cACompromise            （2）,
+        affiliationChanged      （3）,
+        superseded              （4）,
+        cessationOfOperation    （5）,
+        certificateHold         （6）,
+        removeFromCRL           （8） }
+
+instructionCode EXTENSION ::= {
+        SYNTAX  HoldInstruction
+        IDENTIFIED BY id-ce-instructionCode }
+
+HoldInstruction ::= OBJECT IDENTIFIER
+
+-- holdinstructions described in this specification, from ANSI x9
+
+-- ANSI x9 arc holdinstruction arc
+holdInstruction OBJECT IDENTIFIER ::= {
+     joint-iso-ccitt（2） member-body（2） us（840） x9cm（10040） 2}
+
+-- ANSI X9 holdinstructions referenced by this standard
+id-holdinstruction-none OBJECT IDENTIFIER ::= {holdInstruction 1}
+id-holdinstruction-callissuer OBJECT IDENTIFIER ::= {holdInstruction 2}
+id-holdinstruction-reject OBJECT IDENTIFIER ::= {holdInstruction 3}
+
+invalidityDate EXTENSION ::= {
+        SYNTAX  GeneralizedTime
+        IDENTIFIED BY id-ce-invalidityDate }
+
+-- CRL distribution points and delta-CRL extensions --
+
+cRLDistributionPoints EXTENSION ::= {
+
+        SYNTAX  CRLDistPointsSyntax
+        IDENTIFIED BY id-ce-cRLDistributionPoints }
+
+CRLDistPointsSyntax ::= SEQUENCE SIZE （1..MAX） OF DistributionPoint
+
+DistributionPoint ::= SEQUENCE {
+        distributionPoint       [0]     DistributionPointName OPTIONAL,
+        reasons         [1]     ReasonFlags OPTIONAL,
+        cRLIssuer               [2]     GeneralNames OPTIONAL }
+
+DistributionPointName ::= CHOICE {
+        fullName                [0]     GeneralNames,
+        nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
+
+ReasonFlags ::= BIT STRING {
+        unused                  （0）,
+        keyCompromise           （1）,
+        caCompromise            （2）,
+        affiliationChanged      （3）,
+        superseded              （4）,
+        cessationOfOperation    （5）,
+        certificateHold         （6） }
+
+issuingDistributionPoint EXTENSION ::= {
+        SYNTAX  IssuingDistPointSyntax
+        IDENTIFIED BY id-ce-issuingDistributionPoint }
+
+IssuingDistPointSyntax ::= SEQUENCE {
+        distributionPoint       [0] DistributionPointName OPTIONAL,
+        onlyContainsUserCerts   [1] BOOLEAN DEFAULT FALSE,
+        onlyContainsCACerts     [2] BOOLEAN DEFAULT FALSE,
+        onlySomeReasons         [3] ReasonFlags OPTIONAL,
+        indirectCRL             [4] BOOLEAN DEFAULT FALSE }
+
+certificateIssuer EXTENSION ::= {
+        SYNTAX          GeneralNames
+        IDENTIFIED BY id-ce-certificateIssuer }
+
+deltaCRLIndicator EXTENSION ::= {
+        SYNTAX          BaseCRLNumber
+        IDENTIFIED BY id-ce-deltaCRLIndicator }
+
+BaseCRLNumber ::= CRLNumber
+
+-- Object identifier assignments for ISO certificate extensions --
+id-ce   OBJECT IDENTIFIER       ::=     {joint-iso-ccitt（2） ds（5） 29}
+
+id-ce-subjectDirectoryAttributes   OBJECT IDENTIFIER ::= {id-ce 9}
+
+id-ce-subjectKeyIdentifier         OBJECT IDENTIFIER ::= {id-ce 14}
+id-ce-keyUsage                     OBJECT IDENTIFIER ::= {id-ce 15}
+id-ce-privateKeyUsagePeriod        OBJECT IDENTIFIER ::= {id-ce 16}
+id-ce-subjectAltName               OBJECT IDENTIFIER ::= {id-ce 17}
+id-ce-issuerAltName                OBJECT IDENTIFIER ::= {id-ce 18}
+id-ce-basicConstraints             OBJECT IDENTIFIER ::= {id-ce 19}
+id-ce-cRLNumber                    OBJECT IDENTIFIER ::= {id-ce 20}
+id-ce-reasonCode                   OBJECT IDENTIFIER ::= {id-ce 21}
+id-ce-instructionCode              OBJECT IDENTIFIER ::= {id-ce 23}
+id-ce-invalidityDate               OBJECT IDENTIFIER ::= {id-ce 24}
+id-ce-deltaCRLIndicator            OBJECT IDENTIFIER ::= {id-ce 27}
+id-ce-issuingDistributionPoint     OBJECT IDENTIFIER ::= {id-ce 28}
+id-ce-certificateIssuer            OBJECT IDENTIFIER ::= {id-ce 29}
+id-ce-nameConstraints              OBJECT IDENTIFIER ::= {id-ce 30}
+id-ce-cRLDistributionPoints        OBJECT IDENTIFIER ::= {id-ce 31}
+id-ce-certificatePolicies          OBJECT IDENTIFIER ::= {id-ce 32}
+id-ce-policyMappings               OBJECT IDENTIFIER ::= {id-ce 33}
+id-ce-policyConstraints            OBJECT IDENTIFIER ::= {id-ce 36}
+id-ce-authorityKeyIdentifier       OBJECT IDENTIFIER ::= {id-ce 35}
+id-ce-extKeyUsage                  OBJECT IDENTIFIER ::= {id-ce 37}
+
+-- PKIX 1 extensions
+
+authorityInfoAccess EXTENSION ::= {
+        SYNTAX  AuthorityInfoAccessSyntax
+        IDENTIFIED BY id-pe-authorityInfoAccess }
+
+AuthorityInfoAccessSyntax  ::=
+        SEQUENCE SIZE （1..MAX） OF AccessDescription
+
+AccessDescription  ::=  SEQUENCE {
+        accessMethod          OBJECT IDENTIFIER,
+        accessLocation        GeneralName  }
+
+id-pe-authorityInfoAccess OBJECT IDENTIFIER ::= { id-pe 1 }
+
+id-ad-ocsp      OBJECT IDENTIFIER ::= { id-ad 1 }
+id-ad-caIssuers OBJECT IDENTIFIER ::= { id-ad 2 }
+
+-- PKIX policy qualifier definitions
+
+noticeToUser CERT-POLICY-QUALIFIER ::= {
+     POLICY-QUALIFIER-ID    id-qt-cps QUALIFIER-TYPE       CPSuri}
+
+pointerToCPS CERT-POLICY-QUALIFIER ::= {
+     POLICY-QUALIFIER-ID    id-qt-unotice QUALIFIER-TYPE   UserNotice}
+
+id-qt-cps      OBJECT IDENTIFIER ::=  { id-qt 1 }
+
+id-qt-unotice  OBJECT IDENTIFIER ::=  { id-qt 2 }
+
+CPSuri ::= IA5String
+
+UserNotice ::= SEQUENCE {
+     noticeRef        NoticeReference OPTIONAL,
+     explicitText     DisplayText OPTIONAL}
+
+NoticeReference ::= SEQUENCE {
+     organization     DisplayText,
+     noticeNumbers    SEQUENCE OF INTEGER }
+
+DisplayText ::= CHOICE {
+     visibleString    VisibleString  （SIZE （1..200））,
+     bmpString        BMPString      （SIZE （1..200））,
+     utf8String       UTF8String     （SIZE （1..200）） }
+
+END
+
+附录 C. ASN.1 注解
+
+   结构"SEQUENCE SIZE （1..MAX） OF"出现在几个ASN.1结构中。一个有效的序列（结构）
+将包括零个或者多个实体。结构SIZE （1..MAX）包括最少一个实体序列。MAX 指示上届没
+有特指。实现（Implementations）自由选择适合他们（应用）环境的上届。
+
+   结构"positiveInt ::= INTEGER （0..MAX）"定义positiveInt作为INTEGER的子集包
+含大于或者等于0的整数。上届没有特指。实现（Implementations）自由选择适合他们（应
+用）环境的上届。
+
+   字符串类型PrintableString支持一个非常基本的拉丁（Latin）字符集：小写字母 'a' 
+到'z'、大写字母'A'到'Z'、数字'0'到'9'、十一个特殊字符 ' " （ ） + , - . / : ? 以
+及空格（space）。
+
+   字符串类型TeletexString是PrintableString的超集。TeletexString 支持一个完整
+标准 （ascii-like） 拉丁（Latin）字符集、 non-spacing accents 拉丁（Latin）字符
+集以及日文字符（Japanese characters）。
+
+   字符串类型UniversalString支持任何ISO 10646-1允许的字符。ISO 10646是普遍多
+字节编码字符集（the Universal multiple-octet coded Character Set （UCS））。ISO 10646-1
+指定了结构格式和基本多语种平台（ "basic multilingual plane"） - 一个大标准字符集
+包括所有主要的世界字符标准。
+
+   字符串类型UTF8String在1998版的ASN.1引入。UTF8String是普遍类型和已经被分配
+12数字标签（tag number 12）。UTF8String的内容被RFC2044定义和RFC 2279 "UTF-8, a 
+transformation Format of ISP 10646."更新。同时ISO是预期标准加入UTF8String到1998
+年DirectoryString选择列表。
+
+   准备这些改变，以及与IETF Best Practices 在RFC 2277编码保持一致，在字符集和
+语言的IETF Policy，这篇文档包括UTF8String作为在DirectoryString和CPS限定语扩
+展的一个选择。
+
+附录 D. 示例
+
+   这部分包括四个例子：三个证书和一个CRL（例子）。
+   前两个证书和CRL包含最小的证书路径。
+
+   部分D.1包含一个由唯一名字是cn=us,o=gov,ou=nist的CA签发的“自签”证书十六进
+制（堆）解释。 证书包含DSA公开密钥和（相关）参数，以及相对DSA私有的签名。
+
+   部分D.2包含一个终端证书的十六进制（堆）说明。终端证书包含一个DSA公钥，以及
+部分D.1中“自签”证书中相对应私钥的签名。
+
+   部分D.3包含一个终端证书十六进制（堆）解释，其包含一RSA公开密钥以及RSA and MD5
+算法的签名。这个证书不是最小证书路径中的一部分。
+
+   部分D.4包含一个CRL十六进制（堆）解释。这个CRL是由唯一名字是
+cn=us,o=gov,ou=nist 的CA签发的。证书撤销列表包括部分D.2中描述的终端证书。 
+
+D.1 证书
+
+   这部分包括一版本3证书共699字节十六进制（堆）解释。证书包含下列信息：
+   （a） the serial number is 17 （11 hex）;
+   （b） the certificate is signed with DSA and the SHA-1 hash algorithm;
+   （c） the issuer's distinguished name is OU=nist; O=gov; C=US
+   （d） and the subject's distinguished name is OU=nist; O=gov; C=US
+   （e） the certificate was issued on June 30, 1997 and will expire on
+   December 31, 1997;
+   （f） the certificate contains a 1024 bit DSA public key with
+   parameters;
+   （g） the certificate contains a subject key identifier extension; and
+   （h） the certificate is a CA certificate （as indicated through the
+   basic constraints extension.）
+
+0000 30 82 02 b7  695: SEQUENCE
+0004 30 82 02 77  631: . SEQUENCE    tbscertificate
+0008 a0 03          3: . . [0]
+0010 02 01          1: . . . INTEGER 2
+                     : 02
+0013 02 01          1: . . INTEGER 17
+                     : 11
+
+0016 30 09          9: . . SEQUENCE
+0018 06 07          7: . . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0027 30 2a         42: . . SEQUENCE
+0029 31 0b         11: . . . SET
+0031 30 09          9: . . . . SEQUENCE
+0033 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0038 13 02          2: . . . . . PrintableString  'US'
+                     : 55 53
+0042 31 0c         12: . . . SET
+0044 30 0a         10: . . . . SEQUENCE
+0046 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0051 13 03          3: . . . . . PrintableString  'gov'
+                     : 67 6f 76
+0056 31 0d         13: . . . SET
+0058 30 0b         11: . . . . SEQUENCE
+0060 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0065 13 04          4: . . . . . PrintableString  'nist'
+                     : 6e 69 73 74
+0071 30 1e         30: . . SEQUENCE
+0073 17 0d         13: . . . UTCTime  '970630000000Z'
+                     : 39 37 30 36 33 30 30 30 30 30 30 30 5a
+0088 17 0d         13: . . . UTCTime  '971231000000Z'
+                     : 39 37 31 32 33 31 30 30 30 30 30 30 5a
+0103 30 2a         42: . . SEQUENCE
+0105 31 0b         11: . . . SET
+0107 30 09          9: . . . . SEQUENCE
+0109 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0114 13 02          2: . . . . . PrintableString  'US'
+                     : 55 53
+0118 31 0c         12: . . . SET
+0120 30 0a         10: . . . . SEQUENCE
+0122 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0127 13 03          3: . . . . . PrintableString  'gov'
+                     : 67 6f 76
+0132 31 0d         13: . . . SET
+0134 30 0b         11: . . . . SEQUENCE
+0136 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0141 13 04          4: . . . . . PrintableString  'nist'
+                     : 6e 69 73 74
+0147 30 82 01 b4  436: . . SEQUENCE
+0151 30 82 01 29  297: . . . SEQUENCE
+
+0155 06 07          7: . . . . OID 1.2.840.10040.4.1: dsa
+                     : 2a 86 48 ce 38 04 01
+0164 30 82 01 1c  284: . . . . SEQUENCE
+0168 02 81 80     128: . . . . . INTEGER
+                     : d4 38 02 c5 35 7b d5 0b a1 7e 5d 72 59 63 55 d3
+                     : 45 56 ea e2 25 1a 6b c5 a4 ab aa 0b d4 62 b4 d2
+                     : 21 b1 95 a2 c6 01 c9 c3 fa 01 6f 79 86 83 3d 03
+                     : 61 e1 f1 92 ac bc 03 4e 89 a3 c9 53 4a f7 e2 a6
+                     : 48 cf 42 1e 21 b1 5c 2b 3a 7f ba be 6b 5a f7 0a
+                     : 26 d8 8e 1b eb ec bf 1e 5a 3f 45 c0 bd 31 23 be
+                     : 69 71 a7 c2 90 fe a5 d6 80 b5 24 dc 44 9c eb 4d
+                     : f9 da f0 c8 e8 a2 4c 99 07 5c 8e 35 2b 7d 57 8d
+0299 02 14         20: . . . . . INTEGER
+                     : a7 83 9b f3 bd 2c 20 07 fc 4c e7 e8 9f f3 39 83
+                     : 51 0d dc dd
+0321 02 81 80     128: . . . . . INTEGER
+                     : 0e 3b 46 31 8a 0a 58 86 40 84 e3 a1 22 0d 88 ca
+                     : 90 88 57 64 9f 01 21 e0 15 05 94 24 82 e2 10 90
+                     : d9 e1 4e 10 5c e7 54 6b d4 0c 2b 1b 59 0a a0 b5
+                     : a1 7d b5 07 e3 65 7c ea 90 d8 8e 30 42 e4 85 bb
+                     : ac fa 4e 76 4b 78 0e df 6c e5 a6 e1 bd 59 77 7d
+                     : a6 97 59 c5 29 a7 b3 3f 95 3e 9d f1 59 2d f7 42
+                     : 87 62 3f f1 b8 6f c7 3d 4b b8 8d 74 c4 ca 44 90
+                     : cf 67 db de 14 60 97 4a d1 f7 6d 9e 09 94 c4 0d
+0452 03 81 84     132: . . . BIT STRING  （0 unused bits）
+                     : 02 81 80 aa 98 ea 13 94 a2 db f1 5b 7f 98 2f 78
+                     : e7 d8 e3 b9 71 86 f6 80 2f 40 39 c3 da 3b 4b 13
+                     : 46 26 ee 0d 56 c5 a3 3a 39 b7 7d 33 c2 6b 5c 77
+                     : 92 f2 55 65 90 39 cd 1a 3c 86 e1 32 eb 25 bc 91
+                     : c4 ff 80 4f 36 61 bd cc e2 61 04 e0 7e 60 13 ca
+                     : c0 9c dd e0 ea 41 de 33 c1 f1 44 a9 bc 71 de cf
+                     : 59 d4 6e da 44 99 3c 21 64 e4 78 54 9d d0 7b ba
+                     : 4e f5 18 4d 5e 39 30 bf e0 d1 f6 f4 83 25 4f 14
+                     : aa 71 e1
+0587 a3 32         50: . . [3]
+0589 30 30         48: . . . SEQUENCE
+0591 30 0f          9: . . . . SEQUENCE
+0593 06 03          3: . . . . . OID 2.5.29.19: basicConstraints
+                     : 55 1d 13
+0598 01 01          1: . . . . . TRUE
+                     : ff
+0601 04 05          5: . . . . . OCTET STRING
+                     : 30 03 01 01 ff
+0608 30 1d         29: . SEQUENCE
+0610 06 03          3: . . . . . OID 2.5.29.14: subjectKeyIdentifier
+                     : 55 1d 0e
+0615 04 16         22: . . . . . OCTET STRING
+                     : 04 14 e7 26 c5 54 cd 5b a3 6f 35 68 95 aa d5 ff
+
+                     : 1c 21 e4 22 75 d6
+0639 30 09          9: . SEQUENCE
+0641 06 07          7: . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0650 03 2f         47: . BIT STRING  （0 unused bits）
+                     : 30 2c 02 14 a0 66 c1 76 33 99 13 51 8d 93 64 2f
+                     : ca 13 73 de 79 1a 7d 33 02 14 5d 90 f6 ce 92 4a
+                     : bf 29 11 24 80 28 a6 5a 8e 73 b6 76 02 68
+
+D.2 证书
+
+   这部分包括一版本3证书共730字节十六进制（堆）解释。证书包含下列信息：
+   （a） the serial number is 18 （12 hex）;
+   （b） the certificate is signed with DSA and the SHA-1 hash algorithm;
+   （c） the issuer's distinguished name is OU=nist; O=gov; C=US
+   （d） and the subject's distinguished name is CN=Tim Polk; OU=nist;
+   O=gov; C=US
+   （e） the certificate was valid from July 30, 1997 through December 1,
+   1997;
+   （f） the certificate contains a 1024 bit DSA public key;
+   （g） the certificate is an end entity certificate, as the basic
+   constraints extension is not present;
+   （h） the certificate contains an authority key identifier extension;
+   and
+   （i） the certificate includes one alternative name - an RFC 822
+   address.
+
+0000 30 82 02 d6  726: SEQUENCE
+0004 30 82 02 96  662: . SEQUENCE
+0008 a0 03          3: . . [0]
+0010 02 01          1: . . . INTEGER 2
+                     : 02
+0013 02 01          1: . . INTEGER 18
+                     : 12
+0016 30 09          9: . . SEQUENCE
+0018 06 07          7: . . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0027 30 2a         42: . . SEQUENCE
+0029 31 0b         11: . . . SET
+0031 30 09          9: . . . . SEQUENCE
+0033 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0038 13 02          2: . . . . . PrintableString  'US'
+                     : 55 53
+0042 31 0c         12: . . . SET
+0044 30 0a         10: . . . . SEQUENCE
+0046 06 03          3: . . . . . OID 2.5.4.10: O
+
+                     : 55 04 0a
+0051 13 03          3: . . . . . PrintableString  'gov'
+                     : 67 6f 76
+0056 31 0d         13: . . . SET
+0058 30 0b         11: . . . . SEQUENCE
+0060 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0065 13 04          4: . . . . . PrintableString  'nist'
+                     : 6e 69 73 74
+0071 30 1e         30: . . SEQUENCE
+0073 17 0d         13: . . . UTCTime  '970730000000Z'
+                     : 39 37 30 37 33 30 30 30 30 30 30 30 5a
+0088 17 0d         13: . . . UTCTime  '971201000000Z'
+                     : 39 37 31 32 30 31 30 30 30 30 30 30 5a
+0103 30 3d         61: . . SEQUENCE
+0105 31 0b         11: . . . SET
+0107 30 09          9: . . . . SEQUENCE
+0109 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0114 13 02          2: . . . . . PrintableString  'US'
+                     : 55 53
+0118 31 0c         12: . . . SET
+0120 30 0a         10: . . . . SEQUENCE
+0122 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0127 13 03          3: . . . . . PrintableString  'gov'
+                     : 67 6f 76
+0132 31 0d         13: . . . SET
+0134 30 0b         11: . . . . SEQUENCE
+0136 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0141 13 04          4: . . . . . PrintableString  'nist'
+                     : 6e 69 73 74
+0147 31 11         17: . . . SET
+0149 30 0f         15: . . . . SEQUENCE
+0151 06 03          3: . . . . . OID 2.5.4.3: CN
+                     : 55 04 03
+0156 13 08          8: . . . . . PrintableString  'Tim Polk'
+                     : 54 69 6d 20 50 6f 6c 6b
+0166 30 82 01 b4  436: . . SEQUENCE
+0170 30 82 01 29  297: . . . SEQUENCE
+0174 06 07          7: . . . . OID 1.2.840.10040.4.1: dsa
+                     : 2a 86 48 ce 38 04 01
+0183 30 82 01 1c  284: . . . . SEQUENCE
+0187 02 81 80     128: . . . . . INTEGER
+                     : d4 38 02 c5 35 7b d5 0b a1 7e 5d 72 59 63 55 d3
+                     : 45 56 ea e2 25 1a 6b c5 a4 ab aa 0b d4 62 b4 d2
+                     : 21 b1 95 a2 c6 01 c9 c3 fa 01 6f 79 86 83 3d 03
+
+                     : 61 e1 f1 92 ac bc 03 4e 89 a3 c9 53 4a f7 e2 a6
+                     : 48 cf 42 1e 21 b1 5c 2b 3a 7f ba be 6b 5a f7 0a
+                     : 26 d8 8e 1b eb ec bf 1e 5a 3f 45 c0 bd 31 23 be
+                     : 69 71 a7 c2 90 fe a5 d6 80 b5 24 dc 44 9c eb 4d
+                     : f9 da f0 c8 e8 a2 4c 99 07 5c 8e 35 2b 7d 57 8d
+0318 02 14         20: . . . . . INTEGER
+                     : a7 83 9b f3 bd 2c 20 07 fc 4c e7 e8 9f f3 39 83
+                     : 51 0d dc dd
+0340 02 81 80     128: . . . . . INTEGER
+                     : 0e 3b 46 31 8a 0a 58 86 40 84 e3 a1 22 0d 88 ca
+                     : 90 88 57 64 9f 01 21 e0 15 05 94 24 82 e2 10 90
+                     : d9 e1 4e 10 5c e7 54 6b d4 0c 2b 1b 59 0a a0 b5
+                     : a1 7d b5 07 e3 65 7c ea 90 d8 8e 30 42 e4 85 bb
+                     : ac fa 4e 76 4b 78 0e df 6c e5 a6 e1 bd 59 77 7d
+                     : a6 97 59 c5 29 a7 b3 3f 95 3e 9d f1 59 2d f7 42
+                     : 87 62 3f f1 b8 6f c7 3d 4b b8 8d 74 c4 ca 44 90
+                     : cf 67 db de 14 60 97 4a d1 f7 6d 9e 09 94 c4 0d
+0471 03 81 84     132: . . . BIT STRING  （0 unused bits）
+                     : 02 81 80 a8 63 b1 60 70 94 7e 0b 86 08 93 0c 0d
+                     : 08 12 4a 58 a9 af 9a 09 38 54 3b 46 82 fb 85 0d
+                     : 18 8b 2a 77 f7 58 e8 f0 1d d2 18 df fe e7 e9 35
+                     : c8 a6 1a db 8d 3d 3d f8 73 14 a9 0b 39 c7 95 f6
+                     : 52 7d 2d 13 8c ae 03 29 3c 4e 8c b0 26 18 b6 d8
+                     : 11 1f d4 12 0c 13 ce 3f f1 c7 05 4e df e1 fc 44
+                     : fd 25 34 19 4a 81 0d dd 98 42 ac d3 b6 91 0c 7f
+                     : 16 72 a3 a0 8a d7 01 7f fb 9c 93 e8 99 92 c8 42
+                     : 47 c6 43
+0606 a3 3e         62: . . [3]
+0608 30 3c         60: . . . SEQUENCE
+0610 30 19         25: . . . . SEQUENCE
+0612 06 03          3: . . . . . OID 2.5.29.17: subjectAltName
+                     : 55 1d 11
+0617 04 12         18: . . . . . OCTET STRING
+                     : 30 10 81 0e 77 70 6f 6c 6b 40 6e 69 73 74 2e 67
+                     : 6f 76
+0637 30 1f         31: . . . . SEQUENCE
+0639 06 03          3: . . . . . OID 2.5.29.35: subjectAltName
+                     : 55 1d 23
+0644 04 18         24: . . . . . OCTET STRING
+                     : 30 16 80 14 e7 26 c5 54 cd 5b a3 6f 35 68 95 aa
+                     : d5 ff 1c 21 e4 22 75 d6
+0670 30 09          9: . SEQUENCE
+0672 06 07          7: . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0681 03 2f         47: . BIT STRING  （0 unused bits）
+                     : 30 2c 02 14 3c 02 e0 ab d9 5d 05 77 75 15 71 58
+                     : 92 29 48 c4 1c 54 df fc 02 14 5b da 53 98 7f c5
+                     : 33 df c6 09 b2 7a e3 6f 97 70 1e 14 ed 94
+
+D.3 RSA算法终端证书
+
+   这部分包括一版本3证书共675字节十六进制（堆）解释。证书包含下列信息：
+   （a） the serial number is 256;
+   （b） the certificate is signed with RSA and the MD2 hash algorithm;
+   （c） the issuer's distinguished name is OU=Dept. Arquitectura de
+   Computadors; O=Universitat Politecnica de Catalunya; C=ES
+   （d） and the subject's distinguished name is CN=Francisco Jordan;
+   OU=Dept. Arquitectura de Computadors; O=Universitat Politecnica de
+   Catalunya; C=ES
+   （e） the certificate was issued on May 21, 1996 and expired on May 21,
+   1997;
+   （f） the certificate contains a 768 bit RSA public key;
+   （g） the certificate is an end entity certificate （not a CA
+   certificate）;
+   （h） the certificate includes an alternative subject name and an
+   alternative issuer name - bothe are URLs;
+   （i） the certificate include an authority key identifier and
+   certificate policies extensions; and
+   （j） the certificate includes a critical key usage extension
+   specifying the public is intended for generation of digital
+   signatures.
+
+0000 30 80           : SEQUENCE   （size undefined）
+0002 30 82 02 40  576: . SEQUENCE
+0006 a0 03          3: . . [0]
+0008 02 01          1: . . . INTEGER 2
+                     : 02
+0011 02 02          2: . . INTEGER 256
+                     : 01 00
+0015 30 0d         13: . . SEQUENCE
+0017 06 09          9: . . . OID 1.2.840.113549.1.1.2:
+                                       MD2WithRSAEncryption
+                     : 2a 86 48 86 f7 0d 01 01 02
+0028 05 00          0: . . . NULL
+0030 30 68         88: . . SEQUENCE
+0032 31 0b         11: . . . SET
+0034 30 09          9: . . . . SEQUENCE
+0036 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0041 13 02          2: . . . . . PrintableString  'ES'
+                     : 45 53
+0045 31 2d         45: . . . SET
+0047 30 2b         43: . . . . SEQUENCE
+0049 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0054 13 24         36: . . . . . PrintableString
+
+                     'Universitat Politecnica de Catalunya'
+                     : 55 6e 69 76 65 72 73 69 74 61 74 20 50 6f 6c 69
+                     : 74 65 63 6e 69 63 61 20 64 65 20 43 61 74 61 6c
+                     : 75 6e 79 61
+0092 31 2a         42: . . . SET
+0094 30 28         40: . . . . SEQUENCE
+0096 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0101 13 21         33: . . . . . PrintableString
+                     'OU=Dept. Arquitectura de Computadors'
+                     : 44 65 70 74 2e 20 41 72 71 75 69 74 65 63 74 75
+                     : 72 61 20 64 65 20 43 6f 6d 70 75 74 61 64 6f 72
+                     : 73
+0136 30 1e         30: . . SEQUENCE
+0138 17 0d         13: . . . UTCTime  '960521095826Z'
+                     : 39 36 30 37 32 32 31 37 33 38 30 32 5a
+0153 17 0d         13: . . . UTCTime  '979521095826Z'
+                     : 39 37 30 37 32 32 31 37 33 38 30 32 5a
+0168 30 81 83     112: . . SEQUENCE
+0171 31 0b         11: . . . SET
+0173 30 09          9: . . . . SEQUENCE
+0175 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0180 13 02          2: . . . . . PrintableString  'ES'
+                     : 45 53
+0184 31 2d         12: . . . SET
+0186 30 2b         16: . . . . SEQUENCE
+0188 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0193 13 24         36: . . . . . PrintableString
+                     'Universitat Politecnica de Catalunya'
+                     : 55 6e 69 76 65 72 73 69 74 61 74 20 50 6f 6c 69
+                     : 74 65 63 6e 69 63 61 20 64 65 20 43 61 74 61 6c
+                     : 75 6e 79 61
+0231 31 2a         42: . . . SET
+0233 30 28         40: . . . . SEQUENCE
+0235 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+0240 13 21         33: . . . . . PrintableString
+                     'Dept. Arquitectura de Computadors'
+                     : 44 65 70 74 2e 20 41 72 71 75 69 74 65 63 74 75
+                     : 72 61 20 64 65 20 43 6f 6d 70 75 74 61 64 6f 72
+                     : 73
+0275 31 19         22: . . . SET
+0277 30 17         20: . . . . SEQUENCE
+0279 06 03          3: . . . . . OID 2.5.4.3: CN
+                     : 55 04 03
+0284 13 10         16: . . . . . PrintableString 'Francisco Jordan'
+
+                     : 46 72 61 6e 63 69 73 63 6f 20 4a 6f 72 64 61 6e
+0302 30 7c          2: . . SEQUENCE
+0304 30 0d         13: . . . SEQUENCE
+0306 06 09          9: . . . . OID 1.2.840.113549.1.1.1: RSAEncryption
+                     : 2a 86 48 86 f7 0d 01 01 01
+0317 05 00          0: . . . . NULL
+0319 03 6b        107: . . . BIT STRING
+                     : 00   （0 unused bits）
+                     : 30 68 02 61 00 be aa 8b 77 54 a3 af ca 77 9f 2f
+                     : b0 cf 43 88 ff a6 6d 79 55 5b 61 8c 68 ec 48 1e
+                     : 8a 86 38 a4 fe 19 b8 62 17 1d 9d 0f 47 2c ff 63
+                     : 8f 29 91 04 d1 52 bc 7f 67 b6 b2 8f 74 55 c1 33
+                     : 21 6c 8f ab 01 95 24 c8 b2 73 93 9d 22 61 50 a9
+                     : 35 fb 9d 57 50 32 ef 56 52 50 93 ab b1 88 94 78
+                     : 56 15 c6 1c 8b 02 03 01 00 01
+0428 a3 81 97     151: . . [3]
+0431 30 3c         60: . . . SEQUENCE
+0433 30 1f         31: . . . . SEQUENCE
+0435 06 03          3: . . . . . OID 2.5.29.35: authorityKeyIdentifier
+                     : 55 1d 23
+0440 04 14         22: . . . . . OCTET STRING
+                     : 30 12 80 10 0e 6b 3a bf 04 ea 04 c3 0e 6b 3a bf
+                     : 04 ea 04 c3
+0464 30 19         25: . . . . SEQUENCE
+0466 06 03          3: . . . . . OID 2.5.29.15: keyUsage
+                     : 55 1d 0f
+0471 01 01          1: . . . . . TRUE
+0474 04 04          4: . . . . . OCTET STRING
+                     : 03 02 07 80
+0480 30 19         25: . . . . SEQUENCE
+0482 06 03          3: . . . . . OID 2.5.29.32: certificatePolicies
+                     : 55 1d 20
+0487 04 21         33: . . . . . OCTET STRING
+                     : 30 1f 30 1d 06 04 2a 84 80 00 30 15 30 07 06 05
+                     : 2a 84 80 00 01 30 0a 06 05 2a 84 80 00 02 02 01
+                     : 0a
+0522 30 1c         28: . . . . SEQUENCE
+0524 06 03          3: . . . . . OID 2.5.29.17: subjectAltName
+                     : 55 1d 11
+0529 04 15         21: . . . . . OCTET STRING
+                     : 30 13 86 11 68 74 74 70 3a 2f 2f 61 63 2e 75 70
+                     : 63 2e 65 73 2f
+0552 30 19         25: . . . . SEQUENCE
+0554 06 03          3: . . . . . OID 2.5.29.18: issuerAltName
+                     : 55 1d 12
+0559 04 12         18: . . . . . OCTET STRING
+                     : 30 14 86 12 68 74 74 70 3a 2f 2f 77 77 77 2e 75
+                     : 70 63 2e 65
+
+0579 30 80           : . SEQUENCE （indefinite length）
+0581 06 07          7: . . OID
+0583 05 00          0: . . NULL
+0585 00 00          0: . . end of contents marker
+0587 03 81 81      47: . BIT STRING
+                     : 00      （0 unused bits）
+                     : 5c 01 bd b5 41 88 87 7a 0e d3 0e 6b 3a bf 04 ea
+                     : 04 cb 5f 61 72 3c a3 bd 78 f5 66 17 fe 37 3a ab
+                     : eb 67 bf b7 da a8 38 f6 33 15 71 75 2f b9 8c 91
+                     : a0 e4 87 ba 4b 43 a0 22 8f d3 a9 86 43 89 e6 50
+                     : 5c 01 bd b5 41 88 87 7a 0e d3 0e 6b 3a bf 04 ea
+                     : 04 cb 5f 61 72 3c a3 bd 78 f5 66 17 fe 37 3a ab
+                     : eb 67 bf b7 da a8 38 f6 33 15 71 75 2f b9 8c 91
+                     : a0 e4 87 ba 4b 43 a0 22 8f d3 a9 86 43 89 e6 50
+0637 00 00          0: . . end of contents marker
+
+D.4 证书撤销列表
+
+   这部分包括一个版本2 CRL一扩展的十六进制（堆）解释。CRL被OU=nist;O=gov;C=us
+在July 7, 1996签发；下次计划发布时间是August 7, 1996.  CRL 包含一个撤销证书：
+序列号 18 （12 hex）.CRL本身号码是18, 使用DSA and SHA-1算法签名。
+
+0000 30 81 ba     186: SEQUENCE
+0003 30 7c        124: . SEQUENCE
+0005 02 01          1: . . INTEGER 1
+                     : 01
+0008 30 09          9: . . SEQUENCE
+0010 06 07          7: . . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0019 30 2a         42: . . SEQUENCE
+0021 31 0b         11: . . . SET
+0023 30 09          9: . . . . SEQUENCE
+0025 06 03          3: . . . . . OID 2.5.4.6: C
+                     : 55 04 06
+0030 13 02          2: . . . . . PrintableString  'US'
+                     : 55 53
+0034 31 0c         12: . . . SET
+0036 30 0a         10: . . . . SEQUENCE
+0038 06 03          3: . . . . . OID 2.5.4.10: O
+                     : 55 04 0a
+0043 13 03          3: . . . . . PrintableString  'gov'
+                     : 67 6f 76
+0048 31 0d         13: . . . SET
+0050 30 0b         11: . . . . SEQUENCE
+0052 06 03          3: . . . . . OID 2.5.4.11: OU
+                     : 55 04 0b
+
+0057 13 04          4: . . . . . PrintableString  'nist'
+                     : 6e 69 73 74
+0063 17 0d         13: . . UTCTime  '970801000000Z'
+                     : 39 37 30 38 30 31 30 30 30 30 30 30 5a
+0078 17 0d         13: . . UTCTime  '970808000000Z'
+                     : 39 37 30 38 30 38 30 30 30 30 30 30 5a
+0093 30 22         34: . . SEQUENCE
+0095 30 20         32: . . . SEQUENCE
+0097 02 01          1: . . . . INTEGER 18
+                     : 12
+0100 17 0d         13: . . . . UTCTime  '970731000000Z'
+                     : 39 37 30 37 33 31 30 30 30 30 30 30 5a
+0115 30 0c         12: . . . . SEQUENCE
+0117 30 0a         10: . . . . . SEQUENCE
+0119 06 03          3: . . . . . . OID 2.5.29.21: reasonCode
+                     : 55 1d 15
+0124 04 03          3: . . . . . . OCTET STRING
+                     : 0a 01 01
+0129 30 09          9: . SEQUENCE
+0131 06 07          7: . . OID 1.2.840.10040.4.3: dsa-with-sha
+                     : 2a 86 48 ce 38 04 03
+0140 03 2f         47: . BIT STRING  （0 unused bits）
+                     : 30 2c 02 14 9e d8 6b c1 7d c2 c4 02 f5 17 84 f9
+                     : 9f 46 7a ca cf b7 05 8a 02 14 9e 43 39 85 dc ea
+                     : 14 13 72 93 54 5d 44 44 e5 05 fe 73 9a b2
+
+附录 E. Authors' Addresses
+
+   Russell Housley
+   SPYRUS
+   381 Elden Street
+   Suite 1120
+   Herndon, VA 20170
+   USA
+
+   EMail: housley@spyrus.com
+
+   Warwick Ford
+   VeriSign, Inc.
+   One Alewife Center
+   Cambridge, MA 02140
+   USA
+
+   EMail: wford@verisign.com
+
+   Tim Polk
+   NIST
+   Building 820, Room 426
+   Gaithersburg, MD 20899
+   USA
+
+   EMail: wpolk@nist.gov
+
+   David Solo
+   Citicorp
+   666 Fifth Ave, 3rd Floor
+   New York, NY 10103
+   USA
+
+   EMail: david.solo@citicorp.com
+
+
+附录F.完整版权声明
+
+   版权（C）Internet协会（1999）。版权所有。
+
+   这个文档和它的翻译可以拷贝和分配给其他人，以及有关评论或者别样的解释或者其应
+用的帮助等派生工作可以被准备、拷贝、发表和发布，其整体或者部分没有受到任何限制，
+提供上述版权通知以及本段落应被包含在所有这样的拷贝和派生工作。然而，这个文档本身
+不可以以任何方式修改，例如移走版权通知或者Internet协会或其他Internet组织的参考，
+除非为了发展Internet标准（其版权程序定义在Internet Standards进程如下），或者需要翻译
+成除英语以外的其他语言。
+
+   上述限制允许授权是持久的并且将不被Internet协会或者它的继承人隐藏或者转让。
+
+   This document and the information contained herein is provided on an "AS IS" basis 
+and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING TASK FORCE DISCLAIMS ALL WARRANTIES, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE 
+INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF 
+MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+
+附录 F.  Full Copyright Statement
+
+   Copyright （C） The Internet Society （1999）.  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to others, and 
+derivative works that comment on or otherwise explain it or assist in its implementation 
+may be prepared, copied, published and distributed, in whole or in part, without 
+restriction of any kind, provided that the above copyright notice and this paragraph 
+are included on all such copies and derivative works.  However, this document itself 
+may not be modified in any way, such as by removing the copyright notice or references 
+to the Internet Society or other Internet organizations, except as needed for the purpose 
+of developing Internet standards in which case the procedures for copyrights defined 
+in the Internet Standards process must be followed, or as required to translate it into 
+languages other than English.
+
+   The limited permissions granted above are perpetual and will not be revoked by the 
+Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an "AS IS" basis 
+and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING TASK FORCE DISCLAIMS ALL WARRANTIES, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE 
+INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF 
+MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+
+RFC2459——Internet X.509 Public Key InfrastructureCertificate and CRL Profile 
+Internet X.509 公钥基础设施――证书和CRL简介
+RFC文档中文翻译计划		1

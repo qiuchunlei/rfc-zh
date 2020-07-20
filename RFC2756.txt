@@ -1,0 +1,489 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RF文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：陈贵敏（efoxxx   efoxxx@263.net）
+译文发布时间：2001-10-20
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留本文档的翻译及版权信息。
+
+Network Working Group                                            P. Vixie
+Request for Comments: 2756                                            ISC
+Category: Experimental                                         D. Wessels
+                                                                    NLANR
+                                                             January 2000
+
+超文本缓存协议(HTCP/0.0)
+(Hyper Text Caching Protocol (HTCP/0.0))
+
+本备忘录的状态
+本备忘录定义了一种Internet社区的试验性的协议。它并没有具体指定任何一种Internet标准。它需要进一步进行讨论和建议以得到改进。本备忘录的发布不受任何限制。
+
+
+版权声明
+
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+摘要
+  
+   本文档描述了超文本缓冲协议（HTCP），它是一个用来发现HTTP缓冲区并储存数据、管理整套的HTTP缓冲区和监测缓冲区活动的协议。这是一个试验性协议，用来完成这些功能的几个建议中其中的一个。
+
+
+
+1.  定义、基本原理及其范围Definitions, Rationale and Scope
+
+   1．1．HTTP/1.1 （参见 [RFC2616]）支持从“原始服务器”到“客户端”的网络对象的传输，或许是经由“代理服务器”（在某些情况下，这样做允许“缓存”这些对象以备以后重用）。“客户端”将得到的对象以某种方式消费，通常就将它作为“网页”的一部分显示出来。HTTP/1.0以及后来的版本允许在请求或者响应中包含有“headers”，这就扩充了HTTP/0.9（以及更早的版本）的在请求中仅指定一个URI（Uniform Resource Identifiers）和在响应中仅仅提供一个实体行为。
+
+  1．2． ICP（参见[RFC2186]）支持象查询其内容一样的方式来查询缓冲区，通常是通过其它缓冲区， 这是希望能避免从一台远程源服务器上高代价地索取资源。   ICP是用HTTP/0.9的思想设计的，因此呢，仅仅使用了URI（不包括任何的标题）来描述缓冲区的内容，而且，针对（for）同一个URI的多路可兼容的实体至今仍没有好的方案。
+
+ 1．3． 此文档详细描述了一个超文本缓冲协议（HTCP），此超文本缓冲协议（HTCP）完全支持在缓冲区管理中使用请求和响应标题，并扩展了缓冲区管理的范围――包括了一个远程缓冲区添加和删除的监控，以及发送有关网络对象的提示信息，比如说象可缓冲对象的第三方的地址，或者是网络对象被测的不可缓冲性或不可用性。
+
+2.  HTCP 协议
+
+2.1.  所有多字节的HTCP协议元素都是以网络字节顺序传送的。所有的保留字段都应当由发送端设置为二进制0（zero）并接受端没有检查。同HTTP一样，标题必须置于CRLF行的末尾。
+
+   2.2.  任何指定的主机名都应当在发送端和接受端之间互相兼容，这样如果正在使用一私有命名方案（比如HOSTS.TXT 或者NIS），依此方案命名的名称将仅发送给那些已知的参与此方案的HTCP邻居。原始地址（由点号连接的四个小于255的数字代表IP地址的IPv4，或格式的IPv6）是通用的，就如同公用DNS名称。使用私有名称或者地址特别需要一些操作上的注意事项。
+
+   2.3.  HTCP消息可以已数据报的形式发送，或者通过TCP连接发送。必须支持UDP协议。HTCP代理商决不能对网络故障和网络延迟袖手旁观。HTCP代理商应当时刻准备着，一旦出现没有得到响应，或者响应延迟了或者被重新安排了或者被破坏了的情况，就要采取有效的措施。TCP协议是可选的，只是在协议除错的时候才可能拥到它。IANA已经为HTCP指定了标准TCP和UDP端口号4827。
+
+   2.4.  应当为每一个代理商维护一套关于传输特性的配置变量，这些变量能够初始化HTCP交易，或许是一套每代理商全局缺省值。这些变量是：
+
+――认为是“失败” 交易的最大未回复交易数。
+――对于某些交易认为是“失败”交易的最大无响应间隔时间。
+――交易“失败”后尝试开始一个新交易的最小间隔时间。
+
+应当为每一个代理维护一组关于传输特性的配置变量。代理能够初始化HTCP交易，或许它还带有一组每代理全局缺省值。 
+
+   2.5. 一般来说HTCP消息的格式如下所示：
+
+   +---------------------+
+   |        HEADER       |  说明消息的长度和协议的版本
+   +---------------------+
+   |         DATA        |  HTCP消息体 (每一个主版本号都会有所不同)
+   +---------------------+
+   |         AUTH        |  可选的交易认证
+   +---------------------+
+
+   2.6. HTCP/*.* 的HEADER 的具体格式如下：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                             LENGTH                            |
+      +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +
+   2: |                             LENGTH                            |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2: |             MAJOR             |             MINOR             |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   LENGTH  消息的长度，其中包括了所有的HEADER以及八字节数据，还包括LENGTH字段自身所占长度。如果在使用数据报协议的话，此字段与商务流量的大小（“记录的长度”）是一致的，并且还包括多余的空白，也就是说在DATA和AUTH部分并不是所有的八字节的消息都会有用。
+
+   MAJOR   是主版本号（0代表规格）。HTCP消息的DATA部分需要向上或者向下兼容不同的主版本号。
+
+   MINOR   是次版本号（0代表规格）。不同的特性标准和翻译规则依此字段而定，特别地，预留（RESERVED）字段（虽然是可选的）在同一主版本号中的后续次版本号可能会有有新的含义。
+
+   2.6.1.  我们希望HTCP的发出者知道即将到来的HTCP响应者的版本号，或者HTCP的发出者通过使用数值降序法探测MINOR和MAJOR版本号（以本地可支持的最大数值开始）并在本地缓存探测到的HTCP响应者的版本号。
+
+   2.6.2.  较高的主版本号优先级更高，因为较高的次版本号也是被在特定的主版本号中的。
+
+   2.7.  HTCP/0.* 的DATA 的具体格式如下：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                             LENGTH                            |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2: |    OPCODE     |   RESPONSE    |        RESERVED       |F1 |RR |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   4: |                           TRANS-ID                            |
+      +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +
+   6: |                           TRANS-ID                            |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   8: |                                                               |
+      /                            OP-DATA                            /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   LENGTH    是HTCP消息用来存放DATA部分的字节数，其中包括LENGTH字段本身所占的长度。此数还包括多余的空白，也就是说LENGTH所预留的字节数并不是所有的都用于OP-DATA字段。
+
+   OPCODE    是HTCP交易的操作编码字段。一个HTCP交易可以包括多个HTCP消息，比如说，一个请求消息（由发出者发送），或者一个响应消息（由响应者发送）。
+
+   RESPONSE  此为一个数值型编码，用来指示交易成功或者失败的。此字段应该由请求者置为零（zero），而响应者不去管它。每一操作都有自己的一套响应编码，这套编码将在后边才被确定下来。整个消息的响应编码如下所示：
+
+            0   必须使用认证但是还没有使用
+            1   已经使用了认证，可是并不符合要求
+            2   操作编码未被执行
+            3   不被支持的主版本号
+            4   不被支持的次版本号（主版本号符合要求）
+            5   不适当的、不允许的或者是不受欢迎的操作编码
+
+            上面的响应编码都是错误提示，它们的能见性完全取决于MO=1（接下来会有说明）是否成立。
+
+   RR       是一个标志位，指示一条消息是否请求(0)还是响应(1)。
+
+   F1       此位被重载，因此它对于请求者和响应者有着不同的用法。如果RR＝0，那么F1被定义为RD。如果RR＝1，则F1定义为MO。
+
+   RD        是一个标志位，当它是1时，意味着要求响应。某些操作编码（OPCODE）需要将RD置为1才有意义。
+
+   MO        (em-oh) 是一个标志位，它指示是把响应编码解释为对整个消息的一个响应（ DATA中确定的字段或者是AUTH中的任一个字段）[ MO = 1时 ]，还是在             OP－DATA中的字段的一个响应[ MO = 0 时]。
+
+   TRANS-ID  是一个32位字节的值，当它与发出者的网络地址加起来，就可以唯一确定此次HTCP交易。需要谨慎的是，在UDP数据报的生命周期内不要重用此交易代号TRANS－ID。
+
+   OP-DATA   它依赖于操作编码（opcode-dependent），其对每一操作代码的定义见下边。
+
+   2.8. HTCP/0.0 的AUTH的具体格式如下:
+
+                 +0 (MSB)                            +1 (LSB)
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    0: |                             LENGTH                            |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    2: |                            SIG-TIME                           |
+       +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +
+    4: |                            SIG-TIME                           |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    6: |                           SIG-EXPIRE                          |
+       +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +   +
+    8: |                           SIG-EXPIRE                          |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   10: |                                                               |
+       /                            KEY-NAME                           /
+       /                                                               /
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    n: |                                                               |
+       /                            SIGNATURE                          /
+       /                                                               /
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   LENGTH      是用来存放AUTH部分的字节数，其中包括LENGTH字段本身所占的长度。如果可选项AUTH不被传送的话，此字段应该置为2（two）。LENGTH还可以包括多余的空白，也就是说LENGTH所预留的字节数并不是所有的都用于SIGNATURE字段。
+
+   SIG-TIME   是一个无符号二进制计数器，它指示着从1970年11月1号的00:00:00，（UTC，Coordinated Universal Time）开始计数，到SIGNATURE产生的所经历的时间（以秒计）。
+
+   SIG-EXPIRE  是一个无符号二进制计数器，它指示着从1970年11月1号的00:00:00，（UTC，Coordinated Universal Time）开始计数，到SIGNATURE被认为过期所经历的时间（以秒计）。
+
+   KEY-NAME    是一 COUNTSTR 结构[ 参见3.1 ]，它具体指定了共享密钥的名称。（每一个HTCP的实现都容许有几个共享密钥的配置，而且每一密钥都有一个名称）。
+
+   SIGNATURE    是一带有一个值为64的B 的COUNTSTR 结构[ 参见3.1 ]， 它包含 HMAC-MD5 下边所示的各个要素的摘要（请见[RFC 2104]），其中每一个摘要都是以其“on the wire”格式整理的，如果有被与字段相关的LENGTH覆盖的话还包括传送的多余空白：
+
+               IP SRC ADDR                           [4 字节]
+               IP SRC PORT                           [2字节]
+               IP DST ADDR                           [4字节]
+               IP DST PORT                           [2字节]
+               HTCP MAJOR 版本号                     [1字节]
+               HTCP MINOR 版本号                     [1字节]
+               SIG-TIME                              [4字节]
+               SIG-EXPIRE                            [4字节]
+               HTCP DATA                             [长度可变]
+               KEY-NAME (全部的 COUNTSTR [3.1])      [长度可变]
+
+   2.8.1.  共享的密钥应当随机且秘密地生成，而且密钥的长度至少应该有几百个字节。
+
+3.  数据类型
+
+   HTCP/0.* 的数据类型定义如下：
+
+   3.1. COUNTSTR 是一个记长度（counted）的字符串，其格式为：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                             LENGTH                            |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2: |                                                               |
+      /                              TEXT                             /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   LENGTH   为后面TEXT字段中的字节数。此字段与上边讲到的其它的HTCP协议中的LENGTH字段一样的是，它不包括自身所占的字节数。
+
+   TEXT    是一段未被解释的字节流，通常为ISO8859-1标准的字符。
+
+   3.2.  SPECIFIER（说明符）用于TST 和CLR请求消息。下面有它的定义。它其格式是：
+
+      +---------------------+
+      |        METHOD       | : COUNTSTR
+      +---------------------+
+      |         URI         | : COUNTSTR
+      +---------------------+
+      |       VERSION       | : COUNTSTR
+      +---------------------+
+      |       REQ-HDRS      | : COUNTSTR
+      +---------------------+
+
+   METHOD    （因为HTCP仅返回标题，所以GET和HEAD方法是等价的。）
+
+   URI       （如果URI是一个URL，它通常应当还包括一个“：”<port(端口号)>说明符。若是没有的话，接收器会使用端口80。）
+
+   VERSION   是一个完整的HTTP版本字符串，比如说“HTTP/1.1”。不是以“HTTP/”版本字符串打头的以及版本号小于“1.1” 的版本字符串均不在此规格之内。
+
+   REQ-HDRS  这些标题是由HTTP发起者提供的。它们应包括端对端标题（end-to-end），而不是hop-by-hop标题，并且可以将它们标准化（例如：允许有“Accept:”集成。）
+
+   3.3.  DETAIL域用于TST响应消息，定义如下。它的格式：
+
+      +---------------------+
+      |      RESP-HDRS      | : COUNTSTR
+      +---------------------+
+      |     ENTITY-HDRS     | : COUNTSTR
+      +---------------------+
+      |     CACHE-HDRS      | : COUNTSTR
+      +---------------------+
+
+   3.4.  IDENTITY 用于MON请求消息和SET响应消息，其定义如下。格式为：
+
+      +---------------------+
+      |      SPECIFIER      |
+      +---------------------+
+      |        DETAIL       |
+      +---------------------+
+
+4.  缓冲标题
+
+   HTCP/0.0的 CACHE-HDRS字段是由零个或者多个下面列出来的标题组合而成的：
+
+   Cache-Vary: < header-name> ...
+      
+标题的发送端知道其内容会随着一组不同于在对象的Vary: header标题中给定的那一组的标题而变化。如果有Cache-Vary:的话，对象的Vary: header就会失效。
+
+   Cache-Location: <cache-hostname>:<port> ...
+      标题的发送端知道有一个以上的代理缓冲区保留了一份儿此对象的拷贝。使用HTCP探测这些缓冲区，可能会发现新的、距离近的（亦即当前更好的选择）HTCP“邻居”。
+
+   Cache-Policy: [no-cache] [no-share] [no-cache-cookie]
+      标题的发送端知道此对象的缓存策略中有比在它的响应标题中所给出的更多的详细资料。
+
+      no-cache          意思为它不可以缓冲(未给出原因)，但是在同一时间里发生的请求间可共享。
+
+no-share          意思为它不可以缓冲(未给出原因)，且通常需要每请求隧道。
+
+no-cache-cookie   意思为一个不同的、被遗漏的或者甚至是随机的cookies被包含在请求标题中的效果是其内容会变化，并且那个缓冲是不可取的。
+
+   Cache-Flags: [incomplete]
+      标题的发送端修改了本地对象的缓冲策略，因此请求者可能需要特别地处理这个响应，也就是说，并非必须要与对象的策略完全一致。
+
+      incomplete   e    意思是不知道在此响应中的响应标题和/或实体标题是否是完整的，而且可能不适合用作缓冲关键字。
+
+   Cache-Expiry: <date>
+      标题的发送端知道如果时间与此对象的响应标题中指示的时间不同的话，就应认为它已经过期了。其格式与HTTP/1.1 Expires完全相同。
+
+   Cache-MD5: <discovered content MD5>
+      标题的发送端已为此对象计算了MD5检验和，它若与在对象的Content-MD5: header给定不一样，就会被提供的，因为此对象没有Content-MD5标题。其格式与HTTP/1.1 Content-MD5: 完全相同。
+
+   Cache-to-Origin: <origin> <rtt> <samples> <hops>
+      标题的发送端已经估算了到源服务器（当作一主机名或者是文字地址）往返所需的时间。<rtt>是平均所需的秒数，用一个十进制的任意精度的、且没有指数的ASCII码表示。<Hops>是缓冲区与源数据两者之间的路由器数，用一个十进制的任意精度的、且没有指数的ASCII码表示，如果缓冲区未知则为0。
+
+6.  HTCP 操作
+
+   HTCP/0.* 的操作编码（OPCODES）和它们的各自OP-DATA 数据定义如下：
+
+   6.1. NOP (OPCODE 0):
+    这是HTCP标准的“ping”。响应者被激发，在最短的延迟时间内执行NOP指令，相应地，请求者会用NOP RTT（一个NOP回合的时间，round trip time）来配置或者映象之用。 NOP的 RESPONSE （响应）代码通常都是零（0），而且它没有 OP-DATA 数据。  若RD＝0，NOP请求根本就不引起任何处理。
+
+   6.2. TST (OPCODE 1):
+    测试在代理缓冲区中是否有特定内容的实体存在。若RD＝0，NOP请求根本就不引起任何处理。
+
+    TST请求的OP-DATA数据如下：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                                                               |
+      /                          SPECIFIER                            /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+    TST的RESPONSE（响应）编码如下：
+
+   0   实体在响应者的缓冲区内
+   1   实体不在响应者的缓冲区内
+
+   如果RESPONSE（响应）为零（0）TST响应有如下所示的OP-DATA数据：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                                                               |
+      /                             DETAIL                            /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   注意:  由某一确定的TST返回的响应标题可能会是一个过期的对象。请求者对这一情况应有足够的应付准备，可以采用将响应者当作此对象的资料来源（这会引起响应者完全地刷新此对象），或者选择另外一个不同响应者的方法。
+
+   如果RESPONSE（响应）为一（1）TST响应有如下所示的OP-DATA数据：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                                                               |
+      /                           CACHE-HDRS                          /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   6.3. MON (OPCODE 2):
+
+    在代理存储器的本地对象仓库内监视器的活动（添加，删除，替换，等等）。因为不支持在一对UDP端点间插入HTCP交易，所以建议由请求者为每一个与其同时发出的MON请求分配一个特定的UDP端点。RD＝0的MON请求与那些RD＝1且TIME＝0的MON请求是等价的，也就是说，它们将会取消所有未完成的MON交易。
+
+   MON请求有如下OP-DATA数据结构：
+
+                  +0 (MSB)
+      +---+---+---+---+---+---+---+---+
+   0: |             TIME              |
+      +---+---+---+---+---+---+---+---+
+
+   TIME   为发起者所期望的监视输出的秒数。随后的由同一个发出者发出的带有相同的TRANS-ID 标识的MON请求应当更新正在进行着的MON交易的时间，这称为“部分重叠更新（overlapping renew）”。
+
+   MON的RESPONSE编码如下所示：
+
+   0   接受，OP-DATA 已有并且合法
+   1   拒绝(配额错误 - 激活的MON太多了)
+
+   如果RESPONSE 为零（0），MON响应有如下OP-DATA 数据结构：
+
+                 +0 (MSB)                            +1 (LSB)
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |             TIME              |     ACTION    |     REASON    |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2: |                                                               |
+      /                            IDENTITY                           /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   TIME      为此MON交易所剩余的秒数
+
+   ACTION    为一指示一个储存区的对象操作的数值编码。
+             编码如下：
+
+             0   存储区中添加了一个实体
+             1   存储区中将一个实体刷新
+             2   存储区中一个实体被替换
+             3   存储区中删除了一个实体
+
+   REASON    为一指示一个操作的原因的数值编码
+             编码如下:
+
+             0   下边的编码没有涉及的其它原因码
+             1   代理客户拿来此实体
+             2   代理客户拿来此实体而存储区不允许
+             3   代理服务器预先提供了此实体
+             4   实体已过期，经由起标题
+             5   由于编码如下存储限制而实体被清除(purged)
+
+   6.4. SET (OPCODE 3):
+
+    通知缓冲区对象标识。 这是一个“push”交易，通过共用的缓冲区可以共享信息，比如所更新年/日期/期限标题（这可能是由于原有的“304未被修改（304 Not modified）”响应导致的）或者是更新存储区标题（这可能是由于发现非官方的“修改（vary）”情况发生或者得到此实体的第二方或第三方存储区所在位置导致的）。RD 为真。
+
+   SET请求有如下OP-DATA 数据结构：
+
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                                                               |
+      /                            IDENTITY                           /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   RESPONSE 编码如下：
+
+             0   标识被接受，谢谢
+             1   标识被忽略，未给出原因，谢谢
+
+   SET 响应没有 OP-DATA。
+
+   6.5. CLR (OPCODE 4):
+
+    告诉存储区完全清除掉一个实体。
+
+    CLR 请求有如下OP-DATA 数据结构：
+
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0: |                   RESERVED                    |     REASON    |
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2: |                                                               |
+      /                           SPECIFIER                           /
+      /                                                               /
+      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+    REASON    为一指示请求者询问的实体被移除的原因的数值编码。其编码如下：
+
+             0   其它的原因
+             1   原服务器告诉我此实体并不存在
+
+    RESPONSE 编码如下：
+
+             0   我曾经有过，现在没有了
+             1   我有，且一直保留着，为提供原因
+             2   我没有
+
+    CLR 响应没有OP-DATA。
+
+    没有具体指明响应、实体、或者存储区标题就清除一URI意味着清除所有的使用此URI的实体。RD 为真。
+
+7.  安全考虑
+
+   If the optional AUTH element is not used, it is possible for  unauthorized third parties to both view and modify a cache using the  HTCP protocol.
+
+8.  感谢
+
+   Mattias Wingstedt of Idonex brought key insights to the development
+   of this protocol.  David Hankins helped clarify this document.
+
+9.  参考文献
+
+   [RFC2396] Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+             Resource Identifiers (URI): Generic Syntax", RFC 2396,
+             August 1998.
+
+   [RFC2616] Fielding, R., Gettys, J., Mogul, J., Frystyk, H., Masinter,
+             L., Leach, P. and T. Berners-Lee, "Hypertext Transfer
+             Protocol -- HTTP/1.1", RFC 2616, June 1999.
+
+   [RFC2104] Krawczyk, H., Bellare, M. and R. Canetti, "HMAC: Keyed-
+             Hashing for Message Authentication", RFC 2104, February,
+             1997.
+
+   [RFC2186] Wessels, D. and K. Claffy, "Internet Cache Protocol (ICP),
+             version 2", RFC 2186, September 1997.
+
+10.  作者地址
+
+   Paul Vixie
+   Internet Software Consortium
+   950 Charter Street
+   Redwood City, CA 94063
+
+   Phone: +1 650 779 7001
+   EMail: vixie@isc.org
+
+   Duane Wessels
+   National Lab for Applied Network Research
+   USCD, 9500 Gilman Drive
+   La Jolla, CA 92093
+
+   Phone: +1 303 497 1822
+   EMail: wessels@nlanr.net
+
+11.  完整的版权声明
+
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+鸣谢
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+Hyper Text Caching Protocol (HTCP/0.0)                  超文本缓存协议(HTCP/0.0)
+
+
+RFC文档中文翻译计划
+

@@ -1,0 +1,1615 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：fol （ fol  fol@371.net ）
+译文发布时间：2001-5-23
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+
+
+Network Working Group                                           C. Adams
+Request for Comments: 2025                        Bell-Northern Research
+Category: Standards Track                                   October 1996
+
+
+简单公共密钥GSS-API机制（SPKM）
+(rfc2025 The Simple Public-Key GSS-API Mechanism (SPKM))
+
+
+Status of this Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+摘要
+	本规范定义了基于简单公共密钥机制（SPKM）通信的双方采用的协议，处理过程。该
+机制支持公共安全事务应用程序接口（GSS-API， 见RFC 1508和1509）
+背景
+	尽管Kerberos的第五版GSS-API在很多情况下广泛使用，但是有些基于GSS-API的应
+用采用的是公共密钥体系，而不是对称密钥体系。本文所提出的机制满足这一需求，并具有
+如下特性：
+1）	SPMK允许在不使用安全时间戳的情况下完成单方或双方的认证。这使那些不能存
+取安全时间戳的环境能够进行安全认证。
+2）	SPKM使用算法标识去定义通信双方所使用的各种算法。这在运行环境，未来扩展
+以及算法选择上保持了最大限度的灵活性
+3）	SPKM在gss_sign()和gss_seal()中，即GSSv2中的gss_getMIC() gss_wrap()，实现
+真正的基于非对称算法的数字签名，而不是基于对称算法（如DES）的MAC的完
+整性检验。在某些情况下真正的数字签名所支持的抗抵赖性是很重要的。
+4）	在实现时，SPKM的数据格式和程序设计与Kerberos的是类似的。这使得在那些已
+经运行Kerberos的环境更容易实现SPKM。
+
+综上所述，SPKM更加的灵活和广泛，同时没有增加额外的复杂度
+
+密钥管理
+	SPKM的密钥管理尽可能地与X.509和PEM（见RFC 1422）兼容，因为他们代表一大
+批团体的要求，而且在标准上已经相当成熟。
+致谢
+	本文中的许多材料是基于Kerberos第五版的GSS-API机制（KRB5），并且尽可能与之
+兼容。本文在很多方面归功于下述人的工作：Bell-Northern Research的Warwick Ford 和Paul 
+Van Oorschot进行了许多富有成效的讨论，Kelvin Desplanque进行一些整理，OpenVision 
+Technologies的John Linn给予了有帮助的建议，OSS的Bancroft Scott给予关于ASN.1的帮
+助。
+
+1．	概述
+公共安全事务应用程序接口（GSS-API）的目的在RFC-1508的摘要中是如下描述的：
+
+		公共安全事务应用程序接口（GSS-API）以一种统一的模式为使用者提供安全
+事务，由于它支持最基本的机制和技术，所以保证不同的应用环境下的可移植性。该
+规范定义了GSS-API事务和基本元素，并独立于基本的机制和程序设计语言环境，
+并借助于其它相关的文档规范实现。他们包括如下定义：
+		-定义与特定语言环境相关的参数
+		-定义令牌格式，协议和为实现基于特别的安全机制的GSS-API事务所采用的
+处理过程
+
+SPKM是后一类文档的一种实例，因此定义为“GSS-API机制”。该机制为基于公共密
+钥体系的在线分布式应用环境提供认证，密钥建立，数据完整性验证，数据可靠性保障服务。
+因为它遵从RFC-1508规定的接口，所以SPKM能作为一种掺杂（drop-in）替换，被那些使
+用基于GSS-API调用的安全事务的应用所采用（如那些采用Kerberos的GSS-API的进行安
+全处理的应用）。公共密钥体系支持用于信息交换中抗抵赖的数字签名，并具有其它的优点，
+如大量用户的条件下扩展性（scalability）
+
+应用程序可通过GSS-API操作范例（具体见RFC-1508）使用SPKM的令牌：
+
+	GSS-API中定义的操作范例如下。一个典型的GSS-API调用者本身是一个通
+信协议（或使用通信协议的应用程序），GSS-API调用是为了在授权，完整性，或
+可信赖性方面保护其通信安全。一个GSS-API调用者接收本地GSS-API模块产生
+的的令牌，并将其传递给远端系统；对端传递接收到的令牌至本地GSS-API模块
+进行进一步处理。
+
+	本文定义两类GSS-API机制，SPKM-1和SPKM-2，它们主要区别在于SPKM-2在建立
+上下文环境（context）时要求安全时间戳，而SPKM-1不需要。既然有些环境下安全时间戳
+并不是必须的，这种区分保证了应用的更大的灵活性。
+2．算法
+	SPKM支持多种算法。这部分将对它们分别进行描述，介绍其用法并对每种算法给出专
+门的例子。为了保证不同SPKM至少在最低层次上的互操作性，有一种完整性算法是必须
+支持的；其余算法是可选的（有些GSS兼容的处理不要求支持信息的保密性）。对保密性算
+法的强制性会限制机制实现的出口，因此本文中定义某些算法是推荐的（即不考虑出口限制，
+在SPKM中采用这些算法会增加互操作性）。
+2．1 完整性算法(I-ALG)
+	目的：
+	主要用于确保一个合法用户产生的数据在任何时刻都不被改变。使用该算法，可以
+保证数据的真实性，并且支持抗抵赖性
+
+	例子：
+
+         md5WithRSAEncryption OBJECT IDENTIFIER ::= {
+           iso(1) member-body(2) US(840) rsadsi(113549) pkcs(1)
+           pkcs-1(1) 4        -- imported from [PKCS1]
+         }
+	
+	该算法（必须的）通过用RSA算法去加密源数据的MD5哈希值，来保证数据的
+完整性和真实性，并支持抗抵赖性。这在本质上同OIW（the Open Systems Environment 
+Implementors' Workshop）所定义的md5WithRSA {1 3 14 3 2 3}是完全一致的。
+	既然这是目前唯一必须要求的完整性算法，出于互操作的考虑，规定在建立连接中，
+所有需要签名的令牌，都使用md5WithRSA算法进行签名，而不是MAC（将3.3.1）。
+在以后版本中，如果有其它更好的算法时，这个规定可以进行改变。
+		
+         DES-MAC OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) oiw(14) secsig(3)
+            algorithm(2) 10  -- carries length in bits of the MAC as
+         }                   -- an INTEGER parameter, constrained to
+                             -- multiples of eight from 16 to 64
+		
+		这个算法（推荐）通过计算数据的DES MAC去保证完整性（见FIPS-113）
+
+         md5-DES-CBC OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) dod(6) internet(1)
+            security(5) integrity(3) md5-DES-CBC(1)
+         }
+		
+		这个算法通过用DES CBC算法去加密源数据的“搀杂”的MD5哈希值，去保证
+数据的完整性（见3.2.2.1）。当源数据不是非常短时，这种处理在速度上具有很大的优
+势。注意到没有搀杂的情况下，这种完整性机制的加密强度相当于明文下使用DES的
+强度。
+
+         sum64-DES-CBC OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) dod(6) internet(1)
+            security(5) integrity(3) sum64-DES-CBC(2)
+         }
+		
+		这个算法通过用DES CBC加密由所有输入源数据源数据块（利用增加模2**64 - 1
+所计算的总和）和搀杂数据块组成的数据，来保证数据的完整性。因此在这个算法中，
+为保证安全，加密是必须的。
+		关于完整性算法的安全性的更多解释，可以参考[Juen84, Davi89]。
+2．2 保密性算法 (C-ALG)
+	目的：
+		该对称算法通过gss_seal()和gss_wrap()调用进行加密数据
+	
+	例子：
+		
+         DES-CBC OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) oiw(14) secsig(3)
+            algorithm(2) 7 -- carries IV (OCTET STRING) as a parameter;
+         }                 -- this (optional) parameter is unused in
+                           -- SPKM due to the use of confounding
+		
+		这个算法是推荐的。
+2．3 密钥建立算法 (K-ALG):
+目的：
+	这个算法在发起方和目的方之间，通过建立过程中的上下文（context），产生一个
+共同的对称密钥。密钥所使用的的C-ALG和I-ALGS（如DES-MAC）算法来自于context
+密钥。正如3.1将讨论的，密钥建立通过X.509的交互认证模式实现，因此最终产生的
+共享对称密钥是可信赖的。
+
+例子：
+
+         RSAEncryption OBJECT IDENTIFIER ::= {
+           iso(1) member-body(2) US(840) rsadsi(113549) pkcs(1)
+           pkcs-1(1) 1        -- imported from [PKCS1] and [RFC-1423]
+         }
+
+	在这个算法中（必须的），context密钥由发起方产生，通过目的方的RSA公钥加
+密，并送至目的方。目的方不必要对发起方的要建立的密钥进行响应。
+
+         id-rsa-key-transport OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) oiw(14) secsig(3)
+            algorithm(2) 22   -- imported from [X9.44]
+         }
+		
+		这与RSAEncryption类似，但发送方的认证信息一起通过目的方的RSA公钥加密。
+
+        dhKeyAgreement OBJECT IDENTIFIER ::= {
+           iso(1) member-body(2) US(840) rsadsi(113549) pkcs(1)
+           pkcs-3(3) 1
+        }
+		
+	在这个算法中，contxt密钥被连接双方使用Diffie-Hellman密钥建立算法共同产生。
+目的方必须响应发起方的密钥建立请求（因此K-ALG不能被用于SPKM-2中的单向认
+证）
+
+2．4 子密钥产生算法(O-ALG)的单向函数
+目的：
+在通过K-ALG算法建立context密钥后，发起方和目的方必须能够衍生一套C-ALG
+和I-ALG算法的子密钥集。由于所支持的C-ALG算法列表是有限连续的，因此第一个
+算法（默认的）定义为0，下一个为，依次类推。同样，对所支持的I-ALGS算法列表
+的编号也是一致的。假定，context密钥是一个长度为M的任意二进制串，则必须满足：
+L<=M<=U（下限L是所有被支持的C-ALG和I-ALG中最长密钥的位长度，上限U是
+满足K-ALG参数要求的最大位长度）。
+例如，如果DES和two-key-triple-DES是协商的保密性算法，DES-MAC是协商的
+完整性算法（数字签名并不使用context密钥），则context密钥必须至少112位长。如
+果512位RSAEncryption是用于K-ALG的算法，那么发起方产生的context密钥最大位
+长度为424（PKCS-1所允许的RSA加密数据的最大长度）--目标在能够RSA解密过程
+中，去掉“填塞”数据，从而判断密钥的长度。另一方面，如果dhKeyAgreement是密
+钥建立算法，那么context密钥是Diffie-Hellman方法计算的结果，即其长度为
+Diffie-Hellman的模p减8。
+
+K位子密钥的产生算法规定如下：
+
+      rightmost_k_bits (OWF(context_key || x || n || s || context_key))
+
+         其中
+-	如果子密钥是保密性算法，"x"是ASCII字符"C" (0x43)；如果子密钥完整性
+算法，“x”是ASCII字符“I”（0x49）； 
+-	"n" 是所支持的算法列表中算法代表的数字值（ASCII字符“0”（0x30），
+ASCII字符“1”（0x31），等等）
+-	"s"是处理的“标识”（stage）--一直是ASCII字符“0”（0x30），除非“k”
+大于OWF的输出，在这种情况下，OWF通过不断增加“标识”的值进行重
+复计算（每次OWF输出被串接到上次输出的后面），直到“k”位数据被产
+生
+          - "||"是连接操作; 且
+          - "OWF" 是任意单向函数
+
+    例子：
+
+         MD5 OBJECT IDENTIFIER ::= {
+           iso(1) member-body(2) US(840) rsadsi(113549)
+           digestAlgorithm(2) 5
+         }
+
+        这个算法是必须的
+
+         SHA OBJECT IDENTIFIER ::= {
+            iso(1) identified-organization(3) oiw(14) secsig(3)
+            algorithm(2) 18
+         }
+		
+	由于现存的哈希算法并不满足OWF的所有特性，这就是为什么允许在建立过程中
+协商O-ALG OWF，这使得OWF能够更容易改进。例如，在某些环境下，OWF可能是
+一个用context-key作为密钥加密输入的加密算法
+
+2．5 协商
+	在SPKM的context建立中，发起方向对方提供一套可能的保密性算法和一套可能
+的完整性算法（包括数字签名算法）。目的方所选择的保密性算法将在context有效期内
+用于C-ALG，而完整性算法用于I-ALG（目的方通过以相同的顺序返回所支持列表的
+子集进行响应）。注意，C-ALG和I-ALG可以用于任何使用context的消息，同时保密
+性算法和完整性算法列表的第一项可以作为该context默认的算法。
+
+	 context的保密性算法和完整性算法定义了gss-getMIC（）和gss-wrap（）的保护
+质量参数（QOP）--具体见5.2。如果对方没有响应（SPKM-2的单向认证），则发起方
+产生的算法将是context所使用的算法（如果该算法不被接受，将返回一个删除令牌表
+示请求没有建立）。 
+
+	此外在第一个context建立令牌中，发起方发送一套可能的K-ALG算法，以及通
+过算法集第一个算法产生的密钥（或一部分）。如果K-ALG不被接受，则目的方选择
+另一种K-ALG算法，并返回该K-ALG算法和与之相关的密钥或密钥一部分（否则，
+发送一个删除令牌，表示建立不成功）。如果必须的话（目的方选择2-pass K-ALG如
+dhKeyAgreement），发送方将继续发送它的密钥。
+
+	最后，在第一个context建立令牌中，发起方提供一套可能的O-ALG算法（如果
+不需要响应，只有一种O-ALG算法）。该O-ALG（一个）算法被目的方接受，形成用
+于context子密钥产生算法的OWF。
+
+	在以后的SPKM版本中，其他算法也可能被指定。
+3．令牌格式
+	本节讨论SPKM协议上可见的特性；它定义了协议交互的基本元素，并且与程序
+设计语言无关（见RFC-1509）。
+SPKM GSS-API机制通过一个目标标识（OID）表示“SPKM-1”或“SPKM-2”，
+即{spkm spkm-1(1)}或 {spkm spkm-2(2)}，其中spkm为{iso(1) identified-organization(3) 
+dod(6) internet(1) security(5) mechanisms(5) spkm(1)}。在context建立过程中，SPKM-1
+用户使用随机数进行重放（replay）检查，SPKM-2使用时间戳（如果应用需要，两种
+机制都使用序列号进行replay和out-of-sequence检查）。
+	
+	GSS-API应用的双方（为安全context管理和信息保护目的）传递的令牌定义如下。
+3．1 Context建立令牌
+	本节定义三类令牌：“发起方”令牌，由gss-init-sec-context（）发送，由
+gss-accept-sec-context（）接收；“目的方”令牌，由gss_accept_sec_context（）发送，
+由gss-init-sec-context（）接收；“错误”令牌，发送和接收内含于gss-init-sec-context（）
+和gss_accept_sec_context（）中。
+
+	
+	RFC-1508的附录B中，附加了如下的最初的context建立令牌：
+
+   InitialContextToken ::= [APPLICATION 0] IMPLICIT SEQUENCE {
+           thisMech           MechType,
+                   -- MechType is OBJECT IDENTIFIER
+                   -- representing "SPKM-1" or "SPKM-2"
+           innerContextToken  ANY DEFINED BY thisMech
+   }               -- contents mechanism-specific
+
+		当thisMech是SPKM-1或SPKM-2，innerContextToken定义如下：
+
+      SPKMInnerContextToken ::= CHOICE {
+         req    [0] SPKM-REQ,
+         rep-ti [1] SPKM-REP-TI,
+         rep-it [2] SPKM-REP-IT,
+         error  [3] SPKM-ERROR,
+         mic    [4] SPKM-MIC,
+         wrap   [5] SPKM-WRAP,
+         del    [6] SPKM-DEL
+      }
+
+	以上定义应该用于所有通过SPKM GSS-API机制产生的令牌，包括SPKM-REP-TI
+（目的方对发起方的响应），SPKM-REP-IT（发起方对目的方的响应），SPKM-ERROR，
+context-deletion，消息令牌（不是用于context建立的令牌）。SPKMInnerContextToken
+的标记值定义了每一个令牌的token-id（用[0-6]表示）。类似信息被包含在令牌的tok-id
+子段中。尽管看起来有些冗余，标记值和tok-id代表不同的含义：标记保证
+InitialContextToken能被合适的解码；tok-id表示消息令牌的数据该令牌类型一致。 每
+个innerContextToken也包含一个context-id字段，第6节将对token-id和context-id的
+信息和使用进行详细讨论。
+	
+Context建立令牌的InnerContextToken字段包含如下信息之一：SPKM-REQ；
+SPKM-REP-TI；SPKM-REP-IT；和SPKM-ERROR。此外，所有InnerContextToken都
+采用ASN.1 BER编码（其简化版是DER编码，见X509 8.7）。
+
+SPKM的context建立令牌通过X509的第10节定义，并与[9798]一致。在目的方
+发起方进行单向认证时，SPKM-1（随机数）采用10.3定义的“双方认证”模式，当发
+起方要求双向认证时，SPKM-1采用10.4定义的“三方认证”模式。而在接收放进行
+单向认证是，SPKM-2（时间戳）采用10.2定义的“单方认证”模式，在目的方进行双
+向认证时，采用10.3定义的“双方认证”模式。
+		
+	上文意味着当SPKM-2进行单向认证时，不需要进行K-ALG协商（目的方要么接
+受发起方的K-ALG和context密钥，要么拒绝）。SPKM-2双向认证或SPKM-1的单向
+认证可以进行协商，但目的方只能选择由发起方提供的单路（one-pass）的K-ALG（或
+者拒绝请求）。作为选择，发起方能够请求目的方产生并传输context密钥。对SPKM-1
+的双向认证，目的方能够选择任一one-或two-pass的K-ALG算法，并能够应发送方的
+请求产生并发送context密钥。
+
+	通常SPKM-1或SPKM-2都采用双向认证。因此，尽管两种机制都支持单向认证，
+但在实际应用中并不普遍。
+3．1．1 Context建立令牌 – 发起方令牌（第一个令牌）
+	为了完成context建立，发起方和目的方必须能够存取其它实体的公钥证书。在某
+种条件下，发起方可以采用先取得所有的证书，然后将相关的证书包含在在第一个令牌
+中发到目的方。在另外的条件下，发送方可以要求目的方在其响应中包含证书数据，或
+者两边各自得到其所需的证书数据。
+	但在任一条件下，建立SPKM的双方必须有能力根据一个所支持的名字得到对应
+证书。但具体实现机制不属于规范的范畴。
+
+	相关的SPKM-REQ语法定义如下（附录A给出了其它文档的入口）
+
+   SPKM-REQ ::= SEQUENCE {
+           requestToken      REQ-TOKEN,
+           certif-data [0]   CertificationData OPTIONAL,
+           auth-data [1]     AuthorizationData OPTIONAL
+              -- 关于auth-data的讨论见 [RFC-1510] 
+   }
+
+   CertificationData ::= SEQUENCE {
+           certificationPath [0]          CertificationPath OPTIONAL,
+           certificateRevocationList [1]  CertificateList OPTIONAL
+   }  -- 必须至少有一个存在
+
+
+   CertificationPath ::= SEQUENCE {
+           userKeyId [0]         OCTET STRING OPTIONAL,
+              -- 用户的公钥标识
+           userCertif [1]        Certificate OPTIONAL,
+              -- 包含用户公钥的证书
+           verifKeyId [2]        OCTET STRING OPTIONAL,
+              --用户的公开验证密钥标识
+           userVerifCertif [3]   Certificate OPTIONAL,
+              -- 包含用户公开验证密钥的证书
+           theCACertificates [4] SEQUENCE OF CertificatePair OPTIONAL
+   }          -- 从目的到源的证书路径
+		
+	通过将验证字段分开使得不同的密钥对（基于不同的算法）用于不同功能，加密/解密，
+签名/验证。当[0]或[1]存在，而[2]和[3]不存在的情况下，用同一对密钥对进行加密/解密，
+签名/验证（但在实际应用中并不推荐使用）。如有[2]或[3]的情况下，另外不同的密钥对
+进行加密/解密，签名/验证，因此[0]或[1]必须存在。如[4]存在，意味着[0]，[1]，[2]，[3]
+必须有一个存在。
+
+      REQ-TOKEN ::= SEQUENCE {
+              req-contents     Req-contents,
+              algId            AlgorithmIdentifier,
+              req-integrity    Integrity  -- "token" is Req-contents
+      }
+
+      Integrity ::= BIT STRING
+?	在algId 指定一个签名算法的情况下，"Integrity" 表示使用指定算法的签名结
+果。具体将“token”的DER编码进行哈希变换后（算法也在algid中定义）的
+BER编码值，进行加密处理。
+?	在algid指定一个MACing算法的情况下，“Integrity”表示使用指定算法进行
+MACing的结果。具体将“token”的DER编码结果进行MACing处理。（因此
+对于该MAC而言，algId必须是一个完整性算法。）
+
+可以想象，在典型应用，REQ-TOKEN，REP-TI-TOKEN，REP-IT-TOKEN的完整性字段
+通常使用真正的数字签名，并且提供带重放（replay）检查的单向和双向认证。不过，在某
+些条件下，仍使用MAC选项。如发起方希望匿名访问时（第一第三次令牌是MAC，第二
+次令牌是签名的）。另一个例子在先前已经建立认证的情况下，带缓冲的context进行在一段
+时间后重新建立（这里交换令牌是MACed）。
+
+使用MAC主要好处在于在认证不是必须的情况下（如匿名），或认证已经以某种模式建
+立的情况下（在context重新建立时，对一个新的令牌产生MAC），减少处理量。
+
+   Req-contents ::= SEQUENCE {
+           tok-id           INTEGER (256),    -- 必须包含 0100(hex)
+           context-id       Random-Integer,   -- 见 6.3
+           pvno             BIT STRING,       -- 协议版本号
+           timestamp        UTCTime OPTIONAL, -- 对SPKM-2是必须的
+           randSrc          Random-Integer,
+           targ-name        Name,
+           src-name [0]     Name OPTIONAL,
+              --必须支持除非发起方是“匿名的”
+           req-data         Context-Data,
+           validity [1]     Validity OPTIONAL,
+              -- 密钥的有效期（可以被用在安全context的生命期计算）
+           key-estb-set     Key-Estb-Algs,
+              -- 指定一套密钥建立算法
+           key-estb-req      BIT STRING OPTIONAL,
+              -- 与集合中第一个K-ALG的相对应的密钥建立参数
+              -- (在如果发起方不能或无意产生和安全传送密钥到目的方的情况下不被使
+用
+            -- 被建立的密钥必须满足2.4规定的密钥长度限制
+           key-src-bind      OCTET STRING OPTIONAL
+              -- 用于绑定对称密钥的源名
+              -- 在SPKM-2双向认证时，这个字段必须存在
+              -- 如果被使用的K-ALG 不提供这个绑定
+--（但对于所有其他的情况是可选的）
+              -- 这个8进制串保持申请必须的哈希处理MD5的结果如下：              
+              -- MD5(src || context_key),
+              -- 其中“src”是src-name的DER编码
+              -- "context-key"是对称密钥（如在key-estb-req中被传递的未保护的版本）
+              -- "||"是连接操作
+           }
+
+
+?	协议的版本（pvno）参数是一个BIT STRING，它使用足够的位去定义发起方
+支持的协议版本（每位表示一个协议版本）。
+?	本文中协议是版本0。因此如果这个版本被支持的话，设置pvno的位0值。类
+似的，如果版本1（未来的定义）被支持，位1被设置，如此类推。
+?	对于SPKM-2的单向认证，在context的建立过程中，无响应令牌，因此没有
+协议的协商。在这种情况下，发起者必须设置位0。而REQ-TOKEN的版本必
+须设置pvno的最高位
+?	“validity”参数是发起方唯一表示context生命期的字段。既然不能保证发起
+方和目的方同时性，有效期的时间间隔可以当作确定的（不是确切的时间）。
+
+   Random-Integer ::= BIT STRING
+
+?	每个SPKM建立时，要求产生一个新的随机数；即，不大可能被先前操作使用
+的值。该随机数不需要加密（它不需要不可预知的，只是需要是一个新的数）
+
+   Context-Data ::= SEQUENCE {
+           channelId       ChannelId OPTIONAL, -- channel绑定
+           seq-number      INTEGER OPTIONAL,   -- 序列号
+           options         Options,
+           conf-alg        Conf-Algs,          -- 保密性算法
+           intg-alg        Intg-Algs,          -- 完整性算法
+           owf-alg         OWF-Algs            -- 为子密钥产生
+   }
+
+   ChannelId ::= OCTET STRING
+
+   Options ::= BIT STRING {
+           delegation-state (0),
+           mutual-state (1),
+           replay-det-state (2), -- 用于context的重放检测
+           sequence-state (3),   -- 用于顺序检测
+           conf-avail (4),
+           integ-avail (5),
+           target-certif-data-required (6)
+                                 -- 用于请求目的certif. 数据
+   }
+
+
+   Conf-Algs ::= CHOICE {
+           algs [0]        SEQUENCE OF AlgorithmIdentifier,
+           null [1]        NULL
+            -- 当conf.无效时使用
+   } – 用于C-ALG (见5.2节关于QOP的讨论)
+
+   Intg-Algs ::= SEQUENCE OF AlgorithmIdentifier
+       -- 用于I-ALG (见5.2节关于QOP的讨论)
+
+   OWF-Algs ::= SEQUENCE OF AlgorithmIdentifier
+       -- 在SPKM-2单向认证中，REQ-TOKEN只包含一个算法
+       -- 否则至少包含一个算法
+       -- 在REP-TOKEN中一直只包含一个算法
+
+   Key-Estb-Algs ::= SEQUENCE OF AlgorithmIdentifier
+       -- 允许K-ALG协商
+
+如果在应用调用gss-init-sec-context（）时，没有设置双向请求位，则context建立将采
+用单向认证模式。SPKM-2只能通过SPKM-REQ实现（用于认证发起方）。而SPKM-1同时
+使用SPKM-REQ和SPKM-REP-TI（用于认证目的方）实现。
+
+	应用要求同时认证双方时，必须请求双向认证，在SPKM-REQ选项中设置“mutual-state”
+项。目的方通过SPKM-REP-TI进行响应。如果是SPKM-2，相互认证过程（基于时间戳）
+已经完成。如果是SPKM-1，发起方接收到响应后，再发送SPKM-REP-IT进行响应，相互
+认证过程（基于随机数）才完成。
+
+	Context-Data的Options字段的其它位在RFC-1508中解释，除了
+target-certif-data-required，发起者将其设置为TRUE用于请求目的方在SPKM-REP-TI中返
+回证书的数据。对于SPKM-2的单向认证，该位被双方忽略。
+
+3．1．2 Context建立令牌 – 目的方
+   SPKM-REP-TI ::= SEQUENCE {
+           responseToken    REP-TI-TOKEN,
+           certif-data      CertificationData OPTIONAL
+             -- 如果在SPKM-REQ中 target-certif-data-required选项被设为TRUE，必须
+存在
+   }
+
+
+   REP-TI-TOKEN ::= SEQUENCE {
+           rep-ti-contents Rep-ti-contents,
+           algId           AlgorithmIdentifier,
+           rep-ti-integ    Integrity  -- "token" 是Rep-ti-contents
+   }
+
+   Rep-ti-contents ::= SEQUENCE {
+           tok-id           INTEGER (512),   -- 必须包含 0200 (hex)
+           context-id       Random-Integer,  -- 见6.3
+           pvno [0]         BIT STRING OPTIONAL, -- 协议版本号
+           timestamp        UTCTime OPTIONAL, -- 对SPKM-2必须的
+           randTarg         Random-Integer,
+           src-name [1]     Name OPTIONAL,
+             -- 在REQ-TOKEN中必须被包含
+           targ-name        Name,
+           randSrc          Random-Integer,
+           rep-data         Context-Data,
+           validity [2]     Validity  OPTIONAL,
+             -- 密钥的validity间
+-- （存在如果目的只能支持比REQ-TOKEN所提出的时间间隔更短的context）
+           key-estb-id      AlgorithmIdentifier OPTIONAL,
+             -- 用于当目的方改变密钥建立算法
+             -- （必须是发起方key-estb-set的一个成员）
+           key-estb-str      BIT STRING OPTIONAL
+             -- 包含 （1）发起方key-estb-req的响应 （如果发起方采用2-pass K-ALG）   
+             -- （2）与key-estb-id中所支持的K-ALG相一致的key-estb-req
+             -- （3）与发起方key-estb-id所支持的第一个K-ALG相一致的key-estb-req，
+             -- 如果发起方的key-estb-req（可选的）不被使用（在这种情况下目的方的
+key-estb-str必须存在）。
+             -- 被建立的密钥必须满足2.4规定的密钥长度限制。
+           }
+
+协议的版本（pvno）参数是一个BIT STRING，它使用足够的位去定义发起方提出
+而被目的方支持的协议版本（每位表示一个协议版本）；也就是说，目的方设置确切的
+pvno的某一位。如果目的方不支持所有的版本，则返回一个删除令牌表示连接不被建
+立。如果发起方的pvno只有一位，而且目的方恰巧支持，则该版本被使用，但
+REP-TOKEN的参数被忽略。最后，如果发起方和目的方有一个或多个相同的版本，但
+是REQ-TOKEN并不被目的方支持，则REP-TOKEN必须设置一个合适的pvno位（用
+于后续令牌的哑元值字段）。发送方必须响应一个带有合适版本的新的REQ-TOKEN（本
+质上是建立一个新的连接）
+
+3．1．3 Context建立令牌 – 发起方（第二个令牌）
+	相关的SPKM-REP-IT语法如下：
+
+   SPKM-REP-IT ::= SEQUENCE {
+           responseToken    REP-IT-TOKEN,
+           algId            AlgorithmIdentifier,
+           rep-it-integ     Integrity  -- "token" 是 REP-IT-TOKEN
+   }
+
+   REP-IT-TOKEN ::= SEQUENCE {
+           tok-id           INTEGER (768), -- 必须包含0300 (hex)
+           context-id       Random-Integer,
+           randSrc          Random-Integer,
+           randTarg         Random-Integer,
+           targ-name        Name,  -- targ-name在REP-TI中指定
+           src-name         Name OPTIONAL,
+             -- 在REQ-TOKEN中必须包含
+           key-estb-rep     BIT STRING OPTIONAL
+                 -- 包含目的方key-estb-str的响应
+                 -- （如果目的选择2-pass K-ALG）
+           }
+3．1．4 错误令牌
+	SPKM-ERROR令牌如下：
+
+   SPKM-ERROR ::= SEQUENCE {
+           error-token      ERROR-TOKEN,
+           algId            AlgorithmIdentifier,
+           integrity        Integrity  -- "token"是ERROR-TOKEN
+   }
+
+   ERROR-TOKRN ::=   SEQUENCE {
+           tok-id           INTEGER (1024), -- 必须包含0400 (hex)
+           context-id       Random-Integer
+           }
+
+	SPKM-ERROR令牌仅用于context建立过程。如果接收SPKM-REQ或
+SPKM-REP-TI令牌错误，则接收函数（gss-init-sec-context（）或gss-accept-sec-context
+（））将产生一个SPKM-ERROR令牌发送给对端（如果对端处于等待请求响应的状态），
+并返回GSS_S_CONTINUE_NEEDED。另一方面，如果对端不需要等待请求响应（如
+对端已经完成context建立），则该函数返回适当的主状态码（如GSS_S_BAD_SIG），
+并伴随着辅助状态为GSS_SPKM_S_SG_CONTEXT_ESTB_ABORT，并删除所有与
+context相关的信息。输出的令牌将不是SPKM-ERROR令牌，而是SPKM-DEL令牌，
+该令牌被对端的gss-process-context-token（）所使用。
+	
+	如果gss-init-sec-context（）接收一个错误的令牌（无论是否为有效的令牌），它将
+重新产生SPKM-REQ作为输出令牌，并返回主状态码GSS_S_CONTINUE_NEEDED。
+（注意如果gss-accept-sec-context（）在希望接收SPKM-REP-IT令牌时，接收到
+SPKM-REQ令牌，它将忽略SPKM-REQ，并返回一个零长度的输出令牌，和一个主状
+态码GSS_S_CONTINUE_NEEDED。）
+
+	类似的，如果gss-accept-sec-context（）接收到一个错误令牌（无论是否有效令牌），
+它将重新产生SPKM-REP-TI作为起输出令牌，并返回主状态码
+GSS_S_CONTINUE_NEEDED。
+
+	md5WithRsa是目前指定的对context建立令牌进行签名的算法。通过适当的使用
+SPKM-ERROR令牌可以解决位长系数的差异。Context发起方使用其所支持的最强的
+RSA（如1024位）对REQ-TOKEN进行签名。如果目的方不能验证，它将传送一个
+SPKM-ERROR令牌，该令牌用其所支持的最大长度的RSA（如512位）进行签名。
+
+	由于签名算法的长度等于签名模块的长度，因此在交换完成后，双方都知道对端所
+支持的RSA长度。接下来将继续进行交换（使用连续稍短的算法），直到达成一致或因
+无法达成一致而导致context建立失败。
+3．2 消息（Per-message）和Context删除令牌   
+	本节定义了三类令牌：“MIC”令牌，通过gss-getMIC（）产生，通过gss-verigyMIC
+（）处理；“Wrap”令牌，通过gss-wrap（）产生，通过gss-unwrap（）处理；删除令
+牌，通过gss-init-sec-context（），gss-accept-sec-context（）或gss-delete-sec-context（）
+产生，通过gss-process-context-token（）处理。
+3．2．1 消息令牌（Per-message ）-Sign/MIC
+使用gss-sign（）/gss-getMIC（）调用产生一个令牌，它与被保护的数据分开， 该
+令牌用于验证所接收的数据的完整性。令牌和数据可以被应用分别发送，目的方应用负
+责将令牌和数据进行关联。
+SPKM-MIC令牌的格式如下：
+
+
+   SPKM-MIC ::= SEQUENCE {
+           mic-header       Mic-Header,
+           int-cksum        BIT STRING
+                                -- 头和数据的校验和（ckecksum），
+                                -- 通过int-alg子段指定的算法计算
+   }
+
+   Mic-Header ::= SEQUENCE {
+           tok-id           INTEGER (257),
+                                -- 必须包含 0101 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+                                -- 完整性算法标识
+                                -- （必须是context中所协商的完整性算法中的一个）
+                                -- 字段不存在 = 默认的id
+           snd-seq [1]      SeqNum OPTIONAL  --序列号
+   }
+
+   SeqNum ::= SEQUENCE {
+           num      INTEGER, -- 序列号自身
+           dir-ind  BOOLEAN  -- 方向标识
+   }
+
+
+3.2.1.1. 校验和（Checksum）
+
+	Checksum计算过程（对所有的算法都一样---注意对于SPKM，术语“checksum”
+包含数字签名，也包含哈希和MAC）：Checksum计算整个数据段，该数据段逻辑上通
+过明文的令牌头（mic-header）的字节决定。最后结果将整个明文头和计算的数据绑定
+在一起，以最小化数据被恶意修改的可能性。
+
+	例如，如果int-alg算法指定为md5WithRSA，那么checksum通过计算明文（通过
+令牌头事先设置）的MD5[RFC-1321]哈希值，再对16个字节的MD5结果进行RSA签
+名[PKCS1]实现。签名通过来自信任状的RSA私钥计算，其结果（它的长度隐含在私
+钥的“modulus”参数中）被储存在int-cksum字段中
+
+	如果int-alg指定为基于对称密钥的哈希算法（如DES-MAC或md5-DES-CBC），
+则密钥是来自于context密钥的子密钥（见2. 4）。同样，其结果（它的长度由int-alg决
+定）被储存在int-cksum字段中。
+
+3．2．1．2 序列号
+	
+	假定在传输层以下的协议（无论是什么协议栈）提供保证通信足够的可靠性（不存
+在数据包的恶意的丢失，顺序颠倒，数据包被正确处理）。因此，在SPKM中使用序列
+号只用于安全，而不是通信的可靠（即，避免SPKM令牌恶意的丢失，重发，循序重
+排）。-- 因此它被推荐用于context建立中的顺序和重发检测。注意到序列号用于消息
+令牌中不使用时间戳的情况下。发起方的初始序列号放在SPKM-REQ的Context-Data
+字段，目的方的初始序列号放在SPKM-REP-TI的Context-Data字段；如果任一方没有
+设置该值，则默认为00。
+
+	序列号字段：序列号字段通过发送方的四字节序列号和一个布尔型的方向标识
+（FALSE- 发送方是context初始方，TRUE – 发送方是context的目的方）。在构造一
+个gss-sign/getMIC（）或gss-seal/wrap（）令牌后，发送方的序列号增加一。
+
+ 3．2．1．3 序列号处理过程
+	
+	令牌的接收者通过比较收到的序列号值和期望的序列号值，收到的方向标识值和期
+望的方向标识值，来验证序列号字段。如果序列号值大于期望值，则期望的序列号值被
+调整，并返回GSS_S_GAP_TOKEN。如果序列号值小于期望值，则期望值不被调整，
+并根据情况返回GSS_S_DUPLICATE_TOKEN,，GSS_S_UNSEQ_TOKEN,，或
+GSS_S_OLD_TOKEN令牌。如果方向标识值错误，则期望的序列号值不被调整，返回
+GSS_S_UNSEQ_TOKEN令牌
+
+	既然序列号值只是输入中用于完整性checksum的的一部分，所以序列号值不需要
+加密，并且将不同消息中的checksum和序列号值衔接的作法能够被检测出来。方向标
+识可以检测被目的方恶意转发回来的令牌。
+
+3．2．2 消息令牌（Per-message）–  Seal/Wrap
+	
+	使用gss-seal（）/gss-warp（）能够产生一个封装了用户数据（可以被加密）的令牌。
+这个令牌通过gss-seal（）/gss-warp（）产生，包含一个完整性的数据头，紧跟着数据体，
+数据体可以是纯明文（conf-alg = NULL），或加密的数据（使用合适的子密钥，见2.4关
+于context的C-ALG协商部分）
+
+	SPKM-WRAP令牌有如下格式：
+
+   SPKM-WRAP ::= SEQUENCE {
+           wrap-header       Wrap-Header,
+           wrap-body         Wrap-Body
+   }
+
+   Wrap-Header ::= SEQUENCE {
+           tok-id           INTEGER (513),
+                                -- 必须包含 0201 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+                                -- 完整性算法标识(必须是context中经协商的完整性
+算法中的一个)
+                               -- 字段不存在 = 默认的id
+           conf-alg [1]     Conf-Alg OPTIONAL,
+                                -- 保密性算法标识
+                                -- (必须为空或者一个协商的保密性算法)
+                                -- 字段不存在 = 默认的id
+                                -- NULL = none (没有申请保密性算法)           
+snd-seq [2]      SeqNum OPTIONAL
+                                -- 序列号
+   }
+
+
+
+   Wrap-Body ::= SEQUENCE {
+           int-cksum        BIT STRING,
+                                -- 头和数据的Checksum ,
+                                -- 通过int-alg字段指定的算法计算
+           data             BIT STRING
+                                -- 被加密的或纯明文数据
+   }
+
+   Conf-Alg ::= CHOICE {
+           algId [0]        AlgorithmIdentifier,
+           null [1]         NULL
+   }
+
+
+3．2．2．1 搀杂（Confounding）
+
+	正如[KRB5]所述，在IV值为零时，一个8字节随机搀杂数被产生作为加密密钥的
+一部分。该数据被放在“confounded”数据段中。
+
+3．2．2．2 检验和（checksum）
+
+	checksum计算过程（对所有的算法一致）：Checksum计算明码数据段，该数据段
+逻辑上通过明文的令牌头（wrap-header）字节数决定。通过gss-sign（）/gss-getMIC（）
+处理，结果将整个明文头和数据绑定在一起，以最小化数据被恶意修改的可能性。
+
+		关于md5WithRSA和DES-MAC的例子见3.2.1.1。
+	
+	如果int-alg定义为md5-DES-CBC，conf-alg定义为除DES-CBC外的算法，则
+checksum计算通过3.2.1.1，并将结果保存在int-cksum中。如果conf-alg定义为
+DES-CBC，则加密和完整性检测将按照如下处理。计算密码数据的MD5[见RFC-1321]
+哈希值。这16个字节附在“confounded”字段后面和1-8个字节的填塞数后面（填塞
+数定义见KRB5）。将这个结果用DES-CBC子密钥（见2.4）进行CBC加密，并将结果
+放在Wrap-Body的数据段中。密文最后两块（如经过加密的MD5哈希值）作为完整性
+checksum也被放在Wrap-Body的int-cksum字段中。
+
+		如果int-alg指定sum64-DES-CBC，则conf-alg必须为DES-CBC（如保密性必须被
+应用请求或SPKM返回一个错误）。加密和完整性使用DES-CBC子密钥进行单向处理，
+具体如下。先计算明码数据块的和（以2**64-1为模）。这个8字节的值被附在
+“confounded”数据和1-8个填塞数之后（见KRB5关于DES-CBC的填塞数的定义）。
+如上，CBC加密的结果被放在Wrap-body的数据段中。密文的最后一块被放在Wrap-body
+的int-cksum字段中。
+
+3．2．2．3 序列号
+
+		序列号在函数gss-wrap（）中计算并处理，具体处理与3.2.1.2和3.2.1.3处理一致。
+
+3．2．2．4 数据加密
+		
+	具体处理如下，除了（a）conf-alg是空（不加密）；或（b）conf-alg是DES-CBC
+且int-alg是md5-DES-CBC（加密处理3.2.2.2）；或（c）int-alg是sum64-DES-CBC（加
+密处理见3.2.2.2）。
+
+	“被搀杂的”数通过conf-alg指定的算法进行填塞和加密处理。数据使用IV值为
+零的CBC加密。 所使用的密钥是来自context密钥的子密钥，该密钥由2.4节介绍的
+子密钥产生算法建立（这确保用于加密的子密钥和用于完整性的子密钥 — 如
+DES-MAC而不是sum64-DES-CBC – 是不同的子密钥）
+3．2．3 Context删除令牌
+	该令牌通过gss_delete_sec_context（）产生，其格式与gss_sign（）/gss_getMIC（）
+所产生的令牌格式一致。
+
+	SPMK-DEL令牌定义如下：
+
+   SPKM-DEL ::= SEQUENCE {
+           del-header       Del-Header,
+           int-cksum        BIT STRING
+                                -- 令牌头的Checksum
+                                -- 通过int-alg字段指定的算法计算
+   }
+
+   Del-Header ::= SEQUENCE {
+           tok-id           INTEGER (769),
+                                -- 必须包含0301 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+                                -- 完整性算法标识
+                                -- （必须是经协商的完整性算法中的一个）
+                                -- 字段不存在 = 默认的 id
+           snd-seq [1]      SeqNum OPTIONAL
+                                -- 序列号字段
+   }
+	
+	snd-seq字段的计算与通过gss_sign() / gss_getMIC()计算一样。int-cksum字段计算
+与采用gss_sign() / gss_getMIC()一样，但user-data和checksum字段长度为零。 
+
+	如果接收到一个有效的删除令牌，则目的方应该删除context，
+gss-process-context-token（）返回主状态码GSS_S_COMPLETE，和一个辅助状态码
+GSS_SPKM_S_SG_CONTEXT_DELETED。如果，删除令牌是无效的，则context将不
+被删除，gss-process-context-token（）返回相应的主状态码（如GSS_S_BAD_SIG）和
+一个辅助状态码GSS_SPKM_S_SG_BAD_DELETE_TOKEN_RECD，此时应用可以通
+过某些操作去检查context的状态（如发送一个sealed/wrapped的测试消息，并等待一
+个sealed/wrapped的响应）。
+
+4．名字类型和对象标识（Name Types and Object Identifiers）
+		SPKM没有专门定义名字格式。这部分用于以后的研究。
+4．1 可选的名字格式
+	这部分讨论的被SPKM GSS-API可选支持的名字格式。注意到，可能存在一些
+GSS-API之外的，与特定的操作系统相关的函数来对这些格式进行解释，而支持这些格
+式的GSS-API位于这些函数之上。GSS-API对它们的支持主要是为了应用的方便。
+
+4．1．1 用户名格式
+		用户名格式对应的对象标识为（OID）为{iso(1) member-body(2) United States(840) 
+mit(113554) infosys(1) gssapi(2) generic(1) user_name(1)}。这种类型推荐的符号名为
+“GSS_SPKM_NT_USER_NAME”。
+
+		这种名字类型用于描述一个本地系统的已命名的用户。对它的解释与特定的操作系
+统相关。其格式被构造为：
+		username
+
+4．1．2 机器UID格式
+		机器UID格式对应的对象标识为{iso(1) member-body(2) United States(840) 
+mit(113554) infosys(1) gssapi(2) generic(1) machine_uid_name(2)}。其推荐的符号名为
+“GSS_SPKM_NT_MACHINE_UID_NAME”。
+		
+		这种类型用于描述与一个本地系统用户相对应的数字用户标识。对它的解释与操作
+系统相关的。代表这种类型名字的gss_buffer_desc必须包含一个本地很重要的
+（locally-significant）uid_t字段，该字段表示主机字节序。The gss_import_name()操作
+将uid解释为一个基于用户命名格式的username。
+4．1．3 串UID格式
+		串UID格式对应的对象标识为{iso(1) member-body(2) United States(840) mit(113554) 
+infosys(1) gssapi(2) generic(1) string_uid_name(3)}。其推荐的符号名为
+“GSS_SPKM_NT_STRING_UID_NAME”。
+	
+		这种类型用于描述代表一个本地系统用户的数字标识的数字串。对它的解释与操作
+系统相关的。该类型类似机器UID格式，除了buffer包含一个串用来表示uid-t。
+5．参数定义
+	这部分定义定义SPKM GSS-API所使用的参数。它定义了为支持可移植性的所需
+的基本接口。
+5．1 辅助状态码
+	这部分建议了minor_status通常的符号名，该符号是SPKM GSS-API的返回值。该
+定义能够增强所规定的SPKM机制的不同的实现方间的可移植性（在任何情况下，
+gss_display_status()能够使调用者将minor_status标识转换为文本表示）。每个机制的实
+现都必须通过文件或其它方法，将这些符号名转换为具体的值，该值被一个特别的
+GSS-API实现用来表示minor-status。应该承认，这个对应列表可以随着时间增长，对
+于特定的GSS-API实现，所需的额外的minor_status码的定义也将增加。
+5．1．1 Non-SPKM-specific状态码（Minor Status Code MSB, bit 31, SET）
+5．1．1．1 GSS-Related状态码（Minor Status Code bit 30 SET）
+
+   GSS_S_G_VALIDATE_FAILED
+       /* "有效的错误" */
+   GSS_S_G_BUFFER_ALLOC
+       /* "不能分配gss_buffer_t数据" */
+   GSS_S_G_BAD_MSG_CTX
+       /* "消息context无效" */
+   GSS_S_G_WRONG_SIZE
+       /* "缓冲区大小错误" */
+   GSS_S_G_BAD_USAGE
+       /* "信任状使用类型不清楚" */
+   GSS_S_G_UNAVAIL_QOP
+/* "指定无效的保护品质（QOP）" */
+
+5．1．1．2 Implementation-Related状态码（Minor Status Code bit 30 OFF）
+
+   GSS_S_G_MEMORY_ALLOC
+       /* "不能执行内存分配请求" */
+5．1．2 SPKM-specific-codes状态码（Minor Status Code MSB, bit 31, OFF）
+   GSS_SPKM_S_SG_CONTEXT_ESTABLISHED
+       /* "context已经建立" */
+   GSS_SPKM_S_SG_BAD_INT_ALG_TYPE
+       /* "令牌中有不知道的完整性算法类型" */
+   GSS_SPKM_S_SG_BAD_CONF_ALG_TYPE
+       /* "令牌中有不知道的保密性算法类型" */
+   GSS_SPKM_S_SG_BAD_KEY_ESTB_ALG_TYPE
+       /* "令牌中有不知道的密钥建立算法类型" */
+   GSS_SPKM_S_SG_CTX_INCOMPLETE
+       /* "尝试使用不完全安全的context" */
+   GSS_SPKM_S_SG_BAD_INT_ALG_SET
+       /* "所提供的算法集中没有公共的完整性算法" */
+   GSS_SPKM_S_SG_BAD_CONF_ALG_SET
+       /* "所提供的算法集中没有公共的保密性算法" */
+   GSS_SPKM_S_SG_BAD_KEY_ESTB_ALG_SET
+       /* "所提供的算法集中没有公共的密钥建立算法" */
+   GSS_SPKM_S_SG_NO_PVNO_IN_COMMON
+       /* "没有公共的协议版本" */
+   GSS_SPKM_S_SG_INVALID_TOKEN_DATA
+       /* "数据格式不完全：不能被编码成令牌" */
+   GSS_SPKM_S_SG_INVALID_TOKEN_FORMAT
+       /* "接收到的令牌格式不完全：不能被解码" */
+   GSS_SPKM_S_SG_CONTEXT_DELETED
+       /* "将对端请求的Context删除" */
+   GSS_SPKM_S_SG_BAD_DELETE_TOKEN_RECD
+       /* "收到无效的删除令牌 – context没有删除" */
+   GSS_SPKM_S_SG_CONTEXT_ESTB_ABORT
+      /* "不可恢复的令牌建立错误。Context删除" */
+5．2 保护品质（Quality of Protection Value）
+	保护品质（QOP）参数在SPKM GSS-API中作为gss_sign()和gss_seal() 
+（gss_getMIC() 和gss_wrap()）的输入，在可选的算法集中去选择保密性和完整性算法。
+一旦这套算法集在发起方和目的方达成一致，QOP参数只是简单在这套算法集中选择。
+
+	具体的说，SPKM-REQ令牌发送一个发起方所支持的表示完整性的算法标识序列
+和表示保密性的算法标识序列。目的方通过SPKM-REP-TI令牌返回该算法序列的子集
+（与发送的顺序一致）。因此，发起方和目的方彼此知道自己支持的算法，和双方共同
+支持的算法（后者表示在context有效阶段所支持的算法）。综上所述，QOP参数具有
+这些的信息的含义。例如，一个应用可以请求数字3的完整性算法。如果该算法在context
+建立过程中被支持，则它被使用，否则返回GSS_S_FAILURE，和一个适当的辅助状态
+码。
+		
+	如果SPKM-REP-TI令牌没被使用（SPKM-2中的单向认证），则“一致”的算法标
+识集简单的使用发起方的算法集（如果该算法集不被接受，目的方必须返回一个错误令
+牌，表示context未被建立）。注意到，出于交互的考虑，发起方不需要提供其所支持的
+所有算法；相反，它只提供必须的或推荐的SPKM算法，使得它们可能被目的方支持。
+
+		QOP参数是一个32位的无符号整数（一个OM uint32），各位定义如下：
+
+ 保密性                           完整性
+ 31 (MSB)                         16 15                         (LSB) 0
+------------------------------------|-----------------------------------
+|  TS (5)  | U(3) | IA (4) | MA (4) |  TS (5)  | U(3) | IA (4) | MA(4) |
+------------------------------------|-----------------------------------
+
+   其中
+		TS是一个五位的类型标识（定义用于保护令牌的算法类型 – 具体说明如下）；
+	
+		U是一个三位未定义的字段（用于扩充）
+
+		IA是一个四位的字段，列举了具体执行的算法；
+
+		MA是一个4位字段，列举所有定义的算法。
+
+	    QOP参数的解释如下（注意对于保密性和完整性参数的处理过程是相同的）。首先
+检查MA字段。如果非零，则用于保护令牌的算法就是该数值对应的算法。
+	
+	    如果MA为零，则检查IA字段。如果该字段为非零，则用于保护算法的令牌就是
+与那个整数值相应的具体执行的算法（如果这个算法在令牌建立中有效）。注意到这个
+字段的使用会影响可移植性，因为在一个实现中一个特别的值表示一个算法，而在另一
+个实现中可能表示完全不同的另一个算法。
+
+	    最后，如果MA和IA同为零，则检查TS。如果TS为零，表示使用默认的算法，
+即发起方提供的算法列表的第一个算法（保密性和完整性依赖QOP的哪一部分被检
+查），该算法必须被context建立的双方支持。如果TS非零，表示一个特定的算法限定
+符，并采用支持该限定符的第一个算法。
+
+	    以下是部分TS值（算法限定符）；其它值将在以后增加。
+
+	    关于保密性算法TS字段：
+ 
+         00001 (1) = SPKM_SYM_ALG_STRENGTH_STRONG
+         00010 (2) = SPKM_SYM_ALG_STRENGTH_MEDIUM
+         00011 (3) = SPKM_SYM_ALG_STRENGTH_WEAK
+
+	   关于完整性算法TS字段：
+
+         00001 (1) = SPKM_INT_ALG_NON_REP_SUPPORT
+         00010 (2) = SPKM_INT_ALG_REPUDIABLE
+
+	
+	   很明显，限定符象高强度，中等强度，弱强度的定义是有争议的，而且可能随着时
+间改变，但对于目前这版的规范，我们定义这些术语如下。如果一个保密性算法的有效
+密钥长度小于40位，称为“弱强度”；如果在40至80位之间，成为“中等强度”，如
+果大于80位，成为“高强度”。（注意，“有效密钥长度”描述了采用公共的密码攻击去
+破解一个密码所需的计算量）。
+
+	   对每个保密性算法和完整性算法而言，一个五位的TS字段允许最多31个限定符
+（“0”保留为默认的值）。本文定义了三个用于保密性算法，两个用于完整性算法，其
+余的用于未来的扩充。对描述符提出了如“快速”，“中速”，“慢速”等建议，但这些术
+语很难量化（与平台和处理器相关），所以不在最初的规范之内。其主要意图是说明TS
+术语应该是尽可能量化的，独立与环境的限定符。
+ 
+	   上述定义的QOP结构的用法的含义如下：
+	
+	   -TS值在GSS-API层上定义，因此在不同的实现间是可移植。对算法不清楚的应用
+模块也能选择保护“品质”去保护其消息令牌。
+
+	   -MA值在机制的层上定义，因此在一个机制的不同实现间是可移植的。例如Kerberos 
+V5 GSS机制的所有实现必须支持
+
+         GSS_KRB5_INTEG_C_QOP_MD5     (value: 1)
+         GSS_KRB5_INTEG_C_QOP_DES_MD5 (value: 2)
+         GSS_KRB5_INTEG_C_QOP_DES_MAC (value: 3)。
+
+	（注意到Kerberos相关的QOP值并不与上文定义的QOP结构冲突）
+
+	   -IA值定义在实现层上（例如在用户文档中），因此通常不可移植。一个知道自己执
+行模式和对端执行模式的应用可以自由使用这些值，因为它们在context中和双方间都
+是有效的。
+
+	   令牌的目的方必须返回调用者一个包含所有相关域字段集的QOP参数。例如，如果
+triple-DES被定义为算法8，则triple-DES-protected令牌的目的方必须将其传递给应用
+（QOP保密性TS=1，IA=0，MA=8）。在这种情况下，应用可以随意读取其所理解的
+QOP各部分（TS or IA/MA）。
+
+	   为了帮助实现和互操作性，作了如下约定。发送方发送的完整性算法ID集必须至
+少包含一个计算数字签名的算法，该算法支持抗抵赖性，必须至少包含任意一个其它类
+（可抵赖的）的完整性算法。目的方返回的算法子集也必须包含至少一个抗抵赖的签名
+算法和至少一个可抵赖的完整性算法。
+
+	   作出如上约定的原因是为了确保每个SPKM实现者提供一个支持抗抵赖性的数据完
+整性服务和不支持抗抵赖性的数据完整性服务。一个不知道基本算法的应用能够通过传
+递（QOP完整性 TS=1，IA=MA=0）或（QOP完整性TS=2, IA=MA=0），选择一个或
+另一个算法。尽管一个希望匿名的发起方将永不使用抗抵赖性的数字签名算法，完整性
+服务必须在context中必须有效，以便目地方在需要时使用。
+
+	   最后，为了和第二节定义个“必须”和“建议”的算法一致，定义了如下QOP值。
+
+	   对于保密性MA字段：
+
+0001 (1) = DES-CBC
+
+	   对于完整性MA字段：
+
+      0001 (1) = md5WithRSA
+      0010 (2) = DES-MAC
+
+6．支持的函数
+	这部分描绘了SPKM实现必须支持的函数，该函数实际上在所有的GSS-API机制
+中都有意义。它使用token-id和context-id的信息，这些信息被包含在SPKM的context
+建立令牌，错误令牌，context删除令牌和消息令牌中。这些函数在如下的章节中定义。
+
+6．1  SPKM解析令牌调用
+   输入：
+
+   o  input_token OCTET STRING
+
+   输出：
+
+   o  major_status INTEGER,
+
+   o  minor_status INTEGER,
+
+   o  mech_type OBJECT IDENTIFIER,
+
+   o  token_type INTEGER,
+
+   o  context_handle CONTEXT HANDLE,
+
+
+
+   返回主状态（major_status）码：
+
+   o  GSS_S_COMPLETE表示输入令牌的所有字段能够被解析。解析结果被分别储存在
+mech_type，token_type 和 context_handle中（如果为空，表示该参数未被使用）。
+
+   o  GSS_S_DEFECTIVE_TOKEN表示要么token-id或context-id（如果存在）未被解
+析。如果token-type中返回值非空，表示错误在后者（即context-id 译者注）。 
+
+   o  GSS_S_NO_TYPE表示tonken-id解析成功，但不存在与之对应的有效token-type。
+
+	 （注意在RFC-1508中，没有为GSS定义主状态码。除非对起进行定义（如果曾经有
+的话），否则SPKM实现将返回GSS_S_DEFECTIVE_TOKEN，并且token-type和
+context-handle设为NULL。这意味着不被认识的token-id信息和不能被解析的token-id信
+息是被看作一致	的。）
+
+   o  GSS_S_NO_CONTEXT表示context-id能被解析，但不存在与其对应的
+context-handle。
+
+   o  GSS_S_FAILURE表示机制类型不能被解析（如令牌被破坏）。
+
+   SPKM_Parse_token() 被用于返回应用机制的类型，令牌类型和与给定的输入令牌相对
+应的context句柄。由于GSS-API令牌对于应用调用者是不透明的，这个函数允许应用在
+不违背GSS的不透明性的情况下，决定与令牌相关的信息。其中最主要的是令牌类型，
+应用可以用来决定调用哪个GSS函数使得令牌被处理。
+
+	如果所有令牌限于RFC-1508的附录B（同时在Kerberos V5 GSS机制[KRB5]和本文中
+描述），则对于任意未被破坏的输入令牌，任意一种实现必须返回至少mech-type参数（其
+他参数可以为空）。如果如果一个调用SPKM_Parse_token()实现能够识别令牌，它将返回
+token-type使得应用能够继续调用正确的GSS函数。最后，如果机制在它的令牌中提供一
+个context-id字段，则一个实现能够映射context-id到context-handle，并将其
+（context-handle）返回给应用。这对于那些同时打开多个context并且使用相同的机制的
+应用而言是很必须的。当一个输入令牌到达时，应用能够使用该函数决定要调用的GSS
+函数和该函数使用的context-handle。注意到该函数不通过加密处理去决定令牌的有效性，
+它简单的尝试解析令牌的mech-type，token-type和context-id字段。因此它是可以构造的，
+如一个任意的数据缓冲可以从一个看上去象一个有效的mech-type的随机数开始，则
+SPKM_Parse_token()对该缓冲数据可能返回错误的信息。尽管是可构造的，但这种情况是
+不大可能的。
+
+   SPKM_Parse_token() 函数对与SPKM相容的实现而言是必须的，但对于应用而言是可
+选的。也就是，如果一个应用只有一个context，并且能够猜想要调用的GSS函数（或它
+愿意处理处理错误码），则应用可以不调用SPKM_Parse_token()。此外，如该函数曾经移
+植到GSS-API层，则在采用GSS_Parse_token()，或一个新名字或函数规范时，
+SPKM_Parse_token()是被否定的。最后注意到，这时，这个函数没有定义辅助状态返回码。
+6．2  token_type输出参数
+   定义如下令牌类型：
+
+      GSS_INIT_TOKEN   = 1
+      GSS_ACCEPT_TOKEN = 2
+      GSS_ERROR_TOKEN  = 3
+      GSS_SIGN_TOKEN   = GSS_GETMIC_TOKEN = 4
+      GSS_SEAL_TOKEN   = GSS_WRAP_TOKEN   = 5
+      GSS_DELETE_TOKEN = 6
+
+	所有的SPKM机制必须能够执行从任意令牌的token-id信息（通过
+SPKMInnerContextToken标记值或tok-id字段）到上述类型的映射。应用必须能够基于
+token-type决定调用哪个GSS函数（例如，如果令牌是GSS_INIT_TOKEN，则应用将
+调用gss_accept_sec_context()，如果令牌是GSS_WRAP_TOKEN，则应用调用
+gss_unwrap()）。
+6．3  context_handle输出参数
+	   SPKM必须维持一个context-id和context-handle间的映射，因此将一个单独的令牌
+与其对应的context想关联。很明显，context-handle值可以是本地决定的，事实上，它
+可以与包含本地系统中包含敏感数据的内存相关，使得将context-id与一个计算出的
+context-handle设为完全相等，是不通用的。相反将context-handle与一个计算出的
+context-id设为完全相等也是不通用的，因为context-handle必须在应用第一次调用
+gss_init_sec_context()或gss_accept_sec_context()时被返回，而context-id（对两端的所有
+context）的唯一性可以要求发送方和目的方同时计算。因此，context-handle和context-id
+必须被分别计算，且机制实现必须能够在最近的context建立完成后建立二者间的映射。
+
+	   在令牌建立过程中，Context-id计算处理如下。每个SPKM实现必须产生一个新的
+随机数，即一个不大可能已经被使用的。注意到对该随机数，没有加密处理（如，它不
+需要不可预见，只是简单要求是一个新的数）。发起方通过PSKM-REQ令牌的context-id
+字段将它的随机数到目的方，。如果没有进一步的context建立令牌（如SPKM-2的单向
+认证），则这个值被接受为context-id（如果不被目的方接受，必须产生错误令牌）。否
+则，目的方产生它的随机数，并将它加到发起方的随机数后面。这个被连接的值被当作
+context-id，在SPKM-REP-TI中使用，并在该context的所有的后续令牌中有效。
+
+	   双方共同产生context-id确保每边的值都是新的，因此预先排除了context间的重放
+（replay）攻击（一个来自于旧的context的令牌被恶意插入一个新的context中，无论
+是相同的对端还是不同的对端）。在SPKM-2单向认证中SPKM-REQ的key-src-bind字
+段必须存在用于简单辅助目的方相信该令牌是新的（以及它请求的context密钥）。
+7．安全考虑
+	安全问题的讨论贯穿在整个备忘录中。
+
+8．参考文献
+
+   [Davi89]:    D. W. Davies and W. L. Price, "Security for Computer
+   Networks", Second Edition, John Wiley and Sons, New York, 1989.
+
+   [FIPS-113]:  National Bureau of Standards, Federal Information
+   Processing Standard 113, "Computer Data Authentication", May 1985.
+
+   [GSSv2]:     Linn, J., "Generic Security Service Application Program
+   Interface Version 2", Work in Progress.
+
+   [Juen84]:    R. R. Jueneman, C. H. Meyer and S. M. Matyas, Message
+   Authentication with Manipulation Detection Codes, in Proceedings of
+   the 1983 IEEE Symposium on Security and Privacy, IEEE Computer
+   Society Press, 1984, pp.33-54.
+
+   [KRB5]:      Linn, J., "The Kerberos Version 5 GSS-API Mechanism",
+   RFC 1964, June 1996.
+
+   [PKCS1]:     RSA Encryption Standard, Version 1.5, RSA Data Security,
+   Inc., Nov. 1993.
+
+   [PKCS3]:     Diffie-Hellman Key-Agreement Standard, Version 1.4, RSA
+   Data Security, Inc., Nov. 1993.
+
+   [RFC-1321]:  Rivest, R., "The MD5 Message-Digest Algorithm", RFC 1321.
+
+   [RFC-1422]:  Kent, S., "Privacy Enhancement for Internet Electronic
+   Mail:  Part II: Certificate-Based Key Management", RFC 1422.
+
+   [RFC-1423]:  Balenson, D., "Privacy Enhancement for Internet
+   Elecronic Mail: Part III: Algorithms, Modes, and Identifiers",
+   RFC 1423.
+
+   [RFC-1508]:  Linn, J., "Generic Security Service Application Program
+   Interface", RFC 1508.
+
+   [RFC-1509]:  Wray, J., "Generic Security Service Application Program
+   Interface: C-bindings", RFC 1509.
+
+   [RFC-1510]:  Kohl J., and C. Neuman, "The Kerberos Network
+   Authentication Service (V5)", RFC 1510.
+
+   [9798]:      ISO/IEC 9798-3, "Information technology - Security
+   Techniques - Entity authentication mechanisms - Part 3:  Entitiy
+   authentication using a public key algorithm", ISO/IEC, 1993.
+
+   [X.501]:     ISO/IEC 9594-2, "Information Technology - Open Systems
+   Interconnection - The Directory:  Models", CCITT/ITU Recommendation
+   X.501, 1993.
+
+   [X.509]:     ISO/IEC 9594-8, "Information Technology - Open Systems
+   Interconnection - The Directory:  Authentication Framework",
+   CCITT/ITU Recommendation X.509, 1993.
+
+   [X9.44]:     ANSI, "Public Key Cryptography Using Reversible
+    Algorithms for the Financial Services Industry:  Transport of
+   Symmetric Algorithm Keys Using RSA", X9.44-1993.
+
+9．作者地址
+
+   Carlisle Adams
+   Bell-Northern Research
+   P.O.Box 3511, Station C
+   Ottawa, Ontario, CANADA  K1Y 4H7
+
+   Phone: +1 613.763.9008
+   EMail: cadams@bnr.ca
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Appendix A:  ASN.1 Module Definition
+
+SpkmGssTokens {iso(1) identified-organization(3) dod(6) internet(1)
+               security(5) mechanisms(5) spkm(1) spkmGssTokens(10)}
+
+
+DEFINITIONS IMPLICIT TAGS ::=
+BEGIN
+
+
+-- EXPORTS ALL --
+
+
+IMPORTS
+
+   Name
+      FROM InformationFramework {joint-iso-ccitt(2) ds(5) module(1)
+                                informationFramework(1) 2}
+
+   Certificate, CertificateList, CertificatePair, AlgorithmIdentifier,
+   Validity
+      FROM AuthenticationFramework {joint-iso-ccitt(2) ds(5) module(1)
+                                   authenticationFramework(7) 2}  ;
+
+
+
+-- types --
+
+   SPKM-REQ ::= SEQUENCE {
+           requestToken      REQ-TOKEN,
+           certif-data [0]   CertificationData OPTIONAL,
+           auth-data [1]     AuthorizationData OPTIONAL
+   }
+
+
+   CertificationData ::= SEQUENCE {
+           certificationPath [0]          CertificationPath OPTIONAL,
+           certificateRevocationList [1]  CertificateList OPTIONAL
+   } -- at least one of the above shall be present
+
+
+   CertificationPath ::= SEQUENCE {
+           userKeyId [0]         OCTET STRING OPTIONAL,
+           userCertif [1]        Certificate OPTIONAL,
+           verifKeyId [2]        OCTET STRING OPTIONAL,
+           userVerifCertif [3]   Certificate OPTIONAL,
+           theCACertificates [4] SEQUENCE OF CertificatePair OPTIONAL
+   } -- Presence of [2] or [3] implies that [0] or [1] must also be
+
+     -- present.  Presence of [4] implies that at least one of [0], [1],
+     -- [2], and [3] must also be present.
+
+   REQ-TOKEN ::= SEQUENCE {
+           req-contents     Req-contents,
+           algId            AlgorithmIdentifier,
+           req-integrity    Integrity  -- "token" is Req-contents
+   }
+
+  Integrity ::= BIT STRING
+     -- If corresponding algId specifies a signing algorithm,
+     -- "Integrity" holds the result of applying the signing procedure
+     -- specified in algId to the BER-encoded octet string which results
+     -- from applying the hashing procedure (also specified in algId) to
+     -- the DER-encoded octets of "token".
+     -- Alternatively, if corresponding algId specifies a MACing
+     -- algorithm, "Integrity" holds the result of applying the MACing
+     -- procedure specified in algId to the DER-encoded octets of
+     -- "token"
+
+   Req-contents ::= SEQUENCE {
+           tok-id           INTEGER (256),  -- shall contain 0100 (hex)
+           context-id       Random-Integer,
+           pvno             BIT STRING,
+           timestamp        UTCTime OPTIONAL, -- mandatory for SPKM-2
+           randSrc          Random-Integer,
+           targ-name        Name,
+           src-name [0]     Name OPTIONAL,
+           req-data         Context-Data,
+           validity [1]     Validity OPTIONAL,
+           key-estb-set     Key-Estb-Algs,
+           key-estb-req     BIT STRING OPTIONAL,
+           key-src-bind     OCTET STRING OPTIONAL
+              -- This field must be present for the case of SPKM-2
+              -- unilateral authen. if the K-ALG in use does not provide
+              -- such a binding (but is optional for all other cases).
+              -- The octet string holds the result of applying the
+              -- mandatory hashing procedure (in MANDATORY I-ALG;
+              -- see Section 2.1) as follows:  MD5(src || context_key),
+              -- where "src" is the DER-encoded octets of src-name,
+              -- "context-key" is the symmetric key (i.e., the
+              -- unprotected version of what is transmitted in
+              -- key-estb-req), and "||" is the concatenation operation.
+   }
+
+   Random-Integer ::= BIT STRING
+
+   Context-Data ::= SEQUENCE {
+           channelId       ChannelId OPTIONAL,
+           seq-number      INTEGER OPTIONAL,
+           options         Options,
+           conf-alg        Conf-Algs,
+           intg-alg        Intg-Algs,
+           owf-alg         OWF-Algs
+   }
+
+   ChannelId ::= OCTET STRING
+
+   Options ::= BIT STRING {
+           delegation-state (0),
+           mutual-state (1),
+           replay-det-state (2),
+           sequence-state (3),
+           conf-avail (4),
+           integ-avail (5),
+           target-certif-data-required (6)
+   }
+
+   Conf-Algs ::= CHOICE {
+           algs [0]         SEQUENCE OF AlgorithmIdentifier,
+           null [1]         NULL
+   }
+
+   Intg-Algs ::= SEQUENCE OF AlgorithmIdentifier
+
+   OWF-Algs ::= SEQUENCE OF AlgorithmIdentifier
+
+   Key-Estb-Algs ::= SEQUENCE OF AlgorithmIdentifier
+
+
+   SPKM-REP-TI ::= SEQUENCE {
+           responseToken    REP-TI-TOKEN,
+           certif-data      CertificationData OPTIONAL
+             -- present if target-certif-data-required option was
+   }         -- set to TRUE in SPKM-REQ
+
+   REP-TI-TOKEN ::= SEQUENCE {
+           rep-ti-contents  Rep-ti-contents,
+           algId            AlgorithmIdentifier,
+           rep-ti-integ     Integrity  -- "token" is Rep-ti-contents
+   }
+
+   Rep-ti-contents ::= SEQUENCE {
+           tok-id           INTEGER (512),   -- shall contain 0200 (hex)
+           context-id       Random-Integer,
+           pvno [0]         BIT STRING OPTIONAL,
+           timestamp        UTCTime OPTIONAL, -- mandatory for SPKM-2
+           randTarg         Random-Integer,
+           src-name [1]     Name OPTIONAL,
+           targ-name        Name,
+           randSrc          Random-Integer,
+           rep-data         Context-Data,
+           validity [2]     Validity  OPTIONAL,
+           key-estb-id      AlgorithmIdentifier OPTIONAL,
+           key-estb-str     BIT STRING OPTIONAL
+   }
+
+
+   SPKM-REP-IT ::= SEQUENCE {
+           responseToken    REP-IT-TOKEN,
+           algId            AlgorithmIdentifier,
+           rep-it-integ     Integrity  -- "token" is REP-IT-TOKEN
+   }
+
+   REP-IT-TOKEN ::= SEQUENCE {
+           tok-id           INTEGER (768),  -- shall contain 0300 (hex)
+           context-id       Random-Integer,
+           randSrc          Random-Integer,
+           randTarg         Random-Integer,
+           targ-name        Name,
+           src-name         Name OPTIONAL,
+           key-estb-rep     BIT STRING OPTIONAL
+   }
+
+   SPKM-ERROR ::= SEQUENCE {
+           errorToken       ERROR-TOKEN,
+           algId            AlgorithmIdentifier,
+           integrity        Integrity  -- "token" is ERROR-TOKEN
+   }
+
+   ERROR-TOKEN ::=   SEQUENCE {
+           tok-id           INTEGER (1024), -- shall contain 0400 (hex)
+           context-id       Random-Integer
+   }
+
+   SPKM-MIC ::= SEQUENCE {
+           mic-header       Mic-Header,
+           int-cksum        BIT STRING
+   }
+
+   Mic-Header ::= SEQUENCE {
+           tok-id           INTEGER (257), -- shall contain 0101 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+           snd-seq [1]      SeqNum OPTIONAL
+   }
+
+   SeqNum ::= SEQUENCE {
+           num              INTEGER,
+           dir-ind          BOOLEAN
+   }
+
+   SPKM-WRAP ::= SEQUENCE {
+           wrap-header       Wrap-Header,
+           wrap-body         Wrap-Body
+   }
+
+   Wrap-Header ::= SEQUENCE {
+           tok-id           INTEGER (513), -- shall contain 0201 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+           conf-alg [1]     Conf-Alg OPTIONAL,
+           snd-seq [2]      SeqNum OPTIONAL
+   }
+
+   Wrap-Body ::= SEQUENCE {
+           int-cksum        BIT STRING,
+           data             BIT STRING
+   }
+
+   Conf-Alg ::= CHOICE {
+           algId [0]        AlgorithmIdentifier,
+           null [1]         NULL
+   }
+
+
+   SPKM-DEL ::= SEQUENCE {
+           del-header       Del-Header,
+           int-cksum        BIT STRING
+   }
+
+   Del-Header ::= SEQUENCE {
+           tok-id           INTEGER (769), -- shall contain 0301 (hex)
+           context-id       Random-Integer,
+           int-alg [0]      AlgorithmIdentifier OPTIONAL,
+           snd-seq [1]      SeqNum OPTIONAL
+   }
+
+
+-- other types --
+
+   -- from [RFC-1508] --
+
+   MechType ::= OBJECT IDENTIFIER
+
+   InitialContextToken ::= [APPLICATION 0] IMPLICIT SEQUENCE {
+      thisMech              MechType,
+      innerContextToken     SPKMInnerContextToken
+   }     -- when thisMech is SPKM-1 or SPKM-2
+
+   SPKMInnerContextToken ::= CHOICE {
+      req    [0] SPKM-REQ,
+      rep-ti [1] SPKM-REP-TI,
+      rep-it [2] SPKM-REP-IT,
+      error  [3] SPKM-ERROR,
+      mic    [4] SPKM-MIC,
+      wrap   [5] SPKM-WRAP,
+      del    [6] SPKM-DEL
+   }
+
+
+   -- from [RFC-1510] --
+
+   AuthorizationData ::= SEQUENCE OF SEQUENCE {
+     ad-type  INTEGER,
+     ad-data  OCTET STRING
+   }
+
+
+-- object identifier assignments --
+
+   md5-DES-CBC OBJECT IDENTIFIER ::=
+      {iso(1) identified-organization(3) dod(6) internet(1) security(5)
+       integrity(3) md5-DES-CBC(1)}
+
+   sum64-DES-CBC OBJECT IDENTIFIER ::=
+      {iso(1) identified-organization(3) dod(6) internet(1) security(5)
+       integrity(3) sum64-DES-CBC(2)}
+
+   spkm-1 OBJECT IDENTIFIER ::=
+      {iso(1) identified-organization(3) dod(6) internet(1) security(5)
+       mechanisms(5) spkm(1) spkm-1(1)}
+
+   spkm-2 OBJECT IDENTIFIER ::=
+      {iso(1) identified-organization(3) dod(6) internet(1) security(5)
+       mechanisms(5) spkm(1) spkm-2(2)}
+
+
+END
+
+
+
+Appendix B:  Imported Types
+
+   This appendix contains, for completeness, the relevant ASN.1 types
+   imported from InformationFramework (1993), AuthenticationFramework
+   (1993), and [PKCS3].
+
+   AttributeType ::= OBJECT IDENTIFIER
+   AttributeValue ::= ANY
+   AttributeValueAssertion ::= SEQUENCE {AttributeType,AttributeValue}
+   RelativeDistinguishedName ::= SET OF AttributeValueAssertion
+      -- note that the 1993 InformationFramework module uses
+      -- different syntax for the above constructs
+   RDNSequence ::= SEQUENCE OF RelativeDistinguishedName
+   DistinguishedName ::= RDNSequence
+   Name ::= CHOICE {  -- only one for now
+           rdnSequence       RDNSequence
+   }
+
+   Certificate ::= SEQUENCE {
+           certContents      CertContents,
+           algID             AlgorithmIdentifier,
+           sig               BIT STRING
+   }  -- sig holds the result of applying the signing procedure
+      -- specified in algId to the BER-encoded octet string which
+      -- results from applying the hashing procedure (also specified in
+      -- algId) to the DER-encoded octets of CertContents
+
+   CertContents ::= SEQUENCE {
+           version [0]        Version DEFAULT v1,
+           serialNumber       CertificateSerialNumber,
+           signature          AlgorithmIdentifier,
+           issuer             Name,
+           validity           Validity,
+           subject            Name,
+           subjectPublicKeyInfo     SubjectPublicKeyInfo,
+           issuerUID [1]      IMPLICIT UID OPTIONAL,  -- used in v2 only
+           subjectUID [2]     IMPLICIT UID OPTIONAL   -- used in v2 only
+   }
+
+   Version ::= INTEGER {v1(0), v2(1)}
+   CertificateSerialNumber ::= INTEGER
+   UID ::= BIT STRING
+
+   Validity ::= SEQUENCE {
+           notBefore         UTCTime,
+           notAfter          UTCTime
+   }
+
+
+   SubjectPublicKeyInfo ::= SEQUENCE {
+           algorithm         AlgorithmIdentifier,
+           subjectPublicKey  BIT STRING
+   }
+
+   CertificatePair ::= SEQUENCE {
+           forward [0]      Certificate OPTIONAL,
+           reverse [1]      Certificate OPTIONAL
+   }         -- at least one of the pair shall be present
+
+   CertificateList ::= SEQUENCE {
+           certListContents        CertListContents,
+           algId                   AlgorithmIdentifier,
+           sig                     BIT STRING
+   }  -- sig holds the result of applying the signing procedure
+      -- specified in algId to the BER-encoded octet string which
+      -- results from applying the hashing procedure (also specified in
+      -- algId) to the DER-encoded octets of CertListContents
+
+   CertListContents ::= SEQUENCE {
+           signature               AlgorithmIdentifier,
+           issuer                  Name,
+           thisUpdate              UTCTime,
+           nextUpdate              UTCTime OPTIONAL,
+           revokedCertificates     SEQUENCE OF SEQUENCE {
+                userCertificate       CertificateSerialNumber,
+                revocationDate        UTCTime           } OPTIONAL
+   }
+
+   AlgorithmIdentifier ::= SEQUENCE {
+           algorithm         OBJECT IDENTIFIER,
+           parameter         ANY DEFINED BY algorithm OPTIONAL
+   }  -- note that the 1993 AuthenticationFramework module uses
+      -- different syntax for this construct
+
+
+
+   --from [PKCS3] (the parameter to be used with dhKeyAgreement) --
+
+   DHParameter ::= SEQUENCE {
+     prime              INTEGER,  -- p
+     base               INTEGER,  -- g
+     privateValueLength INTEGER OPTIONAL
+   }
+
+
+(rfc2025 The Simple Public-Key GSS-API Mechanism (SPKM)   简单公共密钥GSS-API机制（SPKM）
+
+
+1
+RFC文档中文翻译计划

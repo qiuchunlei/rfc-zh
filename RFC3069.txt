@@ -1,0 +1,212 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：何继明（galaxy123   galaxy123@sina.com）
+译文发布时间：2001-6-8
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留
+本文档的翻译及版权信息。
+
+Network Working Group                                              D. McPherson
+Request for Comments: 3069                                     Amber Networks, Inc.
+Category: Informational                                                   B. Dykes
+                                                                  Onesecure, Inc.
+                                                                   February 2001
+VLAN聚合实现IP地址有效分配
+（RFC3069――VLAN Aggregation for Efficient IP Address Allocation）
+
+本备忘录的状态
+本备忘录提供了有关Internet社区的情况。此文档没有依存任何Internet标准。此文档发布不
+受任何限制。
+
+版权声明
+ Copyright (C) The Internet Society (2001).
+
+摘要
+本文档主要介绍了关于使用VLAN聚合技术情况下与Ipv4地址分配相关的一些概念。本文
+描述了这样一种机制，这种机制可以使处在同一个物理交换设备中的分属不同虚拟广播域的主机
+处在相同Ipv4子网中而且使用同一个默认网关，这样就可以消除原有的在一个VLAN或MAN中
+必须使用一个专用IP子网的限制。
+使用这种机制可以明显减少VLAN或MAN中对IP地址空间的消耗，提高了地址的使用效率。
+另外，这样做也降低了网络中IP地址管理的难度。
+
+目录
+1.  介绍	2
+2．讨论	3
+3．定向广播的使用	4
+4.  对多播的考虑	4
+5.  实施的考虑	4
+6.  对安全的考虑	4
+鸣谢	5
+参考	5
+作者地址	5
+版权声明	5
+致谢	6
+
+1.介绍
+本文所描述的VLAN聚合技术提供了一种机制：这种机制可以使处在同一个物理交换设备
+中的分属不同虚拟广播域的主机处在相同Ipv4子网中而且使用同一个默认网关。
+在当前一个大规模的交换局域网环境内，这种机制相对于今天的传统Ipv4寻址体系具有若
+干优点。其最主要的优点，就是保持了Ipv4体系下的地址空间占用。
+通过图1可以了解图中情况的一般实现方法：图中主机A.1和A.2同属于用户A，标记VLAN 
+A；主机B.1和B.2同属于用户B，标记VLAN B；主机C.1属于用户C并单独属于VLAN C。
+通常情况下，基于用户最初对IP地址空间的需求，再考虑未来的需求计划，应该给每组用
+户分配不同IP子网。比如，表1列出的具体安排表格是一种可行方案。
+
+             
+    
+   
+
+                        
+ 
+
+
+
+
+
+
+
+
+图 1
+   
+   
+
+
+
+Gateway   Usable  Customer
+Customer   IP Subnet     Address    Hosts    Hosts
+========  =========  =======   ======  =====
+A          1.1.1.0/28      1.1.1.1     14       13
+B          1.1.1.16/29     1.1.1.17    6        5
+C          1.1.1.24/30     1.1.1.25    2        1
+表1
+
+用户A开始有两台主机，但是未来计划增加至10台，结果他们就分配到能够提供16个地
+址的子网1.1.1.0/28。地址1.1.1.0标记了子网号，地址1.1.1.15用做子网定向广播地址，地址1.1.1.1
+需要分配给路由器用做子网的缺省网关地址使用。实际上，用户能够使用的地址是13个，而用户
+实际只需要10个地址就够用了。
+用户B开始有两台主机，未来计划增加至5台，结果他们就分配到能够提供8个地址的子
+网1.1.1.16/29。地址1.1.1.16标记了子网号，地址1.1.1.23用做子网定向广播地址，地址1.1.1.17
+需要分配给路由器用做子网的缺省网关地址使用。实际上，用户刚好有5个地址可用。
+用户C有一台主机，没有增加主机的计划，结果他们就分配到能够提供4个地址的子网
+1.1.1.24/30。地址1.1.1.24标记了子网号，地址1.1.1.27用做子网定向广播地址，地址1.1.1.25需
+要分配给路由器用做子网的缺省网关地址使用。实际上，用户能够使用的地址是1个。
+全部三个用户需要的地址总和是16个。表中的最优化的地址分配方案需要占用28个IP地
+址。
+如果用户A只需要3个地址，那么剩下的地址不能被其它用户使用。
+另外，假设用户C决定增加配置一台主机，当然，还需要给这台主机分配IP地址。但是，
+由于子网1.1.1.24/30中已经没有可用的IP地址，而且接下来的地址空间都已分配给其它用户的话，
+那就需要增加一个新的子网。对于这种情况，理想的解决办法是将用户C重新分配一个掩码长度
+为29的子网并将主机C.1地址修改为新子网中的地址。然而，用户会认为这不是一种可行的解决
+办法。同样的，用户可能会分配到别的子网网段，只是这次可能是 /29，为以后的使用提供了若
+干额外的地址。
+从这里可以看出，被诸如子网号、子网定向广播地址、子网缺省网关地址消耗掉的IP地址
+数量是相当可观的。这种寻址体系的固有约束也严重降低了灵活性。
+
+2．讨论
+交换环境中，在网络的路由器端，我们引进关于sub-VLANs和super-VLANs的概念，一种
+可以实现IP地址划分的更加优化的途径。
+实质上，我们要处理的只是使不同的sub-VLAN（用户）保留各自独立的广播域。一个或
+多个子虚拟网同属于一个超级虚拟网，并且都使用超级虚拟网的默认网关IP地址。子虚拟网中的
+主机的编号并不依赖同超级虚拟网发生关联的IP子网，并且它们的IP子网掩码信息只是反映了
+它们属于哪个超级虚拟网。
+如果需要，超级虚拟网路由器需要类似于ARP代理服务器般的功能，通过进行ARP代理，
+可以使不同子虚拟网中的主机相互之间进行通信。
+这种模式产生了一个更加有效的地址分配体系。这种模式也给网络工程师提供了一种规范
+的默认网关分配的机制。
+回过头再考虑图1的情况，我们现在使用超级虚拟网和子虚拟网模式来进行重新考虑，可
+以得出如表2所示结果的地址分配方案。
+  
+      
+                            Gateway   Usable   Customer 
+  Customer   IP Subnet       Address     Hosts    Hosts
+ ========  =========    =======    =====   =======
+     A     1.1.1.0/24      1.1.1.1        10       .2-.11
+     B     1.1.1.0/24      1.1.1.1         5       .12-.16
+     C     1.1.1.0/24      1.1.1.1         1       .17
+表2
+
+用户A最初有两台主机，但是未来计划增加至10台。结果他们就需要分配1.1.1.2－1.1.1.11
+共10个地址。缺省网关地址是1.1.1.1。子网指定为1.1.1.0/24。
+用户B最初有两台主机，但是未来计划增加至5台。结果他们就分配到1.1.1.12－1.1.1.16
+共5个地址。缺省网关地址是1.1.1.1。子网指定为1.1.1.0/24。
+用户C最初有一台主机，暂时没有增加主机的计划。结果他们就分配到1.1.1.17一个地址。
+缺省网关地址是1.1.1.1。子网指定为1.1.1.0/24。
+三个用户需要的地址总数为16个，结果，子网中实际分配的地址就是16个。这16个地址
+再加上默认网关地址1.1.1.1、子网号1.1.1.0和子网定向广播地址1.1.1.255，一共用去了19个地
+址。也就是说整个子网中还剩下236个可以分配的空余地址。
+现在，如果用户A只计划增加3个地址就可以满足需要，那么其余的IP地址可以被其它用
+户使用。同样的，假定用户C现在决定额外增加一台主机，也就需要分配一个IP地址，这时候
+只需要简单的把紧接的下一个IP地址分配给它即可，而无需更换子网及默认网关地址。
+这种模式带来的益处是显而易见的，尤其是当我们处在一个大型的局域网中或一个城域网
+中的时候更加明显。  
+3．定向广播的使用
+本规范不提供对定向广播的支持。特定情况下，象<net,subnet,-1>类型的定向广播地址只能
+应用到第二层广播域中。
+尽管当前在Internet上并不赞成使用定向广播，但仍旧有很多应用软件还在使用，这些应用
+软件主要应用于企业内部环境中，并且仍在继续使用。那么，我们在实际应用中就要非常注意了
+解这些定向广播应用的细节并结合本规范中对寻址模式的描述进行仔细的研究。
+4.对多播的考虑
+在这里先假设第二层多播域等同于第二层广播域（也就是VLAN）。也就是说，对于一个想
+要发到IP子网中所有可能的接收端的IP多播包，IP子网的多播路由器需要使用类似于发送方的
+IP主机路由方式对反向路径转发进行核对的方式进行处理。
+5.实施的考虑
+完全按照这种模型构建的网络已经在服务提供商的数据中心环境下运行了一年多。其它厂
+商传闻也正在网络上开发类似的功能。
+6.对安全的考虑
+    这种模式有一个明显的问题就是由于允许完全不同的广播域之间可以任意分配地址产生了
+一些弱点。因此建议使地址空间范围固定，也就是说当一个地址或地址段被分配给特定的子VLAN
+的时候，一个子网接收到的其它子网主机发出的IP或ARP数据包将被丢弃，并且触发一个日志记
+录或其他管理事件。
+    因为本文描述的所有功能在超级VLAN路由器找得到，故实现细节就被故意省略。同样的，也
+不会造成同现存协议的互操作性问题。
+鸣谢
+    特别感谢Mike Hollyman和Erik Nordmark的大力支持。
+
+参考
+[802.1Q]  IEEE 802.1Q, "Virtual LANs"
+作者地址
+    Danny McPherson
+   Amber Networks, Inc.
+   48664 Milmont Drive
+   Fremont, CA  94538
+
+   EMail: danny@ambernetworks.com
+
+   Barry Dykes
+   OneSecure, Inc.
+   2000 S. Colorado Blvd Suite 2-1100
+   Denver, CO.  80222
+
+   EMail:  bdykes@onesecure.com
+
+版权声明
+  Copyright (C) The Internet Society (2001).  All Rights Reserved.
+   This document and translations of it may be copied and furnished to   others, 
+and derivative works that comment on or otherwise explain it   or assist 
+in its implementation may be prepared, copied, published   and distributed, 
+in whole or in part, without restriction of any   kind, provided that the 
+above copyright notice and this paragraph are   included on all such copies 
+and derivative works.  However, this   document itself may not be modified 
+in any way, such as by removing   the copyright notice or references to 
+the Internet Society or other   Internet organizations, except as needed 
+for the purpose of   developing Internet standards in which case the 
+procedures for   copyrights defined in the Internet Standards process must 
+be   followed, or as required to translate it into languages other than   
+English.
+
+   The limited permissions granted above are perpetual and will not be   
+revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an   
+"AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING   TASK 
+FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING   BUT NOT 
+LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION   HEREIN WILL NOT 
+INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF   MERCHANTABILITY OR FITNESS 
+FOR A PARTICULAR PURPOSE.
+
+致谢
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC3069――VLAN Aggregation for Efficient IP Address Allocation       VLAN聚合实现IP地址有效分配
+RFC文档中文翻译计划                                                                            1

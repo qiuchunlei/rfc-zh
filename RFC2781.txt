@@ -1,0 +1,473 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：huangjun（hujiao  huangjun@elong.com）
+译文发布时间：2001-5-24
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                        P. Hoffman
+Request for Comments: 2781                     Internet Mail Consortium
+Category: Informational                                      F. Yergeau
+                                                      Alis Technologies
+February 2000
+
+
+   UTF-16, 一种ISO 10646的编码方式
+(RFC2781 UTF-16, an encoding of ISO 10646)
+
+本备忘录的状态
+本备忘录描述了一种Internet社区的试验协议。本备忘录并未规定任何Internet标准，
+它需要进一步进行讨论和建议以得到改进。本备忘录的发布不受限制。
+
+版权声明
+   	Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+1. 介绍
+
+本文档描述了Unicode/ISO-10646的UTF-16编码方式，提出了在因特网上将UTF-16
+连续流作为八位字节流（octet stream）进行传输的观点，按照[CHARSET-REG]所描述的
+MIME字符集进行讨论，还包含了MIME charset参数三个值的说明: UTF-16BE (big-endian), 
+UTF-16LE(little-endian)以及UTF-16。
+
+1.1 背景和动机
+Unicode标准[UNICODE]以及ISO/IEC 10646 [ISO-10646]共同定义了一整套编码字符
+(CSS)，下文简称为Unicode，它能适应世界上绝大多数的书写文字[WORKSHOP]。本方
+案接下来要讨论的UTF-16是Unicode标准编码方式中的一种；它的特点是，能将所有预
+定义的字符(BMP中的第一组)编码为2个字节，而将其他的字符(接下来的16组)编码为4
+个字节。
+Unicode标准还定义了附加的字符特性以及其他应用者所感兴趣的应用细节。到目前为
+止，对Unicode和ISO/IEC 10646的修改都是相辅相成的，这样字符映射系统和代码分配
+也能够保持同步。相关的标准化委员会承诺维持这个十分有用的同步机制，同时不会让
+UTF-16需要处理超过17组以外的字符。
+在字符集和语言上的IETF政策[CHARPOLICY]表明IETF协议必须能够使用UTF-8字
+符编码架构[UTF-8]。一些产品和网络标准已经指定使用UTF-16，这使其成为Internet上一
+种重要的编码方式。本文档并不是对[CHARPOLICY]文档的修改更新，而仅仅描述了
+UTF-16编码方式。
+
+1.2 专用术语
+本文中所涉及的关键字:“必须”，“禁止”，“必需”，“应该”，“不应该”，“将要”，“将不
+会”，“建议”，“也许”以及“可选”可参照RFC 2119 [MUSTSHOULD]中的解释。
+
+在本文中，字符的值用十六进制符号表示。例如，“0x013C”表示字符在CSS中的值
+为316(十进制)。
+
+2. UTF-16的定义
+
+UTF-16在Unicode标准第三版[UNICODE]中被定义。定义的有关参考文献可参看
+ISO/IEC 10646-1 [ISO-10646]附录Q。本节后面将简单概括该定义。
+
+在ISO 10646中，每个字符被分配一个数字，Unicode将其称为Unicode值，这个数
+字和UCS-4中字符的值一样，为简单起见，本文将该数字称为“字符的值”。在UTF-16编
+码中，字符根据其本身的值，用一个或两个无符号的16位整数来表示，将这些整数线性化
+以便作为字节流进行传输将在第3部分加以讨论。
+
+字符按照UTF-16进行编码的规则是：
+
+   -  字符的值小于0x10000的用等于该值的16位整数来表示。
+
+   -  字符的值介于0x10000和0x10FFFF之间的，用一个值介于0xD800和0xDBFF(在
+所谓的高8位区)的16位整数和值介于0xDC00和0xDFFF(在所谓的低8位区)的16位整
+数来表示。
+
+   -  字符的值大于0x10FFFF不能按照UTF-16进行编码。
+
+注意：在0xD800和0xDFFF间的值是特别为UTF-16预留，所以不应该将任何字符的值指
+定为这个区间内的数值。
+2.1 UTF-16编码
+
+将某个字符的ISO 10646的值转换为UTF-16的编码按照以下步骤进行。假设U是给
+字符的值，小于0x10FFFF。
+
+1)	如果U < 0x10000，U的编码就是无符号的十六位整数，值和其本身的值一样，处理结
+束。
+2)	如果U等于或者小于0x10FFFF，则设U' = U - 0x10000。此时，U'一定小于或者等于
+0xFFFFF,也就是说，U'的值不会超过20位。
+3)	分别初始化2个16位无符号的整数，W1和W2为0xD800和0xDC00。每个整数都有
+10位可以用来对字符进行编码，正好能容纳U'的20位。
+4)	将U'的高10位分配给W1的低10位，将U'的低10位分配给W2的低10位，处理结
+束。
+
+用数字来表示，第2步到第4步如下所示：
+   U' = yyyyyyyyyyxxxxxxxxxx
+   W1 = 110110yyyyyyyyyy
+   W2 = 110111xxxxxxxxxx
+
+2.2 UTF-16解码
+
+将单个字符从UTF-16解码为ISO 10646值的步骤如下。设W1为待解码文字中第一个
+16位的整数，设W2为跟在W1后的整数(如果有的话)。
+
+1)	如果W1小于0xD800或者W1大于0xDFFF，字符的值U就是W1的值，处理结束。
+2)	判断W1的值是否介于0xD800和0xDBFF之间。如果不是，那么顺序有误，而且用
+W1将不能解码出任何合法字符。处理结束。
+3)	如果没有W2(也就是说，以W1结尾)，或者虽然有W2，但不是介于0xDC00和0xDFFF
+之间，那么顺序同样有错。处理结束。
+4)	建立一个20位的无符号整数U',将W1的低10位作为U'的高10位，将W2的低10位
+作为U'的低10位。
+5)	将U'的值加上0x10000以得到字符U的值，处理结束。
+
+需要注意的是步骤2和步骤3指出了错误。本文档并没有讨论有关错误恢复机制。当在
+步骤2和步骤3中发生错误而导致处理中断的时候，将U的值设为W1的值可能是比较明
+智的做法，这样有助于调用者诊断该错误，同时也不会丢失信息。另外还要注意的是字符串
+解码算法和上文所描述的单个字符解码方法略有不同，如果有适当的错误报告或者是错误恢
+复机制的话，发生错误时将不应该中断后续的解码操作。
+
+3. 标识UTF-16文字
+
+本方案的附录A包含了MIME字符集的三个注册说明："UTF-16BE", "UTF-16LE", 以
+及"UTF-16"。MIME字符集表示CCS(编码字符集)和CES(字符编码方案)的结合。这里所说
+的CCS是Unicdoe/ISO 10646，而CES在三种情况下都是一致的，除了每个字符线性字
+节流的顺序不同，同时也是外部判别采用那种线性化方法的一种手段。
+
+本节将讨论对一个文本流应该采用三种标识中的哪一种。第4节将描述如何解释文本流
+的标识。
+
+3.1 big-endian和little-endian的定义
+
+就过去而言，计算机有两种方法来处理类似16位整数这样的双八位字节数。所谓的
+"big-endian"硬件处理双八位字节时先处理位于内存中低地址的高位字节。当将其输出到磁
+盘或者到网络接口的时候(线性化)，高位字节也就先出现在数据流中。而与此相对应的是，
+"Little-endian"硬件先处理低位字节。目前来说，两种硬件都很常见。
+
+举例来说，代表十进制258的无符号16位整数是0x0102。big-endian将其线性化输出
+为八位字节0x01，后面跟着0x02。而little-endian将其线性化输出为八位字节0x02，后面
+跟着0x01。接下来的C代码片段就演示了如何将16位数按照big-endian顺序写入到文件
+中，而不考虑硬件本身的字节顺序。
+
+  void write_be(unsigned short u, FILE f)  /* 假设short 为16位 */
+  {
+    putc(u >> 8,   f);                     /* 输出高字节 */
+    putc(u & 0xFF, f);                     /* 然后输出低字节 */
+  }
+
+虽然术语“网络字节顺序(network byte order)”并没有正式在标准文档中作出有关定义，
+但在许多RFC中该词语都被用来表明big-endian线性化过程。尽管ISO 10646采用
+big-endian线性化([ISO-10646]6.3节)，但是在因特网上有时候仍然使用little-endian顺序。
+
+3.2 字节顺序标志(BOM)
+
+Unicode标准和ISO 10646将0xFEFF定义为字符“零宽度不换行的空格”，同时一般
+也认同为“字节顺序标准(简称为BOM)”。后者暗示了该字符除了通常的在文本中作为“零
+宽度不换行的空格”使用外，还有另一种可能的用处。根据Unicode第2.4节和ISO 10646
+附录F(完整版)所建议的，将0xFEFF字符作为Unicode字节流中的一个“签名”；当接收
+方收到一个字节流的时候，借助这个首字节，既可以确定该字节流包含了Unicode字符，
+也可以用来辨认线性化的顺序。在带有该签名的线性化UTF-16流中，如果开始的两个八位
+字节为0xFE后面跟着0xFF的话，线性化顺序就是big-endian；如果为0xFF后面跟着0xFE，
+线性化顺序就是little-endian。注意0xFFFE并不是一个Unicode字符，所以正好用它来作
+为字节顺序的标志。
+
+很重要的一点就是，如果字符0xFEFF在字节流中的其他地方而不是首字节出现的话，
+它就必须被解释为“零宽度不换行的空格”。但这句话的反义并不总是正确的：在字节流首
+位出现的字符0xFEFF可能被解释为“零宽度不换行的空格”，而不一定总是字节顺序标志。
+举例来说，如果一个处理将一个UTF-16字符串分隔为许多个部分，那么其中某个部分的子
+串正好是以零宽度不换行的空格开头的话，就可能以0xFEFF开头。
+
+此外，Unicode标准还建议在开始处理文本前，应该将开头的0xFEFF字符去掉，这样
+建议的原理是因为在开始位置的这个字符可能是人为添加的编码（一个编码的签名），而不
+是真正意义上的“零宽度不换行的空格”。需要注意的是这样做可能会影响在另外一个不同
+层中需要依靠流中所有字符进行处理的外部处理过程（比如说一个数字签名或对字符的计
+数）。
+
+特别地，虽然有例外情况，但在UTF-16纯文本中，以0xFEFF开始的字符非常可能是
+一个签名。当连接两个字符串的时候，将这些签名去掉就显得非常重要了，否则生成的字串
+中的连接点上就可能包含本来没有的“零宽度不换行的空格”。此外，有一些规范要求那些
+标明为UTF-16的对象必须在开始位置保留0xFEFF字符，同时注明该签名并不是对象本身
+的组成部分。
+
+3.3 为UTF-16文字选择标识
+
+任何使用UTF-16文字编码的标识程序，在明确地标识文字的时候，如果知道字符的线
+性化顺序，必须根据文字本身的字节顺序，将文字标明为"UTF-16BE"或者"UTF-16LE"。这
+能让那些处理文字的应用程序不用研究文字本身就可以确切地知道线性化的顺序。
+
+在"UTF-16BE"字符中的文字必须按照big-endian的顺序组装UTF-16的16位字符值，
+系统在标识UTF-16BE文字的时候，不应该给文字加上BOM(字节顺序标准)。
+
+在"UTF-16LE"字符中的文字必须按照little-endian的顺序组装UTF-16的16位字符值，
+系统在标识UTF-16LE文字的时候，不应该给文字加上BOM(字节顺序标准)。
+
+任何使用UTF-16文字编码的标识程序，在给文字加上明确的字符集标签的时候，如果
+不知道文字中字符的线性化顺序，必须将文字标识为"UTF-16"，同时应该让文字以0xFEFF
+开头。
+
+在必须使用"UTF-16BE"或者"UTF-16LE"的一个例外情况就是，如果文档格式中要求为
+UTF-16文字提供BOM的话，那就只需要将其标识为"UTF-16"。
+
+4. 解释文字标识
+
+当一个程序发现文字被标识为"UTF-16BE", "UTF-16LE"或者"UTF-16"的时候，它将能
+够根据我们前文所提到的标识规则作出一些假定。这些假定将有助于程序接下来如何对文字
+进行处理。
+
+4.1 解释标识为UTF-16BE的文本
+
+标识为UTF-16BE的文本可以被解释为采用big-endian顺序。即使首字节有BOM存在
+也不会影响标识为UTF-16BE的文本的反线性化过程。如果发现0xFF后面跟着0xFE，将
+意味着发生了错误，因为没有0xFFFE的Unicode字符。
+
+4.2 解释标识为UTF-16LE的文本
+
+标识为UTF-16LE的文本可以被解释为采用little-endian顺序。即使首字节有BOM存
+在也不会影响标识为UTF-16LE的文本的反线性化过程。在按照little-endian顺序解释这些
+字节的时候，如果发现0xFE后面跟着0xFF，将意味着发生了错误，因为没有0xFFFE的
+Unicode字符。
+
+4.3 解释标识为UTF-16的文本
+
+标识为"UTF-16"的字符集可能是按照big-endian的顺序，也可能是按照little-endian顺
+序进行线性化的。如果开始的两个字节是0xFE后面跟着0xFF，那么文字可以被解释为使
+用big-endian顺序。反之，如果开始的两个字节是0xFF后面跟着0xFE，那么文字是采用
+了little-endian顺序。如果开始的两个字节不是0xFE，0xFF，而同时也不是0xFF后面跟
+着0xFE的话，那么文字就应该被解释为使用big-endian顺序。
+
+所有处理标识为UTF-16的文字的应用程序，都必须能读文字开始部分的最少两个字节，
+并且能处理这些字节以确定文字的线性化方向。处理标识为UTF-16的文字的应用程序禁止
+在没有检查开始的两位字节，并判断是big-endian BOM还是little-endian BOM，或者不是
+BOM的情况下就假定线性化方向。所有处理标识为UTF-16的文字的应用程序必须既能够
+解释big-endian文字，也能够解释little-endian文字。
+5. 示例
+
+举例来说，让我们假定有一个字符代表埃及语中描写神Ra的象形文字，它的值是
+0x12345。（这个字符在现有的Unicode中并不存在）。
+
+在示例中所有的词组中：
+
+   *=Ra
+
+这里"*"代表Ra象形文字(0x12345)。
+
+标识为UTF-16BE，并且不带有BOM的文字：
+   D8 08 DF 45 00 3D 00 52 00 61
+
+标识为UTF-16LE，并且不带有BOM的文字：
+   08 D8 45 DF 3D 00 52 00 61 00
+
+采用Big-endian的文字，并且带有BOM：
+   FE FF D8 08 DF 45 00 3D 00 52 00 61
+
+采用Little-endian的文字，并且带有BOM：
+   FF FE 08 D8 45 DF 3D 00 52 00 61 00
+
+6. 不同标准的版本
+
+ISO/IEC 10646经常按照出版的修正案进行更新；同样地，我们也就有不同版本的
+Unicdoe标准：1.0, 1.1, 2.0, 2.1以及我们写作时最新的版本3.0。每一个新版本都取代前一
+个版本，但是那些应用，和一些比较重要的数据，并不会马上进行更新。
+
+总得来说，这些变化是增加新的字符，同时不会对旧的数据引起特别的问题。然而，
+ISO/IEC 10646的第五修正案删除并扩展了韩语Hangul模块，这可能会使那些包含旧的
+Hangul字符的数据在新版本中出现问题。Unicode 2.0和Unicode 1.1有着同样的不同。对
+这样一个不兼容的改变的比较正式的解释是目前并没有很多包含Hangul的应用。这样的声
+明很可能是真的，但并没有得到过证实。这样的改变被人们称为“韩语混乱”，有关的委员
+会已经保证将来再不会出现类似的不兼容的改变。
+
+新的版本所带来的不兼容的改变是和MIME字符标识标签有关，将在附录A中进行讨论。
+
+7. IANA计划
+
+IANA准备根据RFC 2278，并按照附录A.1, A.2,和A.3中所提到的登记模板进行新的
+字符集登记。
+
+8. 安全性考虑
+
+正如本文第6节和附录A中所提到的，UTF-16基于ISO 10646并经常和ISO 10646
+字符集一并使用。处理的程序必须能够处理那些在处理程序被设计出来的时候还没有并定义
+的字符，同时还要能够阻止攻击者通过发送包含未知的字符而可能带来的对接收者的损害。
+
+处理程序在处理任何类型，包括被编码为UTF-16的文本的时候，必须对那些控制字符
+保持警惕并作出检查，因为这些字符可能对某个显示终端或键盘进行重新编程。同样地，处
+理程序在解释文本实体的时候（比如查找结合在其中的程序代码），必须非常仔细，以不致
+于在没有警告接收者的情况下就执行这些代码。
+
+UTF-16中的文字可能会包含特殊的字符，比如“对象替换字符(0xFFFC)”，这些字符
+可能会产生外部处理过程，这取决于处理程序的解释和外来的数据流的可执行性。所产生的
+外部处理过程可能会带来一些副作用，比如允许发送一个消息来攻击消息接收者。
+
+那些应用UTF-16的程序必须仔细考虑安全方面的问题，如何来处理非法的UTF-16序
+列（也就是说，序列中含有成对的非法字符或者是不成对的字符）。我们可以想象得到，在
+某些情况下，攻击者可能可以利用某些UTF-16处理程序，通过发送一个UTF-16语法并不
+允许的八位字节序列来使其产生一些反常的行为。
+
+9. 参考文献
+
+   [CHARPOLICY]  Alvestrand, H., "有关字符集和语言的IETF策略", BCP 18, RFC 
+2277, January 1998.
+
+   [CHARSET-REG] Freed, N. 和J. Postel, "IANA字符集登记过程", BCP 19, RFC 2278, 
+January 1998.
+
+   [HTTP-1.1]    Fielding, R., Gettys, J., Mogul, J., Frystyk, H.,
+                 Masinter, L., Leach, P. 和T. Berners-Lee, "超文本传输协议-- 
+HTTP/1.1", RFC 2616, June 1999.
+
+   [ISO-10646]   ISO/IEC 10646-1:1993. 国际标准 --
+                 信息技术科技 – 全球化的多字节编码字符集 (UCS) – 第一部分: 架构
+和基本的语言模块. 到目前为止已出版22个修正案和2个技术勘误表。UTF-16在第一修
+正案中的附录Q作出了规定。其他的许多修正案仍然在标准化过程中的不同阶段。目前正
+在准备第二版，预计将在2000年出版。在新的版本中。UTF-16可能会在附录C中作出描
+述。
+
+   [MUSTSHOULD]  Bradner, S., "RFC中所使用的用来确定需求程度的关键字", BCP 14, 
+RFC 2119, March 1997.
+
+   [UNICODE]     Unicode联盟, "Unicode标准 –第三版", ISBN 0-201-61633-5. 全文发
+布于：<http://www.unicode.org/unicode/standard/versions/Unicode3.0.html>.
+
+   [UTF-8]       Yergeau, F., "UTF-8, ISO 10646的转换格式", RFC 2279, January 
+1998.
+
+   [WORKSHOP]    Weider, C., Preston, C., Simonsen, K., Alvestrand, H.,
+                 Atkinson, R., Crispin., M. 和P. Svanberg, "IAB字符集
+	        工作小组的报告", RFC 2130, April 1997.
+
+10. 致谢
+
+Deborah Goldsmith为本方案的初稿作了大量的工作。Martin Duerst提出了许多重要的
+修改建议，其他需要感谢的包括：
+
+   Mati Allouche
+   Walt Daniels
+   Mark Davis
+   Ned Freed
+   Asmus Freytag
+   Lloyd Honomichl
+   Dan Kegel
+   Murata Makoto
+   Larry Masinter
+   Markus Scherer
+   Keld Simonsen
+   Ken Whistler
+
+本方案由多人协同完成，其中某些段落摘抄自[UTF-8]。对于其他间接对本文作出过贡献的
+人均列于本文“致谢”一节。
+
+A. 字符集登记
+
+本备忘录将作为为三个MIME字符集进行登记[CHARSET-REG]的基础。这些建议的字符集
+是"UTF-16BE","UTF-16LE"和"UTF-16"。用这些字串标识的对象包含由ISO/IEC 10646中
+所列举的文字所组成的文本，该方案包含至少截至到第5修正案的所有修正案（韩语模块），
+同时按照上文所提到的方案编码并线性化成为一系列字节流。
+
+需要注意的是"UTF-16BE", "UTF-16LE"和"UTF-16"并不适合于描述“文字”的顶级媒体类
+型。 不过有个例外情况就是在采用类似MIME方案的HTTP协议中，被免除了顶级文本类
+型的限制（参见HTTP1.1[HTTP-1.1]第19.4.2节）。
+
+有一点非常引人注意的就是这里所描述的标签并没有包括版本识别号，通常指的是ISO/IEC 
+10646。这点是有意被忽略的，其中的原因如下：
+
+MIME字符集被设计为用来给出在将收到的一系列字节解释为字符时所需要的信息，但不提
+供其他的信息（参看RFC 2045[MIME]，2.2节）。只要字符集标准不会作出不兼容的改变，
+版本号其实毫无用处，因为当接收者收到新设定的字符而其又不认识的时候，它也不能从版
+本标识里面得知什么。版本标识本身并不会对将要收到的新的字符作出任何解释。
+
+所以，只要标准一直保持兼容，让标签能够标识版本号好象也仅仅只是外观上的要求。但这
+样对于那些和版本有关的标签来说却是一个缺点：如果一个旧的应用收到由新的应用发来的
+数据，并带有未知的标签，它将不能辨认该标签，同时完全不能处理数据。而如果使用一个
+通用的，大家都知道的标签却可以触发基本上正确的数据处理过程，而这些数据相当可能并
+没有包含任何新的字符。
+
+“韩语混乱”(ISO/IEC 10646第5修正案)是一个不兼容的改变，并且和上文所描述的MIME
+字符集与版本无关的原则相抵触。但只有在数据包含了被按照Unicode 1.1(或者说第5修正
+案以前的ISO/IEC 10646版本)编码的韩国Hangul字符，兼容性问题才会出现。虽然仍然
+有人争论认为不会有这种数据，因而不必担心，但是，这仍然是将这个改变认为是不兼容的
+改变的主要原因。
+
+那么，在实际操作中，应该使用一个版本号无关的标签，这个标签被理解为在第5修正案
+以后的所有版本，并且不会发生任何不兼容的改变。就算在以后ISO/IEC 10646的版本中
+再有不兼容的改变，这里所定义的MIME字符集将仍然和以前的版本保持一致，除非IETE
+对此再作出其他的规定。
+
+A.1 UTF-16BE的字符登记
+
+   To: ietf-charsets@iana.org
+   Subject: 新的字符集登记
+
+   Charset name(s): UTF-16BE
+
+   Published specification(s): 本方案适用于描述“文本”的MIME内容类型
+   top-level type: No
+   Person & email address to contact for further information:
+   Paul Hoffman <phoffman@imc.org>
+   Francois Yergeau <fyergeau@alis.com>
+
+A.2 UTF-16LE的字符登记
+
+   To: ietf-charsets@iana.org
+   Subject: 新的字符集登记
+
+   Charset name(s): UTF-16LE
+
+   Published specification(s): 本方案适用于描述“文本”的MIME内容类型
+   top-level type: No
+
+   Person & email address to contact for further information:
+   Paul Hoffman <phoffman@imc.org>
+   Francois Yergeau <fyergeau@alis.com>
+
+A.3 Registration for UTF-16
+
+   To: ietf-charsets@iana.org
+   Subject: 新的字符集登记
+
+   Charset name(s): UTF-16
+
+   Published specification(s): 本方案适用于描述“文本”的MIME内容类型
+   top-level type: No
+
+   Person & email address to contact for further information:
+   Paul Hoffman <phoffman@imc.org>
+   Francois Yergeau <fyergeau@alis.com>
+
+作者地址
+
+   Paul Hoffman
+   Internet Mail Consortium
+   127 Segre Place
+   Santa Cruz, CA  95060 USA
+
+   EMail: phoffman@imc.org
+
+   Francois Yergeau
+   Alis Technologies
+   100, boul. Alexis-Nihon, Suite 600
+   Montreal  QC  H4M 2P2 Canada
+
+   EMail: fyergeau@alis.com
+
+版权说明
+
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, 
+INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+感谢Internet协会给予RFC编辑部门的资金。
+
+
+RFC 2781 UTF-16, an encoding of ISO 10646		UTF-16，一种ISO10646的编码方式
+RFC文档中文翻译计划		1

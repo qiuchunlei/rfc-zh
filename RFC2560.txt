@@ -1,0 +1,723 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：姚玥（yaoyue  baboon@public9.sta.net.cn）
+译文发布时间：2001-6-8
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                           M. Myers
+Request for Comments: 2560                                      VeriSign
+Category: Standards Track                                      R. Ankney
+                                                                  CertCo
+                                                              A. Malpani
+                                                                ValiCert
+                                                             S. Galperin
+                                                                  My CFO
+                                                                C. Adams
+                                                Entrust Technologies June 1999
+
+
+x.509因特网公钥基础设施在线证书状态协议——OCSP
+(RFC2560  X.509 Internet Public Key Infrastructure Online Certificate Status 
+Protocol – OCSP)
+
+
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化
+程度和状态。本备忘录的发布不受任何限制。
+
+版权声明
+Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+1.	摘要
+本文档描述了无需证书撤消列表就可以决定一张数字证书当前状态的协议。附加描述
+PKIX操作必要条件的机制在另外的文档中有详细说明。
+第二章中有协议的概述。功能必要条件在第三章中有详细描述。第四章是具体协议。第
+五章我们将讨论一些和协议有关的安全问题。附录A定义了在HTTP之上的OCSP，附
+录B有ASN.1的语义元素，附录C详细描述了信息的mime类型。
+本文档中的关键字"MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL"同
+RFC2119中的叙述一样。
+
+2.	协议概述
+作为检查定期证书撤消列表的补充，有些场合下必须要获得一些有关证书撤消状态的即
+时信息。（RFC2459章节3.3）例如涉及大量资金的交易或者股票买卖。
+在线证书状态协议（OCSP）使得应用程序可以测定所需要检验证书的（撤消）状态。
+OCSP。一个OCSP客户端发布一个状态查询给一个OCSP响应器并且侦听当前证书直到
+响应器提供了一个响应。
+这个协议描述了在应用程序检查证书状态和服务器提供状态之间所需要交换的数据。
+
+2.1请求
+一个OCSP请求包含以下数据
+——协议版本
+——服务请求
+——目标证书标识
+——可能被OCSP响应器处理的可选扩展
+在接受一个请求之后，一个OCSP响应器检测是否：
+1．	信息正确格式化
+2．	响应器被配置提供请求服务而且
+3．	请求包含了响应器需要的信息，如果任何一个先决条件没有满足，那么OCSP响应器将
+产生一个错误信息；否则的话，返回一个确定的回复。
+
+2.2回复
+OCSP回复可以有几种类型。一个OCSP回复由回复类型和实际回复字节组成。有一种
+OCSP基本回复类型必须被所有的OCSP服务器和客户端支持。本章的其余部分都仅适用于
+这个回复类型。
+所有确定的回复都应被数字签名。被用来签名回复信息的密钥必须是下列中的一个
+——颁发所涉及证书的CA
+——一个被信任的响应器，它的公钥被请求者信任
+——一个CA指派的响应器（被授权的响应器），它具有一张由CA直接颁发的用来表示此
+响应器可以为本CA发布OCSP回复的特别标记证书。
+一个确定的回复信息由以下组成：
+——回复语法的版本
+——响应器名称
+——对每一张被提及证书的回复
+——可选扩展
+——签名算法对象标识符号
+——对回复信息散列后的签名
+对每一张被请求证书的回复包括
+——目标证书识别
+——证书状态值
+——回复有效期
+——可选扩展
+这个说明定义了以下在证书状态值中使用的一些确定回复识别：
+——良好
+——已撤消
+——未知
+“良好”状态表示一个对状态查询的积极回复。至少，这个积极回复表示这张证书没有
+被撤消，但是不一定意味着这张证书曾经被颁发过或者产生这个回复在证书有效期内。回复
+扩展可以被用来传输一些附加信息，响应器由此可以对这张证书的状态做出一些积极的声
+明，诸如（已颁发）保证，有效期等等。
+“已撤消”状态表示证书已被撤消（无论是临时性的还是永久性的（待判断））
+“未知”状态表示响应器不知道请求的证书。
+
+2.3例外情况
+万一出错，OCSP响应器会返回一个出错信息。
+这些信息无须签名。出错信息可以是以下一些类型
+——未正确格式化的请求（malformedRequest）
+——内部错误（internalError）
+——请稍后再试(trylater)
+——需要签名(sigRequired)
+——未授权(unauthorized)
+如果接受到一个没有遵循OCSP语法的请求，服务器产生“未正确格式化的请求”回复。
+回复“内部错误”表示OCSP响应器处于一个不协调的内部状态。请求需要再试，暗示
+尝试另一个响应器。
+如果OCSP响应器正在工作，但是不能返回被请求证书的状态，那么“稍后再试”回复
+能被用来表示服务存在，但暂时不能响应。
+当服务器需要客户端签名请求后才能产生一个回复时，回复“需要签名”将被返回。
+当客户端未被授权允许向这台服务器发送请求时，回复“未授权”将被返回。
+
+2.4此次更新(thisUpdate)，下次更新(nextUpdate)和产生时间(producedAt)的语义
+回复信息可以在其中包含三种时间——此次更新，下次更新和产生时间。这些域的语义
+如下：
+——此次更新：此证书状态被表示为正确的时间
+——下次更新：在此时间之后，可获得此证书状态的新近信息
+——产生时间：OCSP签名这个回复的时间
+如果响应器未设置下次更新，那意味着新近的撤消信息在任何时候都可以被获得。
+
+2.5回复预产生
+OCSP响应器可以预先产生用来描述在某个确定时间此证书状态的已签名回复。通过在
+回复的此次更新域的反映，获得此状态的时间可以被正确认识。下次新近信息则反映在下次
+更新域中，与此同时产生这个回复的时间则出现在回复的产生时间域中。
+
+2.6	OCSP签名权威代表
+用来签名证书状态信息的密钥不一定需要和签名此证书的密钥相同。通过发布一张包含
+有扩展密钥用途域唯一值的OCSP签名者证书证书发布者，可以明确的指派OCSP签名权威
+机构。这张证书必须直接由认知的CA颁发给响应器。
+
+2.7	当CA密钥不安全
+如果一个OCSP响应器知道一个特定的CA私钥不安全，那么针对所有这个CA颁布的
+证书都可以返回一个撤消状态。
+
+3	功能必要条件
+3.1	证书内容
+为了传达给OCSP客户端一个知道的信息获取点，CA们可以在权威机构信息获取扩展
+（可以被检测用来使用OCSP）提供这样的能力。作为另外一种选择，也可以在OCSP客户
+端本地配置OCSP提供者获取地（信息）。
+支持OCSP服务的CA，无论是自身实现还是通过授权响应器来提供，都必须提供包括
+统一资源识别形式的获取地信息和在一个获取描述序列中的对象识别符号形式的获取方法。
+在主体证书的获取地域中的值定义了使用什么传输（例如HTTP）来获取OCSP响应器
+并且可以包含其他传输相关信息（例如URL）。
+
+3.2	已签名回复的接受条件
+在接受一个已签名的回复为有效之前，OCSP客户端必须确认：
+1.	在回复信息中所指的证书和相应请求中所指证书一致。
+2.	回复中的签名有效。
+3.	签名者的身份和相映应接受请求者匹配。
+4.	签名者正被授权签名回复。
+5.	表示状态被认为是正确的时间（此次更新）足够新。
+6.	如果有的话，下次更新的时间应该晚于现时时间。
+
+4.	具体协议
+这个ASN.1语法引用了在RFC2459中定义的术语。至于签名运算，被签名的数据使用
+ASN.1显示编码规则（DER）[x.690]。
+除非指定了其他，否则默认使用ASN.1外在标记。从别处引用的的术语有：扩展
+(Extensions)，证书序列号（CertificateSerialNumber）,主体公钥信息(SubjectPublicKeyInfo),
+名称(Name),算法识别(AlgorithmIdentifier),证书撤消列表原因（CRLReason）
+
+4.1请求
+这一节描述了请求信息的ASN.1规范。实际的信息格式根据所使用的传输机制
+(HTTP,SMTP,LDAP等等)而不同。
+
+4.1.1	请求（信息）语法
+OCSPRequest		::=     SEQUENCE {
+       tbsRequest                  TBSRequest,
+       optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
+
+   TBSRequest      ::=     SEQUENCE {
+
+       version             [0]     EXPLICIT Version DEFAULT v1,
+       requestorName       [1]     EXPLICIT GeneralName OPTIONAL,
+       requestList                 SEQUENCE OF Request,
+       requestExtensions   [2]     EXPLICIT Extensions OPTIONAL }
+
+   Signature       ::=     SEQUENCE {
+       signatureAlgorithm      AlgorithmIdentifier,
+       signature               BIT STRING,
+       certs               [0] EXPLICIT SEQUENCE OF Certificate
+   OPTIONAL}
+
+   Version         ::=             INTEGER  {  v1(0) }
+
+   Request         ::=     SEQUENCE {
+       reqCert                     CertID,
+       singleRequestExtensions     [0] EXPLICIT Extensions OPTIONAL }
+
+   CertID          ::=     SEQUENCE {
+       hashAlgorithm       AlgorithmIdentifier,
+       issuerNameHash      OCTET STRING, -- Hash of Issuer's DN
+       issuerKeyHash       OCTET STRING, -- Hash of Issuers public key
+       serialNumber        CertificateSerialNumber }
+
+发布者名称散列(issuerNameHash)是发布者显式名称的散列。应该检测证书发布者名称
+域的DER编码的散列。发布者密钥散列（issuerKeyHash）是发布者公钥的散列。对发布者
+证书的主体公钥域的值（不包括标签和长度）进行散列。所有这些使用的散列算法都由散列
+算法域(hashAlgorithm)确定。序列号域（serialNumber）是被查询状态证书的序列号。
+
+4.1.2		请求（信息）语法的注意点
+除了对CA名称进行散列外还对CA的公钥进行散列，这样做的主要原因是为了识别发
+布者，因为两个CA有可能选择同一名称(虽然建议使用独一无二的名称，但这并不是强制
+要求的)。然而，除非两个CA明确表示他们共享私钥或者其中一个CA的密钥是不安全的，
+否则两个CA是不可能有相同的密钥。
+支持任何的扩展是可选的。每一个可选扩展的重要性标志都不应该被设置。章节4.4中
+提到了一些有用的扩展。其他的一些扩展也许会在其他的一些RFC中有所定义。未被承认
+的扩展必须被忽略。（除非他们的重要性标志被设置而且未被理解）
+响应器可以选择签名OCSP的请求。在那种情况下，签名是根据TBS请求(tbsRequest)结构
+计算得到的。如果请求被签名，那么响应器可以在请求者名称域中识别处它的名称。同样的，
+为了签名请求，请求内容可以包括用来帮助OCSP响应器识别请求者签名内容的证书。
+
+4.2回复语法
+本节描述了回复信息的ASN.1规范。实际格式根据所使用的传输机制
+(HTTP,SMTP,LDAP等等)而不同。
+
+4.2.1	OCSP回复的ASN.1规范
+一个OCSP回复至少包括用来指示对先前请求所处理状态的回复状态域
+（responseStatus）。如果回复状态域的值达到某一种出错情况，那么回复字节(responseStatus)
+将不被设置。
+OCSPResponse ::= SEQUENCE {
+      responseStatus         OCSPResponseStatus,
+      responseBytes          [0] EXPLICIT ResponseBytes OPTIONAL }
+
+   OCSPResponseStatus ::= ENUMERATED {
+       successful            (0),  --Response has valid confirmations
+       malformedRequest      (1),  --Illegal confirmation request
+       internalError         (2),  --Internal error in issuer
+       tryLater              (3),  --Try again later
+                                   --(4) is not used
+       sigRequired           (5),  --Must sign the request
+       unauthorized          (6)   --Request unauthorized
+   }
+回复字节（responseBytes）的值由对象标识和一个编码成OCTET字符串的回复标记（此
+标记由刚才的对象标识确定）组成。
+ResponseBytes ::=       SEQUENCE {
+       responseType   OBJECT IDENTIFIER,
+       response       OCTET STRING }
+对于基本的OCSP回复，回复类型是id-pkix-ocsp-basic。
+id-pkix-ocsp           OBJECT IDENTIFIER ::= { id-ad-ocsp }
+   id-pkix-ocsp-basic     OBJECT IDENTIFIER ::= { id-pkix-ocsp 1 }
+OCSP响应器应该有能力产生id-pkix-ocsp-basic回复类型的回复。同样的，OCSP客户
+端也应该有能力接受并且处理id-pkix-ocsp-basic类型的回复。
+回复的值应该是基本OCSP回复（BasicOCSPResponse）的DER编码。
+BasicOCSPResponse       ::= SEQUENCE {
+      tbsResponseData      ResponseData,
+      signatureAlgorithm   AlgorithmIdentifier,
+      signature            BIT STRING,
+      certs                [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL }
+签名值应该对回复数据（ResponseData）的DER编码上的散列计算而得。
+ResponseData ::= SEQUENCE {
+      version              [0] EXPLICIT Version DEFAULT v1,
+      responderID              ResponderID,
+      producedAt               GeneralizedTime,
+      responses                SEQUENCE OF SingleResponse,
+      responseExtensions   [1] EXPLICIT Extensions OPTIONAL }
+
+   ResponderID ::= CHOICE {
+      byName               [1] Name,
+      byKey                [2] KeyHash }
+
+   KeyHash ::= OCTET STRING -- SHA-1 hash of responder's public key
+   (不包括标签和长度域)
+
+   SingleResponse ::= SEQUENCE {
+      certID                       CertID,
+      certStatus                   CertStatus,
+      thisUpdate                   GeneralizedTime,
+      nextUpdate         [0]       EXPLICIT GeneralizedTime OPTIONAL,
+      singleExtensions   [1]       EXPLICIT Extensions OPTIONAL }
+
+   CertStatus ::= CHOICE {
+       good        [0]     IMPLICIT NULL,
+       revoked     [1]     IMPLICIT RevokedInfo,
+       unknown     [2]     IMPLICIT UnknownInfo }
+
+   RevokedInfo ::= SEQUENCE {
+       revocationTime              GeneralizedTime,
+       revocationReason    [0]     EXPLICIT CRLReason OPTIONAL }
+UnknownInfo ::= NULL——这个可以被一个列举代替。
+
+4.2.2	OCSP回复的注意点
+
+4.2.2.1	时间
+此次更新和下次更新域定义了一个推荐的有效期。一个时间长度和证书撤消列表中的
+{此次更新，下次更新}时间长度相一致。如果下次更新的值早于当前本地系统时间，那么这
+个回复将被认为不可靠。如果此次更新的值晚于当前本地系统时间，那么这个回复也将被认
+为不可靠。回复中没有设置下次更新值等价于CRL没有确定的下次更新时间（见章节2.4）
+	产生时间是这个回复被签名的时间。
+
+4.2.2.2	被授权的响应器
+用来签名证书状态信息的密钥可以和签名证书状态的密钥不同。但是必须保证签名这个
+信息的实体已被授权。所以证书发布者必须自己签名OCSP回复或者明确的指派这个权利给
+其他实体。OCSP签名代表可以通过包含在OCSP回复签名者证书扩展密钥用途扩展中的
+id-kp-OCSPSigning来指派。这张证书必须直接由颁布所涉及证书的CA发布。
+id-kp-OCSPSigning OBJECT IDENTIFIER ::= {id-kp 9}
+依赖OCSP回复的系统和应用程序必须由能力探测并且执行id-ad-ocspSigning值的使
+用，如前所述。他们可以提供一种本地配置一个或更多个OCSP签名权威机构的方法，而且
+可以指定一组被信任的签名权威机构。当要求验证回复上签名的证书未满足以下一个标准
+时，他们必须拒绝这样的回复：
+1.	和本地配置的对所涉及证书的OCSP签名权威机构匹配；或者
+2.	和颁发所涉及证书的CA相同；或者
+3.	包括在扩展密钥用途扩展中的id-ad-ocspSigning值，这种证书由颁发所涉及证书的
+CA颁发。
+回复本身或者用来验证回复上签名的证书可以应用其他接受或者拒绝的标准。
+
+4.2.2.2.1	已授权响应器的撤消检查
+既然一个已授权的OCSP响应器可以为一个或多个CA提供状态信息服务，OCSP客户
+端需要明白如何确定被授权的响应器的证书没有被撤消。CAS可以选择以下三种方法之一
+来处理这个问题：
+——一个CA可以指定OCSP客户端能够在响应器证书生存期内信任该响应器。这个CA通
+过（在证书中）包括id-pkix-ocsp-nocheck。这个（扩展）应该是非重要扩展。扩展的值可以
+为空。CA颁发这样这样一张证书应该意识到响应器密钥的不安全问题，这和用来签名证书
+撤消列表的CA密钥的不安全问题同样严重，至少在证书有效期内是这样。CA也可以选择
+发布生命周期非常短的此类型证书并且频繁更新它。
+id-pkix-ocsp-nocheck OBJECT IDENTIFIER ::= { id-pkix-ocsp 5 }
+——一个CA可以指定如何检查响应器的证书是否被撤消。如果应该使用证书撤消列表或者
+证书撤消列表发布点来检查，那么也能够使用证书撤消列表来完成确定响应器证书是否被撤
+消，或者如果其他应该使用其他的方法那么权威机构信息获取。指定这两种机制的细节可以
+在RFC2459中获得。
+——一个CA可以选择不指定任何方法来检查响应器证书的有效性（是否被撤消），在这些
+情况中，是由OCSP客户端的本地安全策略来决定证书是否检查证书有效性（是否被撤消）。
+
+4.3强制和可选的加密算法
+那些请求OCSP服务的客户端应该有能力处理DSA密钥的签名，这些DSA密钥通过
+RFC2459章节7.2.2中描述的DSAsig-alg-oid来识别。客户端应该同样有能力处理在RFC2459
+章节7.2.1描述的RSA签名。OCSP响应器可应该支持SHA1散列算法。
+
+4.4	扩展
+这一节定义了一些标准扩展，基于X.509版本3证书所使用的扩展模型（请见RFC2459）。
+支持所有这些扩展对客户端和响应器都是可选的。对于每一个扩展，定义表示了它的语法，
+由OCSP响应器实现处理过程，而且在相应的回复中包括任意扩展。
+
+4.4.1		随机数
+随机数很秘密的绑定了请求和回复，用来防止重发（replay attacks）攻击。随机数作为
+一个请求扩展被包括在请求中，同样的也作为一个回复扩展被包括在回复中。在请求和回复
+中，随机数由对象标识id-pkix-ocsp-nonce识别，其中extnValue包含了随机数的值。
+id-pkix-ocsp-nonce     OBJECT IDENTIFIER ::= { id-pkix-ocsp 2 }
+
+4.4.2		证书撤消列表参考
+也许想OCSP响应器指出可以发现已撤消或正保持证书的证书撤消列表。当OCSP在仓
+库之间使用而且作为一个审核机制时这个是很有用的。这个证书撤消列表可以由一个同一资
+源定位（URL）（证书撤消列表可以从这个URL中获得），或由一个序列号（证书撤消列表
+序列号）或者由一个时间（相关证书撤消列表产生的时间）来指定。这些扩展作为单一扩展
+（singleExtensions）来描述。这个扩展的标识是id-pkix-ocsp-crl，值是CrlID。
+id-pkix-ocsp-crl       OBJECT IDENTIFIER ::= { id-pkix-ocsp 3 }
+
+   CrlID ::= SEQUENCE {
+      crlUrl               [0]     EXPLICIT IA5String OPTIONAL,
+      crlNum               [1]     EXPLICIT INTEGER OPTIONAL,
+      crlTime              [2]     EXPLICIT GeneralizedTime OPTIONAL }
+如果选择使用证书撤消列表的同一资源定位，那么IA5字符串被用来定义这个可获得证书
+撤消列表的同一资源定位（URL）。如果是证书撤消列表序列号，那么用整数来描述相关证
+书撤消列表的证书撤消列表序列号扩展。如果是证书撤消列表时间，那么标准化时间被用来
+表示这个相关证书撤消列表发布的时间。
+
+4.4.3可接受的回复类型
+一个OCSP客户端可以希望指定一个它所理解的回复类型。为了达到这样的目的，它应
+该使用id-pkix-ocsp-response对象标识符的扩展，并且值为可接受回复
+（AcceptableResponses）。
+这个扩展作为一个请求扩展被包括在请求中。在可接受回复中包括了这个客户端可接受
+的不同回复类型的对象标识符号（例如，id-pkix-ocsp-basic）。
+id-pkix-ocsp-response  OBJECT IDENTIFIER ::= { id-pkix-ocsp 4 }
+AcceptableResponses ::= SEQUENCE OF OBJECT IDENTIFIER
+如同章节4.2.1所提到的那样，OCSP响应器应该有能力回复一个id-pkix-ocsp-basic的
+回复类型。OCSP客户端也应该有能力接受并处理id-pkix-ocsp-basic回复类型的回复。
+
+4.4.4文件中断
+一个OCSP响应器可以选择当证书过期后仍保留相应的撤消信息。
+这个日期可以从产生时间（producedAt）减下的保持间期值中获得，并被定义成证书的“文
+档中断”日期。
+可以使用OCSP的应用程序会使用一个OCSP文档中断日期作为一个证明，证明一个数
+字签名是（或者不是）可被信赖于它的产生日期，即使证书过期很久后仍被要求证明这个签
+名有效。
+提供这些历史记录参考的OCSP服务器应该在回复中包括一个文档中断日期的扩展。如
+果包括的话，那么这个值应该作为由id-pkix-ocsp-archive-cutoff确定的OCSP单一扩展，并
+且为标准化时间标记语法。
+id-pkix-ocsp-archive-cutoff  OBJECT IDENTIFIER ::= { id-pkix-ocsp 6 }
+ArchiveCutoff ::= GeneralizedTime
+举个例子，如果一个服务器以7年时间长度为规则的保持力，而且状态在时间点T1产
+生。那么回复中文档中断的值就是t1-7年。
+
+4.4.5	证书撤消列表入口扩展
+所有的扩展同RFC2459章节5.3中所定义的CRL入口扩展描述，同样也作为单一扩展
+被支持。
+
+4.4.6	服务定位器
+一台OCSP服务器也许是在这样一种模式中运做的，一台服务器收到请求后将会把该请
+求路由给对此证书有权威性的OCSP服务器。为了这个目的定义了服务定位器请求扩展。这
+个扩展作为单一请求扩展被包括在请求中。
+id-pkix-ocsp-service-locator OBJECT IDENTIFIER ::= { id-pkix-ocsp 7 }
+   ServiceLocator ::= SEQUENCE {
+       issuer    Name,
+       locator   AuthorityInfoAccessSyntax OPTIONAL }
+这些域的值可以从主体证书中的相应域中获得。
+
+5	安全方面的考虑
+为了使这项服务有效，证书使用系统必须连接到证书状态服务提供者。如果这样的连接
+不可实现，那么证书使用系统可以实现证书撤消列表处理，作为一种退而求其次的方法。
+如果请求过多，将会使服务器相当脆弱。密码签名工作也将显著的影响到回复产生周期，从
+而使情况恶化。如果不签名，那么将使攻击者可能发送假回复，造成协议服务被攻击导致无
+效。
+使用预先产生的回复将可能导致重发攻击，一个旧（良好状态）的回复将被用来重发作
+为一个在有效期内但已被撤消的证书状态。所以为了实现预先产生回复带来的好处，OCSP
+应被小心配置，既要考虑到成功执行后的效率代价又要考虑到被重发攻击的可能性。
+请求不包含他们所直接面对的响应器，这将导致攻击者向任意一个OCSP响应器重发请
+求攻击。
+对于依赖于HTTP缓存的配置场合，如果中间服务器没有被正确的配置或者存在缓存管
+理错误，那么将会导致非期望的结果。建议实现人员仔细考虑HTTP缓存机制的可靠性当配
+置OCSP在HTTP之上时。
+
+6	参考
+[RFC2459]		Housley, R., Ford, W., Polk, W. and D. Solo,
+"因特网x.509公钥基础设施证书和证书撤消列表轮廓"，RFC2459,1999一月
+[HTTP]			Fielding, R., Gettys, J., Mogul, J., Frystyk, H. and T.Berners-Lee
+"超文本传输协议——HTTP/1.1",RFC2068，1997 一月
+[RFC2119]		Bradner, S.,
+"RFC中关键字使用的需要水平"， BCP 14, RFC 2119,1997 三月
+[URL]	Berners-Lee, T., Masinter, L. and M. McCahill,
+"统一资源定位(URL)"，RFC1738，1994	12月
+[x.690]	ITU-T	建议	x.690(1994)|ISO/IEC	8825-1:1995,
+信息技术——ASN.1编码规则：基本编码规则（BER），规范编码规则（CER）和显式
+编码规则（DER）的描述。
+
+7	作者地址
+Michael Myers
+   VeriSign, Inc.
+   1350 Charleston Road
+   Mountain View, CA 94043
+   EMail: mmyers@verisign.com
+   Rich Ankney
+   CertCo, LLC
+   13506 King Charles Dr.
+   Chantilly, VA  20151
+   EMail: rankney@erols.com
+   Ambarish Malpani
+   ValiCert, Inc.
+   1215 Terra Bella Ave.
+   Mountain View, CA 94043
+   Phone: 650.567.5457
+   EMail: ambarish@valicert.com
+   Slava Galperin
+   My CFO, Inc.
+   1945 Charleston Road
+   Mountain View, CA
+   EMail: galperin@mycfo.com
+   Carlisle Adams
+   Entrust Technologies
+   750 Heron Road, Suite E08
+   Ottawa, Ontario
+   K1V 1A7
+   Canada
+   EMail: cadams@entrust.com
+
+附录A
+A.1	在HTTP之上的OCSP
+本章节描述了用来完成支持HTTP的请求和回复的格式。
+
+A.1.1	请求
+基于OCSP的HTTP请求可以使用GET或者POST方法来提交他们的请求。为了使用
+HTTP缓存，小的请求（在编码后少于255字节），可以使用GET来提交。如果HTTP缓存
+不重要，后者请求大于255字节，那么请求应该使用POST方法提交。当需要保密性时，使
+用HTTP的OCSP事务交换可以使用TLS/SSL或者其他更低层的协议来保护。
+一个使用GET方法OCSP请求如下构筑：
+GET {url}/{url-encoding of base-64 encoding of the DER encoding of the OCSPRequest}
+当{url}可以从权威机构信息获得（AuthorityInfoAccess）或者其他一些OCSP客户端的
+本地配置信息中获得。
+一个使用POST的OCSP请求可以如下构筑：
+内容类型头部（Content-Type header）的值为“应用/OCSP-请求”
+（ "application/ocsp-request"），同时信息主体是OCSP请求（OCSPRequest）DER编码的二
+进制值。
+
+A.1.2	回复
+一个基于HTTP的OCSP回复的组成是，适当的HTTP头部，紧跟着一个OCSP回复
+DER编码的二进制值。内容类型头部（Content-Type heade）的值为“应用/OCSP-回复”
+"application/ocsp-request"。内容长度头部（Content-Length header）应该指出回复的长度。其
+他HTTP头部也可以被提出而且如果不被响应器理解的话，也可以被忽视。
+
+附录B		ASN.1中的OCSP
+OCSP DEFINITIONS EXPLICIT TAGS::=
+BEGIN
+IMPORTS
+      -- Directory Authentication Framework (X.509)
+             Certificate, AlgorithmIdentifier, CRLReason
+             FROM AuthenticationFramework { joint-iso-itu-t ds(5)
+                      module(1) authenticationFramework(7) 3 }
+-- PKIX Certificate Extensions
+             AuthorityInfoAccessSyntax
+          FROM PKIX1Implicit88 {iso(1) identified-organization(3)
+                  dod(6) internet(1) security(5) mechanisms(5) pkix(7)
+                  id-mod(0) id-pkix1-implicit-88(2)}
+          Name, GeneralName, CertificateSerialNumber, Extensions,
+           id-kp, id-ad-ocsp
+             FROM PKIX1Explicit88 {iso(1) identified-organization(3)
+                  dod(6) internet(1) security(5) mechanisms(5) pkix(7)
+                  id-mod(0) id-pkix1-explicit-88(1)};
+OCSPRequest     ::=     SEQUENCE {
+    tbsRequest                  TBSRequest,
+    optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
+
+TBSRequest      ::=     SEQUENCE {
+    version             [0] EXPLICIT Version DEFAULT v1,
+    requestorName       [1] EXPLICIT GeneralName OPTIONAL,
+    requestList             SEQUENCE OF Request,
+    requestExtensions   [2] EXPLICIT Extensions OPTIONAL }
+
+Signature       ::=     SEQUENCE {
+    signatureAlgorithm   AlgorithmIdentifier,
+    signature            BIT STRING,
+    certs                [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL }
+
+Version  ::=  INTEGER  {  v1(0) }
+
+Request ::=     SEQUENCE {
+    reqCert                    CertID,
+    singleRequestExtensions    [0] EXPLICIT Extensions OPTIONAL }
+
+CertID ::= SEQUENCE {
+    hashAlgorithm            AlgorithmIdentifier,
+    issuerNameHash     OCTET STRING, -- Hash of Issuer's DN
+    issuerKeyHash      OCTET STRING, -- Hash of Issuers public key
+    serialNumber       CertificateSerialNumber }
+
+OCSPResponse ::= SEQUENCE {
+   responseStatus         OCSPResponseStatus,
+   responseBytes          [0] EXPLICIT ResponseBytes OPTIONAL }
+
+OCSPResponseStatus ::= ENUMERATED {
+    successful            (0),      --Response has valid confirmations
+    malformedRequest      (1),      --Illegal confirmation request
+    internalError         (2),      --Internal error in issuer
+    tryLater              (3),      --Try again later
+                                    --(4) is not used
+    sigRequired           (5),      --Must sign the request
+    unauthorized          (6)       --Request unauthorized
+}
+
+ResponseBytes ::=       SEQUENCE {
+    responseType   OBJECT IDENTIFIER,
+    response       OCTET STRING }
+
+BasicOCSPResponse       ::= SEQUENCE {
+   tbsResponseData      ResponseData,
+   signatureAlgorithm   AlgorithmIdentifier,
+   signature            BIT STRING,
+   certs                [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL }
+
+ResponseData ::= SEQUENCE {
+   version              [0] EXPLICIT Version DEFAULT v1,
+   responderID              ResponderID,
+   producedAt               GeneralizedTime,
+   responses                SEQUENCE OF SingleResponse,
+   responseExtensions   [1] EXPLICIT Extensions OPTIONAL }
+
+ResponderID ::= CHOICE {
+   byName   [1] Name,
+   byKey    [2] KeyHash }
+
+KeyHash ::= OCTET STRING --SHA-1 hash of responder's public key
+                         --(excluding the tag and length fields)
+
+SingleResponse ::= SEQUENCE {
+   certID                       CertID,
+   certStatus                   CertStatus,
+   thisUpdate                   GeneralizedTime,
+
+   nextUpdate           [0]     EXPLICIT GeneralizedTime OPTIONAL,
+   singleExtensions     [1]     EXPLICIT Extensions OPTIONAL }
+
+CertStatus ::= CHOICE {
+    good                [0]     IMPLICIT NULL,
+    revoked             [1]     IMPLICIT RevokedInfo,
+    unknown             [2]     IMPLICIT UnknownInfo }
+
+RevokedInfo ::= SEQUENCE {
+    revocationTime              GeneralizedTime,
+    revocationReason    [0]     EXPLICIT CRLReason OPTIONAL }
+
+UnknownInfo ::= NULL -- this can be replaced with an enumeration
+
+ArchiveCutoff ::= GeneralizedTime
+
+AcceptableResponses ::= SEQUENCE OF OBJECT IDENTIFIER
+
+ServiceLocator ::= SEQUENCE {
+    issuer    Name,
+    locator   AuthorityInfoAccessSyntax }
+
+-- Object Identifiers
+
+id-kp-OCSPSigning            OBJECT IDENTIFIER ::= { id-kp 9 }
+id-pkix-ocsp                 OBJECT IDENTIFIER ::= { id-ad-ocsp }
+id-pkix-ocsp-basic           OBJECT IDENTIFIER ::= { id-pkix-ocsp 1 }
+id-pkix-ocsp-nonce           OBJECT IDENTIFIER ::= { id-pkix-ocsp 2 }
+id-pkix-ocsp-crl             OBJECT IDENTIFIER ::= { id-pkix-ocsp 3 }
+id-pkix-ocsp-response        OBJECT IDENTIFIER ::= { id-pkix-ocsp 4 }
+id-pkix-ocsp-nocheck         OBJECT IDENTIFIER ::= { id-pkix-ocsp 5 }
+id-pkix-ocsp-archive-cutoff  OBJECT IDENTIFIER ::= { id-pkix-ocsp 6 }
+id-pkix-ocsp-service-locator OBJECT IDENTIFIER ::= { id-pkix-ocsp 7 }
+
+END
+
+附录C	MIME注册
+C.1		application/ocsp-request（应用/OCSP-请求）
+To（寄往）: ietf-types@iana.org
+   Subject（主题）: Registration of MIME media type application/ocsp-request
+   MIME media type name: application
+MIME媒介类型名称：应用
+   MIME subtype name: ocsp-request
+MIME副类型名称：OCSP-请求
+   Required parameters: None
+必要参数：无
+   Optional parameters: None
+可选参数：无
+   Encoding considerations: binary
+编码考虑：二进制
+   Security considerations: Carries a  request for information. This
+   request may optionally be cryptographically signed.
+安全考虑：携带一个信息请求。这个请求可以被密码签名。
+   Interoperability considerations: None
+协同能力考虑：无
+   Published specification: IETF PKIX Working Group Draft on Online Certificate Status 
+Protocol - OCSP
+公布规范：IETF PKIX工作组在线证书状态协议草案——OCSP
+   Applications which use this media type: OCSP clients
+使用这种媒介类型的应用：OCSP客户端
+   Additional information:
+附加信息：
+      Magic number(s): None
+		魔术号：无
+      File extension(s): .ORQ
+		物件后缀：ORQ
+      Macintosh File Type Code(s): none
+		Macintosh文件类型编码：无
+   Person & email address to contact for further information:
+   Ambarish Malpani <ambarish@valicert.com>
+	如果要获得更多信息请寄往私人EMAIL地址Ambarish Malpani 
+<ambarish@valicert.com>
+   Intended usage: COMMON
+	计划用途：普通
+   Author/Change controller:
+Ambarish Malpani <ambarish@valicert.com>
+作家/变化 控制器：
+Ambarish Malpani <ambarish@valicert.com>
+
+C.2 application/ocsp-response
+	应用/OCSP-回复
+   To（寄往）: ietf-types@iana.org
+   Subject（主题）: Registration of MIME media type application/ocsp-response
+   MIME media type name: application
+	MIME媒介类型名称：应用
+   MIME subtype name: ocsp-response
+	MIME副类型名称：OCSP-回复
+   Required parameters: None
+	必要参数：无
+   Optional parameters: None
+	可选参数：无
+   Encoding considerations: binary
+	编码考虑：二进制
+   Security considerations: Carries a cryptographically signed response
+	安全考虑：携带一个密码签名的回复
+   Interoperability considerations: None
+	协同能力考虑：无
+   Published specification: IETF PKIX Working Group Draft on Online
+   Certificate Status Protocol - OCSP
+	公布规范：IETF PKIX工作组在线证书状态协议草案——OCSP
+   Applications which use this media type: OCSP servers
+	使用这种媒介的应用：OCSP服务器
+   Additional information:
+	附加信息
+   Magic number(s): None
+	魔术号：无
+   File extension(s): .ORS
+	文件扩展：ORS
+   Macintosh File Type Code(s): none
+	Macintosh文件类型编码：无
+   Person & email address to contact for further information:
+   Ambarish Malpani <ambarish@valicert.com>
+	如果要获得更多信息请寄往私人EMAIL地址Ambarish Malpani 
+<ambarish@valicert.com>
+   Intended usage: COMMON
+计划用途：普通
+   Author/Change controller:
+   Ambarish Malpani <ambarish@valicert.com>
+	作家/变化 控制器：
+Ambarish Malpani <ambarish@valicert.com>
+
+版权申明
+Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+	感谢Internet协会给予RFC编辑部门的资金。
+
+
+x.509因特网公钥基础设施在线证书状态协议——OCSP
+RFC2560  X.509 Internet Public Key Infrastructure Online Certificate Status Protocol – OCSP
+
+
+1
+RFC文档中文翻译计划

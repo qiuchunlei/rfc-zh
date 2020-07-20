@@ -1,0 +1,269 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：王安鹏（anpengwang    anpengwang@263.net）
+译文发布时间：2001-5-8
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必
+须保留本文档的翻译及版权信息。
+
+
+Network Working Group                                      B. Wellington
+Request for Comments: 3007                                       Nominum
+Updates: 2535, 2136                                        November 2000
+Obsoletes: 2137
+Category: Standards Track
+
+
+安全的域名系统动态更新
+(RFC 3007 Secure Domain Name System (DNS) Dynamic Update)
+
+
+本备忘录的状态
+
+本文为Internet社区描述了一种Internet标准跟踪协议，还需要讨论和建议进行改善。
+请查看“Internet正式协议标准”（STD 1）了解本协议的便准化进程和状态。本备忘录的传
+播不受限制。
+
+版权公告
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+摘要
+
+本文提出了一种安全地动态更新域名系统的方法。该方法的意图在于保证灵活性和可用
+性，同时尽可能少地改变当前的协议。在最新的DNSSEC中动态更新消息的验证已经从数据确认
+中分离出来。基于请求和事务验证的安全通信用来提供授权。
+
+本文所用关键字“必须”、“不得”、“要求”、“应”、“不应”、“需”、“不
+可”、“推荐”、“可以”和“可选”参见RFC 2119的解释。
+
+目录
+1 简介	2
+1.1 DNS动态更新概述	2
+1.2 – DNS事务安全概述	2
+1.3 – 数据验证和消息验证的比较	2
+1.4 – 数据和消息签名	3
+1.5 – 签名长度	3
+2 – 验证（Authentication）	3
+3 – 策略	3
+3.1 – 标准策略Standard policies	4
+3.1.1 – 用户类型（User types）	4
+3.2 – 其他策略（Additional policies）	4
+4 – 与DNSSEC之间的相互影响	4
+4.1 – 增加 SIGs	4
+4.2 – 删除 SIGs	4
+4.3 –对SIGs的模糊更新	5
+4.4 – 对区域的影响	5
+5. 安全考虑	5
+6.鸣谢	5
+7.引用	5
+8. 作者地址	6
+9.  版权声明	6
+
+1 简介
+本文定义了一种动态更新域名系统的安全方法，只有经过授权的资源才被允许修改域的内
+容。当前存在的不安全的动态更新工程了本文的主要内容。
+熟悉DNS系统[RFC1034, RFC1035]和动态更新[RFC2136]是很有用的，本文假定读者已经
+熟悉这些内容。另外，建议了解DNS安全扩展[RFC2535]、SIG(0)事务安全[RFC2535, RFC2931]
+和TSIG事务安全[RFC2845]。
+本文更新了RFC2535，特别是节3.1.2，还有RFC 2136。根据应用实践，本文废止了
+RFC2137，那是另一个安全动态更新的提议。   
+
+1.1 DNS动态更新概述
+DNS动态更新定义了新的DNS操作码和对该操作码的DNS消息的解释器。更新可以指明插入或
+者删除数据，先要条件是进行更新的必要性。DNS更新请求的全部测试和修改全部限定在一个
+单独的域，在该域的主服务器上进行。动态域的主服务器在执行更新时或者下一次访问SOA前
+增加域SOA序列号。
+
+1.2 – DNS事务安全概述
+包含TSIG或者SIG（0）记录的DNS消息交换允许两个DNS实体验证彼此发出的DNS请求
+和响应。TSIG MAC（消息验证码）源于共享加密，而SIG（0）则出自私有密钥，其公共部分保
+存在DNS中。这两种情况下，DNS消息都包括一个含有消息签名/MAC的记录作为源记录的最后
+部分。TSIG使用的带键散列表计算和校验成本低廉。SIG（0）使用的公共密钥加密，由于公共
+密钥保存在DNS中因而伸缩性更大。
+
+1.3 – 数据验证和消息验证的比较
+使用TSIG或者SIG（0）的基于验证的消息，通过单个的签名或者单个的校验对整个消息
+提供保护，其中TSIG使用了创建和检查相对便宜的MAC。对于更新请求，可以由管理人员基于
+一定的策略或者密码协商来建立签名。
+域所有者的管理人员可以利用DNSSEC SIG记录保护DNS消息中单个RRs或者Rrsets的完
+整性。但是这样不能保护动态更新请求。
+如下所述，使用SIG记录在更新请求中保护RRsets 与更新的设计相矛盾，而且无论如何
+都需要昂贵的多重公共密钥签名和校验。
+由于SIG记录没有覆盖包含记录长度的消息头，因此更新请求被恶意增加或者删除了
+RRsets也可能不会产生校验错误。如果使用SIG记录保护首要的小节，就无法分辨SIG本身是
+首要的节还是仅仅用来校验。
+    如[RFC2535]所述，在更新请求的更新小节增加一个RRset实现对请求的签名是很简单的，
+而且这个签名可以用来永久的保护数据。但是如果删除了一个RRset，SIG就没有保护的数据
+了。
+
+1.4 – 数据和消息签名
+[RFC3008]指出，执行DNSSEC验证的分析器不得处理非信任区的密码，除非本地的安全策
+略另有规定。执行安全动态更新时，在一个标志区内更新的所有信任区数据必须使用相应的区
+域密码标志。这样可以实现更新请求的验证和数据本身的验证完全分离。
+对于DNSSEC，主机密码和用户密码主要用于消息验证，其中包括动态更新消息验证。因
+此，主机密码和用户密码可以用来生成更新验证的SIG（0）记录，或者在TKEY[RFC2930]过程
+中生成TSIG共享加密。这两种情况都不会使用非信任区密码生成的SIG记录进行DNSSEC验
+证，除非本地的安全策略另有规定。
+出现在DNSSEC中的数据验证仅仅包括DNSSEC信任区密码和由此生成的签名。
+
+1.5 – 签名长度
+   [RFC2535, 节3.1.2]把密码的签名者字段定义为标志字段的最后4位，但没有指明该域的
+值。 本建议没有定义该字段。作为对[RFC2535]的修正，密码记录中的该字段应设为0，而且
+必须被忽略。
+2 – 验证（Authentication）
+所有的动态更新消息都必须包含TSIG或者SIG（0）记录，这样服务器才能证实消息的发
+出方。如果消息包含有SIG（0）形式的验证信息，发送方（主体）的身份就是生成SIG（0）的
+KEY RR的所有者。如果消息包含了静态配置共享加密生成的TSIG验证信息，主体就与进行
+TKEY验证的主体相同；如果没有验证TKEY，就无法了解主体的信息，这样的TSIG共享加密就
+不能用于安全动态更新。
+SIG（0）签名不应由区域密码产生，因为初始化事务的是主机和用户而不是安全区。
+更新消息可以包含DNSSEC SIG记录（不是SIG（0）），但该记录不能用于更新请求验
+证。
+如果由于使用未授权的密码造成更新失败，服务器需返回RCODE REFUSED消息通知更新失
+败。其他的TSIG、SIG（0）或者动态更新错误根据相应的协议规定返回提示。
+3 – 策略
+区域管理员设置所有的安全策略，由区域的主名服务器执行。安全策略规定了授权主体可
+以执行的授权活动。策略检查取决于授权主体和需要的授权行为，主体来自消息签署密码并用
+于使用该密码签字的动态更新消息。
+服务器的安全策略定义了密码确认的标准，决定请求的更新能否执行。缺省条件下，不允
+许主体改变区域数据，否则必须在配置中设定。
+策略仅仅在主域服务器的配置中完全实现有几个理由。首先避免了把策略编成固定长度的
+码的限制；其次策略仅与应用它的服务器有关，避免了泄漏；最后，策略改变或者启用新类型
+的策略不会影响DNS协议和数据格式，因而不会引起协同工作的问题。
+
+3.1 – 标准策略Standard policies
+具体运用应允许访问控制策略把主体作为授权信令使用，也可以允许策略授权许可带有签
+字的消息而不考略主体。
+限制对域名主体的许可是一项通用的惯例。这些许可包括追加、删除和修改与一个或者多
+个域名对应的项。具体实现应允许针对名的访问控制，并且应该提供关于主体的所有名、子域
+和区域内全部名的精确表示。
+另外，服务器应该允许对RR类型更新的限制，这样主体就可以追加、删除和更新特定名的
+指定记录类型。实现中应允许针对类型的访问控制，并且应该提供对全部类型和“用户”类型
+的精确表示，其中用户类型被定义为不会影响DNS操作本身。
+3.1.1 – 用户类型（User types）
+用户类型包括除SOA、NS、SIG和NXT之外的所有类型。SOA和NA记录用于创建和修改授
+权点，因而普通用户不应修改这些类型。追加SIG记录将增加分析器的工作量并可能导致攻
+击，删除SIG记录会给删除区域SIG的服务器带来额外的工作。注意，尽管不是强制性的，这
+些记录建议不要提供给普通用户。
+动态更新不得创建、修改或者删除NXT记录，因为这样的更新会导致协议内的不稳定。这
+一点是对RFC2136的改进。
+关于KEY记录的更新在安全考虑一节讨论。
+3.2 – 其他策略（Additional policies）
+用户可以自由地使用任何策略。策略既可以根据需要或详尽和简略，也可以根据需要非常
+复杂，这取决于主体或者签名消息的其它特性。
+4 – 与DNSSEC之间的相互影响
+尽管本协议没有改变安全区域的更新方式，还有几点需要澄清。
+
+4.1 – 增加 SIGs
+授权的更新请求可能在每个RRset中都包含SIG记录。由于SIG记录（不包括SIG（0）记
+录）不能用于更新消息的验证因而是不需要的。
+如果主体被授权可以更新SIG记录而且更新中存在SIG记录，这些SIG记录就会在未经验
+证的情况下追加。服务器可以检查SIG记录并删除以前的具有临时有效期的SIG记录。
+4.2 – 删除 SIGs
+如果一个主体被授权更新SIG记录，而且更新要求删除SIG记录，服务器可以推翻这一授
+权并拒绝更新。比如，服务器可以允许删除所有非区域码生成的SIG记录。
+4.3 –对SIGs的模糊更新
+如果更新的区域是可靠的，受到更新操作影响的RRset必须在更新完成时根据区域的签名
+策略进行签名。这样通常会由一个或者多个区域码——其私有成分必须是在线的[RFC3008]——
+生成一个或者多个SIG记录。
+如果改变了RRset的内容，服务器可以删除所有相关的SIG记录，因为它们不再有效了。
+4.4 – 对区域的影响
+如果需要，无论作了什么样的改变服务器都必须产生新的SOA记录和新的NXT记录，并把
+这些记录签署给相应的区域码。安全的动态更新对NXT记录的改变是明确禁止的。SOA更新是
+允许的，因为SOA参数的维护是在DNS协议的范围之外。
+5. 安全考虑
+本文要求应在一台在线的联网主机——最可能是一个名服务器——上保存区域密码以及其
+他可能的经过加密的机密资料。这些资料的机密性完全取决于主机的安全性。如果泄露了这一
+秘密将会使DNS数据面临冒名攻击的危险。该机器以及由该机器授权的机器所服务的区域的数
+据都会受到威胁。
+6.鸣谢
+作者感谢下列人士对本文的审阅和有价值的建议（按字母顺序）：
+   Harald Alvestrand
+   Donald Eastlake
+   Olafur Gudmundsson
+   Andreas Gustafsson
+   Bob Halley
+   Stuart Kwan
+   Ed Lewis
+
+7.引用
+
+   [RFC1034]  Mockapetris, P., "Domain Names - Concepts and Facilities",
+              STD 13, RFC 1034, November 1987.
+
+   [RFC1035]  Mockapetris, P., "Domain Names - Implementation and
+              Specification", STD 13, RFC 1035, November 1987.
+
+   [RFC2136]  Vixie (Ed.), P., Thomson, S., Rekhter, Y. and J. Bound,
+              "Dynamic Updates in the Domain Name System", RFC 2136,
+              April 1997.
+
+   [RFC2137]  Eastlake, D., "Secure Domain Name System Dynamic Update",
+              RFC 2137, April 1997.
+
+   [RFC2535]  Eastlake, G., "Domain Name System Security Extensions",
+              RFC 2535, March 1999.
+
+   [RFC2845]  Vixie, P., Gudmundsson, O., Eastlake, D. and B.
+              Wellington, "Secret Key Transaction Signatures for DNS
+              (TSIG)", RFC 2845, May 2000.
+
+   [RFC2930]  Eastlake, D., "Secret Key Establishment for DNS (TKEY
+              RR)", RFC 2930, September 2000.
+
+   [RFC2931]  Eastlake, D., "DNS Request and Transaction Signatures
+              (SIG(0)s)", RFC 2931, September 2000.
+
+   [RFC3008]  Wellington, B., "Domain Name System Security (DNSSEC)
+              Signing Authority", RFC 3008, November 2000.
+
+8. 作者地址
+
+   Brian Wellington
+   Nominum, Inc.
+   950 Charter Street
+   Redwood City, CA 94063
+
+   Phone: +1 650 381 6022
+   EMail: Brian.Wellington@nominum.com
+
+9.  版权声明
+
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+
+
+RFC 3007 Secure Domain Name System (DNS) Dynamic Update    安全的域名系统动态更新		1/7
+
+
+1
+RFC 文档中文翻译计划

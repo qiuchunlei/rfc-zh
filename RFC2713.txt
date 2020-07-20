@@ -1,0 +1,746 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：汪谢华（ouseka   ouseka@sina.com）
+译文发布时间：2001-4-26
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                            V. Ryan
+Request for Comments: 2713                                   S. Seligman
+Category: Informational                                           R. Lee
+                                                  Sun Microsystems, Inc.
+October 1999
+
+
+LDAP（轻型目录存取协议）目录中JAVATM对象的表征模式
+(RFC2713 Schema for Representing Java(tm) Objects in an LDAP Directory )
+
+
+本备忘录状态
+   This memo provides information for the Internet community.  It does
+   not specify an Internet standard of any kind.  Distribution of this
+   memo is unlimited.
+
+版权声明
+   Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+摘要
+	本文档定义JAVA对象在LDAP目录 [LDAPv3] 中的表现模式。它定义了模式基本元
+素来表征一个JAVA序列对象 [Serial]，一个JAVA整理过的对象 [RMI]，一个JAVA远程对
+象 [RMI]，一个JNDI参考 [JNDI]。
+
+目录
+
+1．绪论	2
+2．JAVA对象陈述	3
+2．1 公共陈述	3
+2．2 可序列化对象	4
+2．2．1 目录中的表征	4
+2．3 整理过的对象	4
+2．3．1 目录中的表征	5
+2．4 JNDI参考	5
+2．4．1 参考的内容	6
+2．4．2 目录中的表征	6
+2．5 远程对象	6
+2．5．1 目录中的表征	7
+2．6 序列化的对象 VS. 整理过的对象 VS. 参考	8
+3、属性类型定义	9
+3．1 javaClassName	9
+3．2 javaCodebase	9
+3．3 javaClassNames	10
+3．4 javaSerializedData	10
+3．5 javaFactory	10
+3．6 javaReferenceAddress	11
+3．7 javaDoc	11
+4．对象类的定义	12
+4．1 javaContainer	12
+4．2 javaObject	12
+4．3 javaSerializedObject	13
+4．4 javaMarshalledObject	13
+4．5 javaNamingReference	13
+5．安全考虑	14
+6．鸣谢	14
+7．参考	14
+8．作者的地址	15
+附录 - LDAP 模式	16
+
+1．绪论
+本文假定读者已经具备一定的JAVA编程语言知识 [JAVA] 。简短起见，在整个文档中，
+我们用术语“Java Object”来代替“object in the Java programming language”。
+
+一般地，LDAP目录被用来存储数据。用户与程序员把目录看成是具有一系列属性的目
+录层次。你从目录中查寻一条记录并且抽取你所感兴趣的一个或多个属性。例如：你可
+以从目录中查寻某人的电话号码。或者，你可以在目录中搜索具体特殊属性的记录。比
+如，你可以在目录中查找所有姓氏为Smith的人员。
+
+对于用JAVA编写的应用程序来说，一种数据典型地为JAVA对象自己共享。对那些应
+用来说，它有意义于使能够使用目录作为JAVA对象库。该目录提供中心管理的，可复
+制的，通过网络分布式地为JAVA应用所使用的服务。
+
+比如，一个应用服务器可能用目录来“注册”对象以表征它所管理的服务，以至于一个
+客户能随后查找目录来定位所需服务。
+
+本文的目的是来定义应用程序从目录中存储与读取JAVA对象的公共方法。使用这种公
+共模式，任何需要读取或存储目录中的JAVA对象的JAVA应用程序都能使用一种能公
+共操作的方法。
+
+2．JAVA对象陈述
+本文定义模式基本元素来表征三种JAVA对象的类型：JAVA序列化的对象，JAVA整理
+过的对象，和JNDI参考。JAVA远程对象可作为JAVA整理过的对象或JNDI参考保存。
+
+2．1 公共陈述
+JAVA对象用对象类javaObject存储于LDAP目录中。它是其它JAVA对象相关类驱动：
+javaSerializedObject，javaMarshalledObject，和javaNamingReference的基础类。javaObject
+是个抽象对象类，也就说一个javaObject不能自己存在于目录中；只有它的辅助性的或
+结构上的子类可以存在于目录中。
+
+对象类javaContainer表征一个目录记录来保存一个JAVA对象。它是个结构上的对象类。
+在实例中javaObject的子类与其它结构化的对象类混合在一起，javaContainer不是必需
+的。
+
+对象类javaObject与javaContainer的定义在第4节中。
+
+javaObject类有一个必选的属性（javaClassName）和四个可选的属性（javaClassNames，
+javaCodeBase，javaDoc，description）。javaClassName是个单值属性，用于保存对象完
+整的JAVA类名（如，java.lang.String）。这可能对象的源类名，但并不必须是；在某此
+场合作为超类或接口可能是最适当的。该属性用来保存对象的区分类的名字，说得更精
+确此，类或接口应该被区分清楚。
+
+javaClassNames是个多值的属性以用来保存对象的完整的JAVA类和接口的对象名字
+（比如，java.lang.Byte）。如所有多值属性那样，javaClassNames属性的值是无序的，
+并且没有一个值比其它值更具可辨性。该属性用来保存对象对类和接口名字与其父类或
+接口，而且值不是必须完成的。如果javaClassNames属性是存在的，它应该包括
+javaClassName的值。
+
+例如，假设一个javaClassName属性值为java.io.FilePermission，javaClassNames属性值
+为 {"java.security.Permission"，"java.io.FilePermission"，"java.security.Guard"，
+"java.io.Serializable"} 的对象保存于目录中。一个应用在目录中查找JAVA对象可能用
+javaClassName来在该目录中产生JAVA对象的名字与类型的集合。别的应用程序可以
+用javaClassNames属性来寻找，比如，所有的java.security.Permission对象。
+
+javaCodebase是个多值属性用于保存对象的类定义定位。javaDoc用于保存指向类的
+JAVA文档的指针（URL）。description用于保存JAVA对象的文本描述且定义于 
+[v3Schema ] 中。这些属性的定义在第3节中。
+
+2．2 可序列化对象
+可序列化一个对象意味着将其状态转换成字节流使字节流能被转换回对象的一个副本。
+如果一个JAVA对象的类或它的任何超类实现了java.io.Serializable接口或它的子接口
+java.io.Externalizable，则此JAVA对象是可序列化的（serializable）。"Deserialization"是
+指将序列化的对象形态转换回对象的一个副本的过程。当一个对象序列化之后，以此对
+象为根的整个对象树也都是序列化的。当它被逆序列化后整个树被重建。比如，假设一
+个可序列化的Book对象包括（一个可序列化的字段）一个Page数组对象。当一个Book
+对象序列化后，Page数组对象亦被序列化。
+
+JAVA平台指定一个默认的算法用来序列化可序列化对象。JAVA类也可以以自己的算
+法来覆盖这个默认序列化。序列 [Serial] 详细地描述了对象序列化。
+
+当一个对象序列化时，标识它的类的信息被记录在这个序列化流中。然而类的定义（类
+文件）本身没被记录。逆序列化对象以决定用于定位和加载相关联的类的定义，是系统
+的职责。比如，JAVA应用可能包括它的类路径（classpath）在JAR文件中包含可序列
+化对象的类定义，或者如以下所解释的那样用目录中的信息加载类定义。
+
+2．2．1 目录中的表征
+一个可序列化的对象在目录中用javaClassName,javaClassNames,javaCodeBase,和
+javaSerializedData属性表征，这些属性在第3节中定义。必选属性javaSerializedData包
+括对象的序列化形态。尽管序列化形态已包含类名，必选属性javaClassName还是记录
+了被序列化对象的类名以使应用能够在不必先逆序列化该对象就能确定类信息。可选的
+javaClassNames属性用来记录附加有关序列化对象的类信息。可选的javaCodeBase属
+性用于记录逆序列化对象所必需的类定义的位置。
+
+一条包含一个序列化对象的目录记录用javaObject的子类javaSerializedObject对象类来
+表征。javaSerializedObject是个辅助对象类，也就是说它需与一个结构上的对象类混合
+使用。javaSerializedObject的定义在第4节中给出。
+
+2．3 整理过的对象
+“整理”一个对象就是在它是“未经整理”时的以一种方式记录其状态和代码存根
+（codebase(s)）的方法，原始对象的一个副本可能自动在加载该对象的类定义。你可以
+整理任何可序列化或远程的（即，实现java.rmi.Remote接口）对象。除了整理还记录
+代码存根（codebase），整理就与序列化一样。整理与序列化的不同之处在于整理格外
+地对待远程对象。如果一个对象是java.rmi.Remote对象，整理记录远程对象的“存根”
+（stub）（见第2.5节），而不是记录远程对象本身。如序列化那样，当一个对象被整理
+后，整个以此对象为根的对象树均被整理。当它被逆整理，整个树亦被逆整理。
+
+一个“整理过的”对象用java.rmi.MarshalledObject类表征。这里有个如何为可序列化
+与远程对象创建MarshalledObject的例子：
+       java.io.Serializable sobj = ...;
+       java.rmi.MarshalledObject mobj1 =
+           new java.rmi.MarshalledObject(sobj);
+
+       java.rmi.Remote robj = ...;
+       java.rmi.MarshalledObject mobj2 =
+           new java.rmi.MarshalledObject(robj);
+
+	那么，为从MarshalledObject恢复原始的对象，可这样做：
+       java.io.Serializable sobj = (java.io.Serializable) mobj1.get();
+       java.io.Remote rstub = (java.io.Remote) mobj2.get();
+
+	MarshalledObject只在Java2 Platfrom, Standard Edition, V1.2或更高版本的平台上可用。
+
+2．3．1 目录中的表征
+一个整理过的对象用javaClassName, javaClassNames, javaSerializedData（定义在第3节
+中）属性来在目录中表征。必选属性javaSerializedData包含整理过的对象的序列化形
+态（也就是，MarshalledObject实例的序列化形态）。必选属性javaClassName记录对象
+整理前的知名类名。可选的属性javaClassNames用来记录整理前的有关对象的附加类
+信息。
+
+一个包含整理过的对象的目录记录用javaObject的子类javaMarshalledObject对象类来
+表征。javaMarshalledObject是个辅助对象类，也就是说需要与一个结构上的对象类混
+合使用。javaMarshalledObject的定义在第4节中给出。
+
+显然，javaMarshalledObject与javaSerializedObject的不同之处只在于javaClassName和
+javaClassNames属性的解释。
+
+2．4 JNDI参考
+JAVA名字与目录接口JNDI（Java Naming and Directory Interface）是个在JAVA编程语
+言中指定的目录访问API [JNDI] 。它提供目录的对象导向的视图，允许JAVA对象添
+加到或恢复自目录而不要求客户管理数据表征。
+
+JNDI定义“reference”的概念，是用在对象不能被直接保存在目录中，或不适当，不
+合需求时。有关联的参考的对象是被间接保存在目录中的，是用保存其参考来替代的。
+
+2．4．1 参考的内容
+一个JNDI参考是个javax.naming.Reference类的JAVA对象。它由被参考对象的类信息
+和有序的地址列表组成。一个地址是一个javax.naming.RefAddr类的JAVA对象。每个
+地址包含如何构造该对象的信息。
+
+JNDI参考的普通用法就是表征到网络服务的连接，如数据库，目录，或文件系统。每
+个地十可以识别一个服务的“通信端点”，包含有如何联系服务的信息。多地址可能出
+现于各种各样的原因，如复制，或者对象通过多于一种的通信机制提供接口。
+
+一个参考也包含帮助创建该参考涉及对象的实例的信息。它包含该对象的JAVA类名，
+类名和对象制造者位置以用来创建该对象。给出其参考来创建对象的过程与相反的过程
+在 [JNDI] 中描述。
+
+2．4．2 目录中的表征
+JNDI参考用javaClassName, javaClassNames, javaCodeBase, javaReferenceAddress, 和
+javaFactory属性保存于目录中，这些属性定义于第3节中。这些属性保存对应于上面描
+述的参考的信息。javaReferenceAddress是个多值可选的属性来保存参考地址。
+javaFactory是个可选属性来保存对象制造者完整类名。必选属性javaClassName用于保
+存对象的知名类名。可选属性javaClassNames用来记录附加类及接口名。可选属性
+javaCodeBase用于保存对象的制造者位置及对象的类定义。
+
+一条目录记录包含一个用javaObject的子类javaNamingReference对象类表征的JNDI
+参考。javaNamingReference是个辅助对象类，也就是它必须与一个结构上的对象类混
+合使用。javaNamingReference的定义在第4节中给出。
+
+2．5 远程对象
+JAVA远程方法调用系统（the Java Remote Method Invocation(RMI) system）[RMI] 是一
+种使一个JAVA虚拟机上的对象能够调用别一个JAVA虚拟机上对象的方法的机制。任
+何具体能以这种方式被调用的方法的对象必须实现java.rmi.Remote接口。当这样一个
+对象被调用，它的参数被整理并从本地虚拟机送至逆整理并使用这些参数的远端虚拟
+机。当该方法结束，结果自远端被整理并送至调用者的虚拟机。
+
+为使一个远程对象对别的虚拟机可访问，有个程序一般性地用RMI注册器进行注册。
+该程序提供给RMI注册器该远程对象的字符串名字和该远程对象本身。当有程序欲访
+问远程对象，它提供此对象的字符串名字给与远程对象同样的机器上的RMI注册器。
+RMI注册器返回给调用者一个参考（称作“stub”）给远程对象。当程序收到远程对象
+的stub，它就可以调用远程对象的方法（通过stub）。程序也可获得作为向其它远程对
+象的远程调用的结果的远程对象参考，或从其它名字服务获得远程对象的参考。比如，
+程序可以从一个支持文中所定义的模式的LDAP服务器上查寻到一个远程对象的参考。
+
+RMI注册器接受的字符串名字语法为“rmi://hostname:port/remoteObjectName”，其中
+hostname与port标识RMI注册器运行的主机和端口，remoteObjectName是远程对象的
+名字。hostname, port和前缀"rmi:"是可选的。如果hostname没指定，默认为本地主机
+(localhost)。如果port没指定，默认为1099。如果remoteObjectName没指定，则对象被
+命名为RMI注册器自己。细节见 [RMI] 。
+
+RMI能被不能的协议所支持：JAVA远程方法协议（JRMP）和互联网Inter-ORB协议
+（IIOP）。JRMP是专为RMI设计的协议；IIOP是CORBA对象间通信的标准协议 
+[CORBA] 。基于IIOP的RMI允许JAVA远程对象与可能是用非JAVA语言编写的
+CORBA对象进行通信 [RMI – IIOP] 。
+
+2．5．1 目录中的表征
+使用IIOP的远程对象在目录中被作为CORBA对象参考来表征 [CORBA – LDAP] 。
+使用JRMP的远程对象在目录中用一种或两种方法来表征：作为整理过的对象，或作为
+JNDI参考。
+
+一个整理过的对象记录远程对象存根（stub）和任何可序列化的或远程的所参考的对象
+的代码存根，并且用它们的存根（stubs）代替远程对象。为将一个远程对象作为整理
+过的对象（java.rmi.MarshalledObject）来保存，你应先创建一个它的
+java.rmi.MarshalledObject实例。
+
+       java.rmi.Remote robj = ...;
+       java.rmi.MarshalledObject mobj = new java.rmi.MarshalledObject(robj);
+
+然后你可以将此MarshalledObject实例作为javaMarshalledObject来保存。javaClassName
+属性应该包含此远程对象的完整的知名类名。javaClassNames属性应该包含远程对象的
+类和接口的名字。欲从目录中读回远程对象，先要逆序列化javaSerializedData的内容
+以得到一个MarshalledObject（mobj），然后像如下那样从该MarshalledObject恢复：
+
+       java.rmi.Remote robj = (java.rmi.Remote)mobj.get();
+
+	本语句返回远程存根（stub），你可用来调用远程方法。
+	
+MarshalledObject只在Java2 Platfrom, Standard Edition, V1.2或更高版本的平台上可用。
+因此，作为MarshalledObject保存的远程对象只能被使用Java2 Platfrom, Standard Edition, 
+V1.2或更高版本平台的客户所读取。
+
+欲将JNDI参考保存为远程对象，你得先创建一个javax.naming.Reference对象实例，因
+为它使用远程对象的名字就像它已经或将要被记录在RMI注册器上，并且存在附加限
+制"rmi:"前缀。这里是例子：
+
+       javax.naming.Reference ref = new javax.naming.Reference(
+         obj.getClass().getName(),
+         new javax.naming.StringRefAddr("URL",
+             "rmi://rserver/AppRemoteObjectX"));
+
+然后你可将此javax.naming.Reference实例作为javaNamingReference保存。使用JNDI
+参考的好处在于可以没有远程对象的参考时进行。实事上，该远程对象不必在目录中的
+这个记录产生时就存在。在远程对象被从目录中查找时是必须存在的，而且要被捆定在
+RMI注册器中。
+
+2．6 序列化的对象 VS. 整理过的对象 VS. 参考
+	本文定义的对象类保存JAVA对象的不同方面。
+	
+一个作为javaMarshalledObject保存的javaNamingReference或远程对象表征一个指向对
+象的指针时，作为javaMarshalledObject保存的javaSerializedObject或可序列化的对象
+表征对象自己。
+
+保存一个可序列化的对象到目录中时，你拥有作为javaSerializedObject还是作为
+javaMarshalledObject保存的选择。javaSerializedObject对象类提供保存可序列化对象的
+基本方法。当用javaSerializedObject对象类创建一个LDAP记录时，如果你希望该记录
+的读取者知道到哪里加载该对象的类定义，你必须明确地设置javaCodeBase属性。当
+用javaMarshalledObject对象类创建一个LDAP目录记录时，你要使用MarshalledObject
+类。MarshalledObject类使用在JAVA平台上可用的RMI下部构造，使聚集与记录代码
+存根（codebase）信息自动化，从而使设置javaCodeBase属性变得不是必需的。另一方
+面，javaCodeBase属性是肉眼可读的，是可以在不必改变记录的其它部分的前提下轻易
+用文本工具更新。这就使得你，例如，移动类定义到别的地方并且更新javaCodeBase
+属性来体现移动而不必更新序列化的对象自己。javaNamingReference提供一种记录没
+有直接保存于目录中的对象的地址的信息。作为javaMarshalledObject保存的远程对象
+也记录自己没直接保存于目录中的对象的地址信息。换句话说，你可以把它们看成是访
+问对象必需的信息的简洁的表征。
+
+javaNamingReference一般地由一个肉眼可读的小数字字符组成。目录管理的标准文本
+工具可因此用来添加，读取，或修改参考记录――如若很需要――非常容易。序列化的
+与整理过的对象不会被人直接地读取或操作。
+
+3、属性类型定义
+以下属性类型在本文本中定义：
+       javaClassName
+       javaClassNames
+       javaCodebase
+       javaSerializedData
+       javaFactory
+       javaReferenceAddress
+       javaDoc
+
+3．1 javaClassName
+该属性保存JAVA对象的“知名的”类或接口（如，java.lang.String）的完整名字。它
+是个单值属性。其语法是 'Diretory String' 而且是大小写无关的。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.6
+         NAME 'javaClassName'
+         DESC 'Fully qualified name of distinguished Java class or
+               interface'
+         EQUALITY caseExactMatch
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+         SINGLE-VALUE
+       )
+
+3．2 javaCodebase
+该属性保存JAVA类定义的位置。它指定加载由javaClassName属性指定的类的类定义
+的位置。每个属性的值包含一个有序的URL列表，由空格分开。比如，值“url1 url2 url3”
+表示三个（可能互相依赖的）URL（url1, url2, url3）构成用于加载JAVA类定义的代码
+存根（codebase）。
+
+该属性的语法是 'IA5 String'，而且是大小写无关的。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.7
+         NAME 'javaCodebase'
+         DESC 'URL(s) specifying the location of class definition'
+         EQUALITY caseExactIA5Match
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+       )
+
+3．3 javaClassNames
+该属性保存JAVA对象的完整类或接口名（如，java.lang.String）。它是多值的属性。当
+多于一个值存在时，每一个是类或接口或该对象父类或父接口的名字。
+
+	该属性的语法为 'Directory String' ，并且大小写无关。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.13
+         NAME 'javaClassNames'
+         DESC 'Fully qualified Java class or interface name'
+         EQUALITY caseExactMatch
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+       )
+
+3．4 javaSerializedData
+	该属性保存JAVA对象的序列化形态。序列化形态在 [Serial] 中描述。
+
+	该属性的语法为 'Octet String'。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.8
+         NAME 'javaSerializedData
+         DESC 'Serialized form of a Java object'
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.40
+         SINGLE-VALUE
+       )
+
+3．5 javaFactory
+该属性保存能被用来创建由javaClassName属性标识的对象实例的对象制造者（如，§
+com.wiz.jndi.WizObjectFactory）的完整的类名。
+
+	该属性的语法是 'Directory String'，并且大小写无关。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.10
+         NAME 'javaFactory'
+         DESC 'Fully qualified Java class name of a JNDI object factory'
+         EQUALITY caseExactMatch
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+         SINGLE-VALUE
+       )
+
+3．6 javaReferenceAddress
+该属性表征JNDI参考的地址序列。它的每个值表示一个地址，一个类型为
+javax.naming.RefAddr的JAVA对象。它的值是地址类型和地址内容的串联，并以一个
+序号打头（JNDI参考中的地址顺序是很重要的）。比如：
+
+       #0#TypeA#ValA
+       #1#TypeB#ValB
+#2#TypeC##rO0ABXNyABpq...
+
+	详细地讲，这个值如下编码：
+
+分隔符是值的第一个字符。为了易读性，字符“#”在值中没被另外地使用时是推荐使
+用，而且任何字符可以用来服从下面给出的限制。
+
+每一个分隔符跟着是序列号。地址的序列号是它在JNDI参考中的位置，第一的位置编
+号为0。它用最简短的十进制形式表示。
+
+序列号接下来是一个分隔符，然后是地址类型，然后是另一个分隔符。如果地址属于
+JAVA类javax.naming.StringRefAddr，则其分隔符接着的是地址内容的值（字符）。否则，
+分隔符接着是另一个分隔符，然后接着是这整个地址的序列化形态的Base64编码。
+
+分隔符可以是任何未包含在地址类型中的数字或字符。另外，若地址内容是个字符串，
+分隔符不能为此字符串的首字符。
+
+该属性的语法为 'Directory String'，并且大小写无关。它可以含有多个值。 
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.11
+         NAME 'javaReferenceAddress'
+         DESC 'Addresses associated with a JNDI Reference'
+         EQUALITY caseExactMatch
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+       )
+
+3．7 javaDoc
+该属性保存指向类的JAVA文档的指针。其值为URL。比如，以下URL指向
+java.lang.String类的说明：
+http://java.sun.com/products/jdk/1.2/docs/api/java/lang/String.html
+
+	该属性语法为 'IA5 String'，并且大小写无关。
+
+       ( 1.3.6.1.4.1.42.2.27.4.1.12
+         NAME 'javaDoc'
+         DESC 'The Java documentation for the class'
+         EQUALITY caseExactIA5Match
+         SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+       )
+4．对象类的定义
+	下面对象类在本文中定义：
+
+       javaContainer
+       javaObject
+       javaSerializedObject
+       javaMarshalledObject
+       javaNamingReference
+
+4．1 javaContainer
+	该结构上的对象类表示一个JAVA对象的容器。
+
+       ( 1.3.6.1.4.1.42.2.27.4.2.1
+         NAME 'javaContainer'
+         DESC 'Container for a Java object'
+         SUP top
+         STRUCTURAL
+         MUST ( cn )
+       )
+
+4．2 javaObject
+	该抽象对象类表示一个JAVA对象。javObject不能存在于目录中；只有其辅助的或结构
+上的子类可以存在于目录中。
+
+       ( 1.3.6.1.4.1.42.2.27.4.2.4
+         NAME 'javaObject'
+         DESC 'Java object representation'
+         SUP top
+         ABSTRACT
+         MUST ( javaClassName )
+         MAY ( javaClassNames $
+               javaCodebase $
+               javaDoc $
+               description )
+       )
+
+4．3 javaSerializedObject
+	该辅助对象类表示一个序列化的JAVA对象。必须与一个结构上的对象类混合在一起。
+
+       ( 1.3.6.1.4.1.42.2.27.4.2.5
+         NAME 'javaSerializedObject'
+         DESC 'Java serialized object'
+         SUP javaObject
+         AUXILIARY
+         MUST ( javaSerializedData )
+       )
+
+4．4 javaMarshalledObject
+	该辅助对象类表示一个整理过的JAVA对象。它必须与一个结构上的对象类相混合。
+
+       ( 1.3.6.1.4.1.42.2.27.4.2.8
+         NAME 'javaMarshalledObject'
+         DESC 'Java marshalled object'
+         SUP javaObject
+         AUXILIARY
+         MUST ( javaSerializedData )
+       )
+
+4．5 javaNamingReference
+	该辅助对象类表示JNDI参考。它必须与一个结构上的对象类相混合。
+
+       ( 1.3.6.1.4.1.42.2.27.4.2.7
+         NAME 'javaNamingReference'
+         DESC 'JNDI reference'
+         SUP javaObject
+         AUXILIARY
+         MAY ( javaReferenceAddress $
+               javaFactory )
+       )
+
+5．安全考虑
+序列化一个对象并保存到目录中，使得该对象（副本）能在其被创建的环境以外被检查
+与使用。包含有序列化对象的目录记录能在由目录的访问控制机制的强制约束下被读取
+与修改。若一个对象包含有敏感的信息或包含的信息可能被外在地误用，则此对象不应
+被保存在目录中。更多序列化的安全问题的细节见 [Serial] 。
+
+6．鸣谢
+感谢Joseph Fialli, Peter Jones, Roger Riggs, Bob Scheifler, 和Sun Microsystems 的 Ann 
+Wollrath，感谢他们的意见和建议。
+
+7．参考
+
+   [CORBA]      The Object Management Group, "Common Object Request
+                Broker Architecture Specification 2.0,"
+                http://www.omg.org
+
+   [CORBA-LDAP] Ryan, V., Lee, R. and S. Seligman, "Schema for
+                Representing CORBA Object References in an LDAP
+                Directory", RFC 2714, October 1999.
+
+   [Java]       Ken Arnold and James Gosling, "The Java(tm) Programming
+                Language," Second Edition, ISBN 0-201-31006-6.
+
+   [JNDI]       Java Software, Sun Microsystems, Inc., "The Java(tm)
+                Naming and Directory Interface (tm) Specification,"
+                February 1998.  http://java.sun.com/products/jndi/
+
+   [LDAPv3]     Wahl, M., Howes, T. and  S. Kille, "Lightweight
+                Directory Access Protocol (v3)", RFC 2251, December
+                1997.
+
+   [RMI]        Java Software, Sun Microsystems, Inc., "Remote Method
+                Invocation," November 1998.
+                http://java.sun.com/products/jdk/1.2/docs/guide/rmi
+
+   [RMI-IIOP]   IBM and Java Software, Sun Microsystems, Inc., "RMI over
+                IIOP", June 1999.
+                http://java.sun.com/products/rmi-iiop/
+
+   [Serial]     Java Software, Sun Microsystems, Inc., "Object
+                Serialization Specification," November 1998.
+                http://java.sun.com/products/jdk/1.2/docs/guide/
+                serialization
+
+   [v3Schema]   Wahl, M., "A Summary of the X.500(96) User Schema for
+                use with LDAPv3", RFC 2256, December 1997.
+
+8．作者的地址
+
+   Vincent Ryan
+   Sun Microsystems, Inc.
+   Mail Stop EDUB03
+   901 San Antonio Road
+   Palo Alto, CA 94303
+   USA
+
+   Phone: +353 1 819 9151
+   EMail: vincent.ryan@ireland.sun.com
+
+
+   Scott Seligman
+   Sun Microsystems, Inc.
+   Mail Stop UCUP02-209
+   901 San Antonio Road
+   Palo Alto, CA 94303
+   USA
+
+   Phone: +1 408 863 3222
+   EMail: scott.seligman@eng.sun.com
+
+
+   Rosanna Lee
+   Sun Microsystems, Inc.
+   Mail Stop UCUP02-206
+   901 San Antonio Road
+   Palo Alto, CA 94303
+   USA
+
+   Phone: +1 408 863 3221
+   EMail: rosanna.lee@eng.sun.com
+
+
+附录 - LDAP 模式
+
+  -- 属性类型 --
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.6
+    NAME 'javaClassName'
+    DESC 'Fully qualified name of distinguished Java class or interface'
+    EQUALITY caseExactMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    SINGLE-VALUE
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.7
+    NAME 'javaCodebase'
+    DESC 'URL(s) specifying the location of class definition'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.8
+    NAME 'javaSerializedData'
+    DESC 'Serialized form of a Java object'
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.40
+    SINGLE-VALUE
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.10
+    NAME 'javaFactory'
+    DESC 'Fully qualified Java class name of a JNDI object factory'
+    EQUALITY caseExactMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    SINGLE-VALUE
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.11
+    NAME 'javaReferenceAddress'
+    DESC 'Addresses associated with a JNDI Reference'
+    EQUALITY caseExactMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.12
+    NAME 'javaDoc'
+    DESC 'The Java documentation for the class'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.1.13
+    NAME 'javaClassNames'
+    DESC 'Fully qualified Java class or interface name'
+    EQUALITY caseExactMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+  )
+
+  -- 自 RFC-2256 --
+
+  ( 2.5.4.13
+    NAME 'description'
+    EQUALITY caseIgnoreMatch
+    SUBSTR caseIgnoreSubstringsMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{1024}
+  )
+
+  -- 对象类 --
+
+  ( 1.3.6.1.4.1.42.2.27.4.2.1
+    NAME 'javaContainer'
+    DESC 'Container for a Java object'
+    SUP top
+    STRUCTURAL
+    MUST ( cn )
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.2.4
+    NAME 'javaObject'
+    DESC 'Java object representation'
+    SUP top
+    ABSTRACT
+    MUST ( javaClassName )
+    MAY ( javaClassNames $ javaCodebase $ javaDoc $ description )
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.2.5
+    NAME 'javaSerializedObject'
+    DESC 'Java serialized object'
+    SUP javaObject
+    AUXILIARY
+    MUST ( javaSerializedData )
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.2.7
+    NAME 'javaNamingReference'
+    DESC 'JNDI reference'
+    SUP javaObject
+    AUXILIARY
+    MAY ( javaReferenceAddress $ javaFactory )
+  )
+
+  ( 1.3.6.1.4.1.42.2.27.4.2.8
+    NAME 'javaMarshalledObject'
+    DESC 'Java marshalled object'
+    SUP javaObject
+    AUXILIARY
+    MUST ( javaSerializedData )
+  )
+
+  -- 自ISO X.520的匹配规则--
+
+  ( 2.5.13.5
+    NAME 'caseExactMatch'
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+  )
+
+
+完整的版权声明
+
+   Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+鸣谢
+当前由INTERNET协会提供的RFC编者职责基金投资。
+LDAP（轻型目录存取协议）目录中JAVATM对象的表征模式
+RFC2713 Schema for Representing Java(tm) Objects in an LDAP Directory 
+
+
+1
+RFC文档中文翻译计划

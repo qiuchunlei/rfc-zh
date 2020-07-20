@@ -1,0 +1,181 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者： 李超（licc_li ，licc_li@sina.com）
+译文发布时间：2001-4-26
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                        M. Civanlar
+Request for Comments: 2862                                       G. Cash
+Category: Standards Track                                           AT&T
+                                                               June 2000
+
+
+用于实时指针的RTP负载格式
+(RFC2862   RTP Payload Format for Real-Time Pointers)
+
+本备忘录的状态
+  本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建议以
+得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化程度
+和状态。本备忘录的发布不受任何限制。
+版权声明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+摘要
+  本文档描述了演示过程中动态指针坐标传输的RTP[1]负载格式。尽管鼠标亦可用作指针，
+但本负载格式的目的并非是实现一个通用的鼠标事件传输机制，同时也并未涵盖其所需要的
+所有功能。
+目录
+本备忘录的状态	1
+版权声明	1
+摘要	1
+1. 介绍	2
+2. 负载格式	2
+2.1. RTP头用法	3
+2.2. 负载	3
+3. MIME媒体类型注册	3
+3.1. MIME媒体类型video/pointer注册	3
+4. 安全考虑	4
+5. 参考	4
+6. 作者地址	4
+7.  版权说明	5
+致谢	5
+
+1. 介绍
+在大多数演示中，重要的信息都是通过图表和指针来表示的。因此精确地传输这些信息
+在远程会议等应用中十分关键。要达到此目的，直接使用演示者显示器上的常规视频并不能
+完全解决问题。这是由于图表的显示往往需要很高的空间分辨率，因此对指针动作的采样和
+传输也就需要很高的时间分辨率才能满足其显示与所需的视频和音频信号同步的目的。在很
+多场合，这种同步往往含有非常重要的信息。譬如，一个演示者正指着图表中的两个选项反
+复进行比较，强调指出“这一项优于另一项。”。为了同时满足时间分辨率和空间分辨率的
+要求，我们至少得使用S-VHS级质量的视频。而对S-VHS视频进行实时压缩的编码器价格非常
+昂贵，且传输这样的未压缩视频会占用很高的带宽。
+一个简单而经济的系统可按照将捕获和传输指针坐标相分离的原则进行设计。在一个电
+子演示系统中，图表指针坐标可以很容易地得到。而对于光学演示系统，比如为高射投影仪
+准备的幻灯片，可以通过将图表捕获到计算机帧缓冲中的方法来建立指针坐标和所要显示的
+图表的关联。要捕获幻灯片，打印材料或者三维物体，则可使用文档照相机和带视频捕获卡
+的个人计算机或工作站。通过一个合适的转换器将图表所在计算机的视频输出到视频捕获卡
+上,这种方法也能用来处理电子图表。它的一个附带好处是允许演示人使用自己的计算机来
+传输电子图表而无须将它连接到Intranet上。捕获的图象和演示者机器的鼠标指针通过投影
+仪一同显示出来。演示人使用常规鼠标或无线鼠标在显示器上移动指针，其坐标可利用在计
+算机上运行一定的程序很容易地得到。
+   本文描述了在上述情况下使用RTP传输指针坐标的RTP负载格式。尽管鼠标可以用作指针，
+本负载格式目的并非是实现一个通用鼠标事件传输机制，同时也并未涵盖其所需要的所有功
+能。
+本文中的关键字“必须”，“必须不”，“要求的”，“应该”，“不应该”，“会”，“不会”，
+“建议”，“或许”，“可选的”在 RFC 2119 中解释。   
+2. 负载格式
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |V=2|P|X|  CC   |M|     PT      |       sequence number         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           timestamp                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           synchronization source (SSRC) identifier            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   :            contributing source (CSRC) identifiers             :
+   +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+   |L|M|R| |     x-coordinate      | | PIN |     y-coordinate      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+         MBZ                       MBZ
+               图1 – 一个实时指针的RTP包
+   图1所示是一个携带有实时指针坐标的RTP包。该负载格式没有负载特定头。
+2.1. RTP头用法
+负载类型(Payload Type-PT):为新的包格式分配RTP负载类型已超出本文范畴，不在此赘述。
+特定类型应用程序的RTP配置文件应该负责负载类型的分配，如若不能则应在动态范围内选
+择一个负载类型。
+标志位(Marker-M):如果该包中指针图标改变则置为1。
+扩展位(Extension-X):由使用的RTP配置文件定义。
+序列号(Sequence Number):按照RFC1889 [1]所述设置。
+时间戳(Timestamp):按90KHZ时钟测得的指针位置采样时间。
+SSRC: 按照RFC1889 [1]所述设置。
+CC和CSRC字段都按照RFC1889 [1]所述使用。
+RTCP应按照RFC1889 [1]所述使用。
+2.2. 负载
+指针的x,y坐标以显示窗口的左上角为原点计算，表示为显示窗口对应边长的分数，采用12
+位定点正数，其值介于0到1-2^-12。
+L(左),R(右)和/或M(中)位是指针特别效果标志。它们的使用取决于具体应用，必须通过带
+外建立。应用程序可以忽略这些位。
+PIN:指针图标号(Pointer Icon Number),3位，选择一个指针图标。PIN与图标图片的联系必
+须通过带外建立。PIN为0表示缺省指针图标。仅支持单指针的应用程序应该将PIN置为0。接
+收端应用程序可以忽略PIN的非0值而仅显示缺省图标。
+3. MIME媒体类型注册
+  本文档定义了一种新的RTP负载名称，“pointer”及相关的MIME子类型，“video/pointer”。
+3.1. MIME媒体类型video/pointer注册
+      MIME媒体类名称：video
+      MIME子类型名称：pointer
+      必需参数：无
+      可选参数：无
+      编码考虑：指针视频可以按本文定义的方式以RTP传送
+      安全考虑：如本文所述
+      互操作性考虑：无
+      已出版规范：本文
+      使用本媒体类型的应用：支持带实时指针图表传输的视频会议系统
+      附加信息：无
+      Magic号：无
+      文件扩展：无
+      Macintosh文件类型码：无
+联系人及邮件地址：
+        M. Reha Civanlar
+        e-mail: civanlar@research.att.com
+      预期使用: COMMON Author/Change controller:
+        M. Reha Civanlar
+        e-mail: civanlar@research.att.com
+4. 安全考虑
+  本规范中描述的RTP包负载格式从属于RTP规范[1]中讨论的安全性考虑。
+  本负载类型不会引起接收端包处理计算复杂性上产生突变而导致潜在的拒绝服务威胁。
+5. 参考
+   [1] Schulzrinne, H., Casner, S.,  Frederick, R. and V. Jacobson,
+       "RTP: A Transport Protocol for Real Time Applications", RFC 1889,
+       January 1996.
+   [2] M. R. Civanlar, G. L. Cash, "Networked Viewgraphs - NetVG"
+       Proceedings of The 9th Int. Workshop on Packet Video,
+       http://www.research.att.com/~mrc/PacketVideo99.html.
+   [3] Bradner, S., "Key words for use in RFCs to Indicate Requirement
+Levels", BCP 14, RFC 2119, March 1997.
+6. 作者地址
+   M. Reha Civanlar
+   AT&T Labs - Research
+   100 Schultz Drive, Room 3-205
+   Red Bank, NJ 07701, USA
+   EMail: civanlar@research.att.com
+   Glenn L. Cash
+   AT&T Labs - Research
+   100 Schultz Drive, Room 3-213
+   Red Bank, NJ 07701, USA
+   EMail: glenn@research.att.com
+7.  版权说明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+致谢
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+RFC2862 RTP Payload Format for Real-Time Pointers  用于实时指针的RTP负载格式
+
+
+1
+RFC文档中文翻译计划

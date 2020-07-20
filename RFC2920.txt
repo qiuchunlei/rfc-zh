@@ -1,0 +1,300 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者： 刘伟力（truelwl   truelwl@sina.com）
+译文发布时间：2001-4-27
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+Network Working Group                                          N. Freed
+Request for Comments: 2920                                     Innosoft
+STD: 60                                                  September 2000
+Obsoletes: 2197
+Category: Standards Track
+
+SMTP 针对命令流水线的服务扩展
+(RFC2920 SMTP Service Extension for Command Pipelining)
+
+  
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化
+程度和状态。本备忘录的发布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+摘要
+该文档定义了对简单邮件传输协议(SMTP)服务的一种扩展。这种扩展服务使得邮
+件服务器在单次基于传输控制协议(TCP)	的发送操作中能够接受多条命令。这样单次
+TCP发送操作实现多条邮件传输命令可以显著提高SMTP的性能。
+
+目录
+1 介绍	2
+1.1 需求符号	2
+2 命令流水线扩展的基本框架结构	3
+3 流水线服务扩展	3
+3.1 客户端使用流水线	3
+3.2 服务器支持流水线	4
+4 举例	4
+5 安全方面的考虑	6
+6 致谢	6
+6 参考资料	7
+8.作者的地址	7
+9.版权说明	7
+
+1 介绍
+虽然SMTP已经得到广泛,稳定的应用,但是一定程度的对其功能的扩展无疑是有
+益的, 尤其是对那种用在因特网上使用的高延迟的网络连接这种扩展更加必要. 在这
+种高延迟网络连接中, SMTP固有的一条命令对应一条回应的模式很不利, 每次连接时
+间都花费在等待个别命令的回应(周转时间)上了.
+最简单的情况莫过于直接开发SMTP的客户端软件,势其使用命令流水线: 把多条
+命令集成在一条TCP的发送操作中. 不幸的是, 最初的SMTP规范[RFC-821]没有明确
+的规定SMTP服务器必须支持命令流水线. 因此,大量的因特网SMTP服务器不能完全
+处理命令流水线. 在现存的服务其中存在以下缺陷:
+(1). 在SMTP对话期间进行连接传递(connection handoff)和缓冲区的刷新. 一般
+来说, 服务器对相应的SMTP连接请求生成相应的进程进行处理是一种有用,明显 和
+无害的实现技术,然而, 一些SMTP服务器可能会推迟进行处理进程的生成和连接的传
+递(connection handoff), 可能会导致存储在进程缓冲区里的来自TCP连接的数据丢失.
+(2).当一个SMTP命令失败后,TCP 输入缓冲区会刷新. 事实上, SMTP命令经常会
+失败, 而这些刷新是没有道理的. 不管怎样, 一些SMTP服务器确实这样做了.
+(3).对失败的SMTP命令不合适的处理. 举例来说, 在最后一个RCPT(假设有不止
+一个RCPT命令 – 译者)命令失效时, 尽管其他的RCPT命令成功了,一些SMTP服务
+器会拒绝接受接下来的DATA命令. 相反,有些服务器即使在所有的RCPT命令都失效
+的情况下,仍然会接受DATA命令. 虽然, 实现了命令流水线的邮件客户端程序可以适
+应上述的两种情况,但是毕竟这给客户端的实现带来了不必要麻烦.
+
+该备忘录使用了在[RFC-1869]中描述的机制来定义SMTP服务的扩展. 使用这种
+扩展服务的服务器可以声明自己是否能够处理命令流水线的情况. SMTP客户端可以检
+查到这一声明,只有在确保服务器支持使用命令流水线时,才可以使用它.
+
+1.1 需求符号
+	在该文档中,偶尔会用到大写的名词. 大写的"MUST","MUST 
+NOT","SHOULD","SHOULD NOT", 和"MAY" 用来表示在本规范中的特殊需求. 在
+[RFC-1123]中有专门对这些名词,例如"MUST","SHOULD" 和"MAY" 含义的介绍. 而那些
+名词"MUST NOT" 和 "SHOULD NOT"是对上述名字的逻辑扩展.
+    
+2 命令流水线扩展的基本框架结构
+命令流水线采用如下定义:
+(1). 这种SMTP服务扩展的名称是流水线.
+(2). 关键字EHLO 的值一定是PIPELINING.
+(3). 使用关键字PIPELINING EHLO时没有参数.
+(4). 对命令 MAIL FROM 和 RCPT TO 没有定义额外的参数.
+(5). 没有为扩展服务定义额外的SMTP动词(命令).
+(6). 在下一章讲解为了支持扩展服务,服务器和客户端会受到怎样的影响.
+3 流水线服务扩展
+当一个SMTP客户希望使用命令流水线时,它首先要向服务器发送EHLO	命令.如
+果服务器返回代码 250 ,而且返回信息中包含关键字EHLO本身和它的值PIPELINING,
+那么这说明该SMTP服务器支持命令流水线的特性.
+3.1 客户端使用流水线
+	一旦SMTP客户端确信服务器支持流水线的特性,那么它就可以不必等待每条命令
+的回应而选择使用一组SMTP命令发送到服务器. 特别是, 命令 RSET, MAIL FROM, 
+SEND FROM, SOML FROM, SAML FROM, 和RCPT TO 可以在命令组中任何地方
+出现. 而对EHLO,DATA,VERY,EXPN,TURN,QUIT,和NOOP,由于他们的返回结果很关
+键,可能影响到整个连接的状态,所以只能出现在命令组的末尾处. (NOOP 也属于此类
+命令,所以它可以作为连接的同步点).
+
+如果没有特别说明, 由其他SMTP扩展协议定义的额外命令也只能放在命令组的结尾.
+
+实际传递消息内容明确的规定可以作为一个命令组里的第一条命令. 也就是说, 一个
+RDET/MAIL FROM 用来初始一个新消息的命令序列可以跟上一条消息的传递消息头
+部和消息体的命令放在同一个组里.
+
+一个客户端要想实现流水线,必须(MUST)检查在同一个命令组里所有的命令的相关状
+态. 例如, 如果没有一个 RCPT TO 目的地址被接受,那么客户端必须检查DATA命令
+的返回状态. 此时,客户端不能想当然的认为DATA一定会失败. 如果DATA命令失败了, 
+这是客户要发送 RCPT命令,如果DATA成功的被接受了,那么客户需要发送一个点(.)
+来结束DATA命令.
+
+命令状态必须(MUST) 能够分清返馈信息和发送的命令之间一一对应的关系,还要清楚
+发送的命令数目. 多行的反馈信息必须(MUST)得到支持. 简单的匹配返回的错误代码
+和错误信息是被禁止的.
+
+客户端实现可以(MAY)采用非阻塞模式.即使仍然有上一条TCP发送操作的数据在传输
+中, 进行处理的服务器对刚刚收到的命令立即进行处理, 如果非阻塞操作不被支持, 那
+么客户端实现必须(MUST)也要检查TCP 窗体的大小,以确保每组命令完全跟窗体大小
+匹配. 一般,窗体大小是4K 字节,但也有例外. 如果不能确保这种检查正确进行, 往往
+会导致死锁.
+
+客户端必须不能(MUST NOT)混淆多条命令和多条反馈. 每一条命令需要一条或多条
+的信息反馈,在最后一行的反馈代码和信息中不能包含破折号.
+
+3.2 服务器支持流水线
+		 一个支持流水线的SMTP服务器必须具备以下条件:
+(1). 必须(MUST)按照顺序对从客户端提交的命令进行反馈.
+(2). 应该(SHOULD)对成组的命令RSET,MAIL FROM,SEND FROM,SOML 
+FROM,SAML FROM, 和RCPT TO 利用内部缓冲区进行选择性的存储,以便他们能够
+当作一个单元进行发送.
+(3). 当且仅当有一个或多个RCPT TO 地址有效时, 应该(SHOULD)给与客户端正
+确的反馈.
+		(4). 在对没有有效接受方地址的情况下,给了DATA命令以正确的反馈, 接着必然
+收到一个空的消息正文 , 此时一定不能(MUST NOT)给任何接受方发送任何消息.
+		(5). 对命令 EHLO,DATA,VEFY,EXPN,TURN,QUIT,和NOOP的反馈不能(MUST 
+NOT)缓存.
+	(6). 对不能识别的命令一定不能(MUST NOT)缓存.
+	(7). 当本地的TCP输入缓冲区为空时,一定要(MUST)立即发送所有待发的命令反
+馈.
+(8). 一定不能(MUST NOT)对尚未收到的命令做任何假设.
+(9). 	在任何境况下.一定不能(MUST NOT)刷新TCP输入缓冲区的内容
+(10).应该(SHOULD)提供模糊的或是明确的反馈文本来标志与反馈信息相匹配的
+命令.
+	这些对服务器端的需求目的就是要让服务器尽可能的符合流水线扩展服务.
+	
+
+4 举例
+考虑下面的没有使用流水线的SMTP对话:
+	   S: <wait for open connection>
+	   C: <open connection to server>
+	   S: 220 Innosoft.com SMTP service ready
+	   C: HELO dbc.mtview.ca.us
+	   S: 250 Innosoft.com
+	   C: MAIL FROM:<mrose@dbc.mtview.ca.us>
+	   S: 250 sender <mrose@dbc.mtview.ca.us> OK
+	   C: RCPT TO:<ned@innosoft.com>
+	   S: 250 recipient <ned@innosoft.com> OK
+	   C: RCPT TO:<dan@innosoft.com>
+	   S: 250 recipient <dan@innosoft.com> OK
+	   C: RCPT TO:<kvc@innosoft.com>
+	   S: 250 recipient <kvc@innosoft.com> OK
+	   C: DATA
+	   S: 354 enter mail, end with line containing only "."
+	    ...
+	   C: .
+	   S: 250 message sent
+	   C: QUIT
+	   S: 221 goodbye
+		在这个简单的例子中,客户端足足等了服务器的反馈9 次,. 但是如果采用流水
+线服务, 则是下面的情形:
+		
+	   S: <wait for open connection>
+	   C: <open connection to server>
+	   S: 220 innosoft.com SMTP service ready
+	   C: EHLO dbc.mtview.ca.us
+	   S: 250-innosoft.com
+	   S: 250 PIPELINING
+	   C: MAIL FROM:<mrose@dbc.mtview.ca.us>
+	   C: RCPT TO:<ned@innosoft.com>
+	   C: RCPT TO:<dan@innosoft.com>
+	   C: RCPT TO:<kvc@innosoft.com>
+	   C: DATA
+	   S: 250 sender <mrose@dbc.mtview.ca.us> OK
+	   S: 250 recipient <ned@innosoft.com> OK
+	   S: 250 recipient <dan@innosoft.com> OK
+	   S: 250 recipient <kvc@innosoft.com> OK
+	   S: 354 enter mail, end with line containing only "."
+	    ...
+	   C: .
+	   C: QUIT
+	   S: 250 message sent
+	   S: 221 goodbye
+
+	所有的周转次数从9减少到了4.
+  下面的例子说明了使用流水线服务时,当所有的邮件接收者都无效时的一种可能情形.
+
+	   S: <wait for open connection>
+	   C: <open connection to server>
+	   S: 220 innosoft.com SMTP service ready
+	   C: EHLO dbc.mtview.ca.us
+	   S: 250-innosoft.com
+	   S: 250 PIPELINING
+	   C: MAIL FROM:<mrose@dbc.mtview.ca.us>
+	   C: RCPT TO:<nsb@thumper.bellcore.com>
+	   C: RCPT TO:<galvin@tis.com>
+	   C: DATA
+	   S: 250 sender <mrose@dbc.mtview.ca.us> OK
+	   S: 550 remote mail to <nsb@thumper.bellore.com> not allowed
+	   S: 550 remote mail to <galvin@tis.com> not allowed
+	   S: 554 no valid recipients given
+	   C: QUIT
+   S: 221 goodbye 
+	客户端也是等待服务器4次. 但是如果服务器在接受DATA之前不对接收者进
+行至少一个有效的检验,则是以下的情形:
+            S: <wait for open connection>
+	   C: <open connection to server>
+	   S: 220 innosoft.com SMTP service ready
+	   C: EHLO dbc.mtview.ca.us
+	   S: 250-innosoft.com
+	   S: 250 PIPELINING
+	   C: MAIL FROM:<mrose@dbc.mtview.ca.us>
+	   C: RCPT TO:<nsb@thumper.bellcore.com>
+	   C: RCPT TO:<galvin@tis.com>
+	   C: DATA
+	   S: 250 sender <mrose@dbc.mtview.ca.us> OK
+	   S: 550 remote mail to <nsb@thumper.bellore.com> not allowed
+	   S: 550 remote mail to <galvin@tis.com> not allowed
+	   S: 354 enter mail, end with line containing only "."
+	   C: .
+	   C: QUIT
+	   S: 554 no valid recipients
+	   S: 221 goodbye
+	
+5 安全方面的考虑
+ 	 本RFC不讨论安全性问题,但是可以相信它不会给电子邮件带来新的安全漏洞.
+而且, 本RFC描述的工作过程与[RFC-821]实现完全一致.
+6 致谢
+该文挡基于在RFC 1425中论述的SMTP服务扩展模型. 另外,Marshall Rose在他的
+著作"The Internet Message" 一书中对命令流水线的论述对该文挡提供了很多启发和帮
+助.
+6 参考资料
+	   [RFC-821]  Postel, J., "简单邮件传输协议", STD 10, RFC
+              821, August 1982.
+[RFC-1123] Braden, R., "因特网主机需求 --应用和支持", STD 3, RFC 1123, 
+October, 1989.
+	   [RFC-1854] Freed, N., "SMTP命令流水线的服务扩展", RFC 1854, October 1995.
+	   [RFC-1869] Klensin, J., Freed, N., Rose, M., Stefferud, E. and D.
+              Crocker, "SMTP 服务扩展", STD 10, RFC 1869,
+              November 1995.
+[RFC-2197] Freed, N., "SMTP 针对命令流水线的服务扩展", RFC 2197, 
+September 1997.
+
+8.作者的地址
+	Ned Freed
+   Innosoft International, Inc.
+   1050 Lakes Drive
+   West Covina, CA 91790
+   USA
+
+   Phone: +1 626 919 3600
+   Fax:   +1 626 919 361
+   EMail: ned.freed@innosoft.com
+
+   This document is a product of work done by the Internet Engineering
+   Task Force Working Group on Messaging Extensions, Alan Cargille,
+   chair.
+
+9.版权说明
+	Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+   
+致谢
+感谢Internet协会给予RFC编辑部门的资金。
+
+
+RFC2920 SMTP Service Extension for Command Pipelining   SMTP 针对命令流水线的服务扩展
+
+
+1
+RFC文档中文翻译计划

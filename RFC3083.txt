@@ -1,0 +1,1767 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：郭大刚（guodagang guodagang@tyut.edu.cn）
+译文发布时间：2002-1-9
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group
+R. Woundy
+Request for Comments：3083
+Cisco Systems
+Category：Informational
+March 2001
+
+
+
+遵循DOCSIS的Cable Modem和CMTS的PBI的
+管理信息数据库
+（RFC3083——Baseline Privacy Interface Management Information Base 
+ for DOCSIS Compliant Cable Modems and Cable Modem Termination Systems）
+
+这个备忘录的状态
+这个文档为Internet社区提供了信息。它没有特指任何Internet标准。这个备忘录的发
+布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (2001)。版权所有。
+摘要
+这个文档定义了在Internet上用于网络管理协议的管理信息数据库(Management 
+Information Base，缩写为MIB)的一部分。特别是，它定义了一套基本的管理对象来进行基
+于简单网络管理协议(Simple Network Management Protocol，缩写为SNMP)的基本私有接
+口(Baseline Privacy Interface，缩写为BPI)的管理，为和同轴电缆的数据服务接口规范版
+本1.0 (Data-Over-Cable Service Interface Specifications，缩写为DOCSIS)兼容的Cable 
+Modem和Cable Modem头端系统(Cable Modem  Termination Systems，缩写为CMTS)
+提供数据保密性。这个MIB被定义为是对DOCSIS Radio Frequency Interface MIB(RFC 
+2670)的一个扩展。
+这个备忘录是遵从管理信息结构版本2(Structure of Management Information Version 
+2，缩写为SMIv2)的方式来详细说明一个MIB模块的。这套对象和SNMP框架以及现行的
+SNMP标准完全兼容。
+CableLabs要求在执行PBI的DOCSIS 1.0 cable modem中执行这个MIB，以作为
+DOCSIS 1.0认证的先决条件。
+目录
+1. SNMP管理框架	2
+2.术语表	3
+2.1.认证密钥	3
+2.2.BPI – 基本私有接口(Baseline Privacy Interface)	3
+2.3.BPI+ - 基本私有接口+(Baseline Privacy Plus Interface)	3
+2.4.CATV	3
+2.5.CM - Cable Modem	4
+2.6.CMTS - Cable Modem Termination System	4
+2.7.DOCSIS	4
+2.8.下行	4
+2.9.头端	4
+2.10.MAC数据包	4
+2.11.MCNS	4
+2.12.RF	4
+2.13.SID	5
+2.14.TEK - Traffic Encryption Key(通讯密钥)	5
+2.15.上行	5
+3. 综述	5
+3.1. MIB的结构	5
+3.2. 管理要求必要的条件	6
+3.3. 本文的约定	6
+4. 定义	6
+5. 致谢	38
+6. 参考文献	38
+7. 需要考虑的安全问题	39
+8. 知识产权	40
+9. 作者地址	40
+10. 完整的版权声明	40
+致谢	41
+
+
+
+1. SNMP管理框架
+目前，SNMP管理框架由5个主要部分组成：
+o  在RFC 2571 [1]中描述了一套完整的体系结构。
+o  出于管理目的描述和命名对象和事件的机制。在STD 16、RFC 1155 [2]、STD 16、
+RFC 1212 [3]和RFC 1215 [4]中描述了称为管理信息结构(Structure of Management 
+Information，缩写为SMI)的第一个版本。在STD 58、RFC 2578 [5]、RFC 2579 [6]和RFC 
+2580 [7]中描述了称为SMIv2的第二个版本。
+o  用于传递管理信息的消息协议。在STD 15，RFC 1157 [8]中描述了称为SNMPv1
+的SNMP消息协议第一版。在RFC 1901 [9]和RFC 1906 [10]中描述了称为SNMPv2c 的
+SNMP消息协议第二版，但是它并不是一个标准的Internet track 协议。在RFC 1906 [10]、
+RFC 2572 [11]和RFC 2574 [12]中描述了称为SNMPv3的SNMP消息协议第三版。
+o  用于访问管理信息的协议业务。在STD 15，RFC 1157 [8]中描述了第一套协议业
+务以及相关的PDU格式。在RFC 1905 [13]中描述了第二套协议业务以及相关的PDU格式。
+o  在RFC 2573 [14]中描述了一套基本的应用，而在RFC 2575 [15]中定义了可视化
+的访问控制机制。
+在RFC 2570 [24]中更加详细地介绍了现行的SNMP管理框架。
+通过称为Management Information Base(管理信息数据库)或MIB的有效信息知识库来
+访问管理对象。这个MIB中的对象采用在SMI中定义的机制来定义。
+这个备忘录描述了一个遵从SMIv2的MIB模块。可以通过适当的转换来生成相应的遵
+从SMIv1的MIB。转换得到的MIB必须在语义上相当，除非因为不可转换（使用Counter64）
+而省略对象或事件。在转化过程中，在SMIv2中的易于机械读取的信息将改为SMIv1的文
+本描述。然而，易于机械读取信息的缺失没有考虑过MIB语义上的变更。
+2.术语表
+本文档中的术语源自一般的电缆系统的应用和与DOCSIS有关的文档。
+2.1.认证密钥
+用来获得加密密钥（用于将TEK加密）和消息验证密钥的密钥。当CMTS要把授权密
+钥传递给CM时，它用CM[22]的RSA公钥加密授权密钥。
+2.2.BPI – 基本私有接口(Baseline Privacy Interface)
+在DOCSIS 1.0系统中，涉及授权简单数据私密性的DOCSIS规范的一个术语。BPI
+的管理是本文档的中心内容。
+2.3.BPI+ - 基本私有接口+(Baseline Privacy Plus Interface)
+在DOCSIS 1.1系统中，涉及授权CM验证和数据私密性的DOCSIS规范的一个术语。
+在本文档中，未对BPI+的管理进行编址。
+2.4.CATV
+最初指“共用天线电视(Community Antenna Television)”，现在指所有用于把视频信号
+传递到社区的电缆或者光纤铜缆混合系统。
+2.5.CM - Cable Modem
+在遵从DOCSIS电缆数据系统中，CM扮演了“从属”终端站点的角色。
+2.6.CMTS - Cable Modem Termination System
+这是一个通用的术语，包括在头端中的cable桥接器和cable路由器。在遵从DOCSIS
+的电缆数据系统中，CMTS被当作主站。它是唯一传送下行数据流的站，而且它控制着与
+之相关的CM的上行数据流传输时序。
+2.7.DOCSIS
+“电缆上提供数据服务的接口规范(Data-Over-Cable Service Interface 
+Specifications)”。参阅ITU-T J.112附件B cable modem系统的标准[19]。
+2.8.下行
+从头端到用户的方向。
+2.9.头端
+在多数电缆系统中，用户视频信号的发射端。通常也是CMTS设备的位置。
+2.10.MAC数据包
+一种DOCSIS PDU。
+2.11.MCNS
+“多媒体电缆网络系统(Multimedia Cable Network System)”。在用途上，一般相当于
+DOCSIS。
+2.12.RF
+无线电频率。
+2.13.SID
+服务ID。SID为DOCSIS定义了特定的上行数据流带宽位置和服务等级管理，并且标
+识了特定的和BPI相关的双向安全性。
+2.14.TEK - Traffic Encryption Key(通讯密钥)
+通讯密钥，采用DES来对上下行通讯数据流进行加密。当CMTS把TEK传送给CM，
+它把源自授权密钥的采用关键加密密钥的TEK译成密码。
+2.15.上行
+从用户到头端的方向。
+3. 综述
+本MIB提供了一套遵从DOCSIS的线缆调制解调器(Cable Modem，缩写为CM)以及
+CM头端系统(Cable Modem Termination System，缩写为CMTS)的BPI的管理必要的对象。
+这个MIB规范源自DOCSIS BPI规范(DOCSIS Baseline Privacy Interface 
+specification)[18]，那是一个对DOCSIS RF接口规范(DOCSIS Radio Frequency Interface 
+specification)[19]的扩展。
+请注意：这个MIB规范对于DOCSIS PBI+接口规范(DOCSIS Baseline Privacy Plus 
+Interface specification)[21]的管理是不充分的。工作组会在晚些时候再发布一个针对BPI+
+管理的MIB。
+在本文档中的关键词“MUST”、“MUST NOT”、“REQUIRED”、“SHALL”、“SHALL 
+NOT”、 “SHOULD”、“SHOULD NOT”、“RECOMMENDED”、“MAY”和“OPTIONAL”  
+在[23]中作出了明确的解释。
+3.1. MIB的结构
+这个MIB包含了一个仅和CM相关的对象类(docsBpiCmGroup)和一个仅和CMTS相
+关的对象类(docsBpiCmtsGroup)。
+在两个列表中，组织了仅和CM相关的对象：
+?	docsBpiCmBaseTable包含了用于管理基本BP的参数和计数器以及管理认证限定
+状态机制的对象。
+?	docsBpiCmTEKTable包含了用于管理各个SID的通讯密钥限定状态机制的对象。
+?	在4个子类中，组织了仅和CMTS相关的对象：
+?	docsBpiCmtsBaseTable包含了用于管理基本BP的参数和计数器的对象。
+?	docsBpiCmtsAuthTable包含了用于管理各个CM认证相关信息的对象。
+?	docsBpiCmtsTEKTable包含了用于管理各个SID TEK相关信息的对象。
+?	docsBpiMulticastControl由两个列表组成。DocsBpiIpMulticastMapTable控制从下
+行IP广播数据流量到下行广播SID值的映射。DocsBpiMulticastAuthTable控制授
+权CM来接收通过特定多播SID传输的下行数据流量；一个CM会接收与授权多播
+SID相对应的TEK。这两个列表相结合可将下行IP广播数据流量的分配限制在授
+权的CM中进行。
+3.2. 管理要求必要的条件
+在[18]中详细说明了BPI规范，在[18]中详细说明了对RF接口规范的扩展。本规范中
+除了明确的需求外，使能基本私密性CM和CMTS必须支持所有可应用的DOCSIS和IETF
+需求以及MIB对象。标识有关需求和MIB对象的规范包括IETF RF MIB [16]，IETF Cable 
+Device MIB [17]和DOCSIS OSSI规范[20]。
+激发了在本文档中MIB的开发的BPI的其他管理要求如下：
+?	对于未来的用户应用，CM和CMTS必须支持检测相关的RSA公钥。
+?	Baseline Privacy管理接口需要支持授权和TEK无限状态机（Finite State Machine
+－FSM）参数的操作配置，以便进行性能调整和安全事故处理。CMTS必须支持检
+测(如果能配置的话) 所有和FSM相关的参数，包括baseline privacy状态(允许或
+禁止)、密钥生命期、密钥宽限期和状态超时的值。CM必须支持检测这些参数。
+?	管理接口需要支持操作员分析和FSM性能，用作故障管理、用户服务中断和安全
+事故处理。CM必须能够观察FSM的当前状态。CM和CMTS必须能观察消息错
+误代码和消息错误字符串，以及无效KEK和TEK事件的计数器，用做密钥过期和
+更新，还可以用作复制消息。CM和CMTS必须支持检测现行的认证密钥序列号和
+密钥过期时间，以便诊断错误。
+?	管理接口必须支持IP multicast数据流分发的动态控制。包括传递IP multicast流给
+正确的multicast组(SID)以及管理各个multicast组 (SID)的成员列表。在CMTS
+的MAC域内，CMTS必须支持配置和检测所有的IP multicast的前进状态和所有
+的multicast组成员。
+3.3. 本文的约定
+CableLabs已要求把在采用了BRI (Baseline Privacy Interface)的DOCSIS 1.0 cable 
+modem中执行这个MIB的较前版本作为获得DOCSIS 1.0认证的先决条件。 
+BPI MIB包含了8个由(现已废止)DisplayString文本的约定定义的MIB对象，以及一
+个由(现已不实用) IpAddress文本的约定定义的MIB对象。
+根据工作组的判断，保留这些较少用到的文本约定是可取的，以便保持与执行这个MIB
+以前版本DOCSIS 1.0 cable modem规范的向后兼容性和互操作性。
+4. 定义
+DOCS-BPI-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+MODULE-IDENTITY，对象类型，
+Integer32，Counter32，IpAddress
+FROM SNMPv2-SMI
+DisplayString，MacAddress，RowStatus，TruthValue，DateAndTime
+FROM SNMPv2-TC
+OBJECT-GROUP，MODULE-COMPLIANCE
+FROM SNMPv2-CONF
+ifIndex
+FROM IF-MIB
+docsIfMib，docsIfCmServiceId，docsIfCmtsServiceId
+FROM DOCS-IF-MIB
+;
+
+docsBpiMIBMODULE-IDENTITY
+LAST-UPDATED “200103130000Z”
+ORGANIZATION “IETF IPCDN Working Group”
+CONTACT-INFO “Rich Woundy
+  Postal：Cisco Systems
+ 250 Apollo Drive
+ Chelmsford，MA 01824 U.S.A.
+  Tel：+1 978 244 8000
+  E-mail：rwoundy@cisco.com
+  IETF IPCDN Working Group
+  General Discussion：ipcdn@ietf.org
+  Subscribe：http://www.ietf.org/mailman/listinfo/ipcdn
+  Archive：ftp://ftp.ietf.org/ietf-mail-archive/ipcdn
+  Co-chairs：Richard Woundy，rwoundy@cisco.com
+ Andrew Valentine，a.valentine@eu.hns.com”
+描述
+“这是针对在cable modem(CM)和CM前端系统(cable modem termination systems，
+缩写为CMTS)上的DOCSIS BPI的MIB模块。CableLabs需要在被鉴定的应用Baseline 
+Privacy接口的DOCSIS 1.0 cable modem中采用这个MIB。”
+
+REVISION “200103130000Z”
+描述
+“以RFC 3083发布。”
+
+REVISION “200011031930Z”
+描述
+“由Richard Woundy修改和整理了由MIB专家提出的问题。把
+docsBpiCmtsDefaultAuthGraceTime和docsBpiCmtsDefaultTEKGraceTime标记为抽象对
+象，来防止对OID进行重新分配。个别对象的描述也是正确的。”
+
+REVISION “200002161930Z”
+描述
+“最早的版本。
+CableLabs需要在被鉴定的应用Baseline Privacy接口的DOCSIS 1.0 cable modem
+中采用这个MIB，每个DOCSIS 1.0工程的变化会通告给oss-n-99027。”
+::= { docsIfMib 5 }
+
+docsBpiMIBObjects对象标识符::= { docsBpiMIB 1 }
+
+-- Cable Modem类
+
+docsBpiCmObjects对象标识符::= { docsBpiMIBObjects 1 }
+
+-- 以ifIndex为索引的，CM的BPI基本和授权表
+
+docsBpiCmBaseTable对象类型
+语法：DocsBpiCmBaseEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表格描述了各个CM MAC接口的基本的和认证相关的BP属性。”
+::= { docsBpiCmObjects 1 }
+
+docsBpiCmBaseEntry对象类型
+语法：DocsBpiCmBaseEntry
+最大权限：不可访问
+状态：现行
+描述
+“各个条目包含着描述了一个CM MAC接口属性的对象。在这个表中有一个和
+docsCableMaclayer(127)的一个ifType的各个ifEntry对应的条目。”
+索引{ ifindex}
+::= { docsBpiCmBaseTable 1 }
+
+DocsBpiCmBaseEntry ::= 序列{
+docsBpiCmPrivacyEnable
+真值，
+docsBpiCmPublicKey
+8位字符串，
+docsBpiCmAuthState
+整数，
+docsBpiCmAuthKeySequenceNumber
+32位整数，
+docsBpiCmAuthExpires
+DateAndTime，
+docsBpiCmAuthReset
+真值，
+docsBpiCmAuthGraceTime
+32位整数，
+docsBpiCmTEKGraceTime
+32位整数，
+docsBpiCmAuthWaitTimeout
+32位整数，
+docsBpiCmReauthWaitTimeout
+32位整数，
+docsBpiCmOpWaitTimeout
+32位整数，
+docsBpiCmRekeyWaitTimeout
+32位整数，
+docsBpiCmAuthRejectWaitTimeout
+32位整数，
+docsBpiCmAuthRequests
+32位计数器，
+docsBpiCmAuthReplies
+32位计数器，
+docsBpiCmAuthRejects
+32位计数器，
+docsBpiCmAuthInvalids
+32位计数器，
+docsBpiCmAuthRejectErrorCode
+整数，
+docsBpiCmAuthRejectErrorString
+DisplayString，
+docsBpiCmAuthInvalidErrorCode
+整数，
+docsBpiCmAuthInvalidErrorString
+DisplayString
+}
+
+docsBpiCmPrivacyEnable对象类型
+语法：TruthValue
+最大权限：只读
+状态：现行
+描述
+“这个对象定义了是否这个CM是准备运行Baseline Privacy的。这类似于Baseline 
+Privacy配置设置选项的存在(或者缺乏)。在docsBpiCmTEKPrivacyEnable对象中可以获
+得各个有关Baseline Privacy的单个SID的状态。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1。”
+::= { docsBpiCmBaseEntry 1 }
+
+docsBpiCmPublicKey对象类型
+语法：8位字符串(SIZE (74 | 106 | 140 | 270))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是一个对应于CM公钥的DER-encoded RSAPublicKey ASN.1类型
+的字符串，正如在RSA Encryption Standard (PKCS #1) [22]中定义的那样。码长74、106、
+140和270字节的密钥分别对应于512位、768位、1024位和2048位公钥。如果CMTS
+不保留公钥是话，这个数值就是一个0 长度的字符串。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，第4.2.2.4节。”
+::= { docsBpiCmBaseEntry 2 }
+
+docsBpiCmAuthState对象类型
+语法：整数{
+  authWait(2)，
+  authorized(3)，
+  reauthWait(4)，
+  authRejectWait(5)
+}
+最大权限：只读
+状态：现行
+描述
+“本对象的值是CM认证FSM的状态。开始状态指示了FSM是处于它的起始状态。” 
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.1节。”
+::= { docsBpiCmBaseEntry 3 }
+
+docsBpiCmAuthKeySequenceNumber对象类型
+语法：32位整数(0..15)
+最大权限：只读
+状态：现行
+描述
+“本对象的值是该FSM的认证密钥序列号。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2和4.2.2.10节。”
+::= { docsBpiCmBaseEntry 4 }
+
+docsBpiCmAuthExpires 对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“本对象的值是当前对FSM的认证到期时的实际的时刻。如果CM没有激活认证，那
+么该值是最后激活认证的时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2和4.2.2.9节。”
+::= { docsBpiCmBaseEntry 5 }
+
+docsBpiCmAuthReset对象类型
+语法：TruthValue
+最大权限：读/写
+状态：现行
+描述
+“把这个对象设置为‘TRUE’的话，就会在授权FSM中产生一个重新授权事件。读
+取这个对象总会返回‘FALSE’。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.3.4节。”
+::= { docsBpiCmBaseEntry 6 }
+
+docsBpiCmAuthGraceTime对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是某个授权密钥的延期时间。在授权密钥已经到期之前，CM会开始
+尝试获得一个新的授权密钥来开始AuthGraceTime的时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.3。”
+::= { docsBpiCmBaseEntry 7 }
+
+docsBpiCmTEKGraceTime对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是某个TEK的延期时间。在TEK已经到期之前，CM会开始尝试获
+得一个新的TEK来开始TEKGraceTime的时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.6。”
+::= { docsBpiCmBaseEntry 8 }
+
+docsBpiCmAuthWaitTimeout对象类型
+语法：32位整数(1..30)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是等待授权超时。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.1。”
+::= { docsBpiCmBaseEntry 9 }
+
+docsBpiCmReauthWaitTimeout对象类型
+语法：32位整数(1..30)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是等待重新认证超时(以秒记)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.2。”
+::= { docsBpiCmBaseEntry 10 }
+
+docsBpiCmOpWaitTimeout对象类型
+语法：32位整数(1..10)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是等待操作超时(以秒记)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.4。”
+::= { docsBpiCmBaseEntry 11 }
+
+docsBpiCmRekeyWaitTimeout 对象类型
+语法：32位整数(1..10)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是等待Rekey超时(以秒记)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.5。”
+::= { docsBpiCmBaseEntry 12 }
+
+docsBpiCmAuthRejectWaitTimeout对象类型
+语法：32位整数(1..600)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是认证拒绝等待超时(以秒记)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.7。”
+::= { docsBpiCmBaseEntry 13 }
+
+docsBpiCmAuthRequests对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM传输了的认证请求消息的累计数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.1节。”
+::= { docsBpiCmBaseEntry 14 }
+
+docsBpiCmAuthReplies 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM接收到的认证答复消息的累计数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2节。”
+::= { docsBpiCmBaseEntry 15 }
+
+docsBpiCmAuthRejects 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM收到的认证拒绝消息的累计数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3节。”
+::= { docsBpiCmBaseEntry 16 }
+
+docsBpiCmAuthInvalids对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM收到的认证无效消息的累计数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7节。”
+::= { docsBpiCmBaseEntry 17 }
+
+docsBpiCmAuthRejectErrorCode 对象类型
+语法：整数{
+ none(1)，
+ unknown(2)，
+ unauthorizedCm(3)，
+ unauthorizedSid(4)
+  }
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值例举了在CM收到的最新的授权拒绝消息中的Error-Code的描述。
+如果最新的Error-Code的值是0的话，那么这个对象的数值是unknown(2)；如果从重新启
+动后收到了授权拒绝消息的话，那么这个对象的数值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3和4.2.2.16节。”
+::= { docsBpiCmBaseEntry 18 }
+
+docsBpiCmAuthRejectErrorString对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在CM已经收到的最新的授权拒绝消息中的显示字符串。如果从
+重新启动后就没有收到授权拒绝消息的话，这个对象将是0长度的。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3和4.2.2.6节。”
+::= { docsBpiCmBaseEntry 19 }
+
+docsBpiCmAuthInvalidErrorCode对象类型
+语法：整数{
+  none(1)，
+  unknown(2)，
+  unauthorizedCm(3)，
+  unsolicited(5)，
+  invalidKeySequence(6)，
+  keyRequestAuthenticationFailure(7)
+}
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值例举了在CM收到的最新的授权失效消息中的Error-Code的描述。
+如果最新的Error-Code的值是0的话，那么这个对象的数值是unknown(2)；如果从重新启
+动后收到了授权失效的话，那么这个对象的数值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7和4.2.2.16节。”
+::= { docsBpiCmBaseEntry 20 }
+
+docsBpiCmAuthInvalidErrorString 对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在CM已经收到的最新授权失效消息中显示的字符串。如果从重
+新启动后还没有收到认证失效消息，那么这个值是个0长度的字符串。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7和4.2.2.6节。”
+::= { docsBpiCmBaseEntry 21 }
+
+--CM TEK列表，由ifindex和SID检索
+
+docsBpiCmTEKTable 对象类型
+语法：DocsBpiCmTEKEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表格描述了各个CM通信加密密钥(Traffic Encryption Key，缩写为TEK)的属性。
+CM维护着(不多余)一个和每个SID 、CM MAC接口相关的TEK。”
+::= { docsBpiCmObjects 2 }
+
+docsBpiCmTEKEntry 对象类型
+语法：DocsBpiCmTEKEntry
+最大权限：不可访问
+状态：现行
+描述
+“每个条目包含了描述了和一个SID属性相关的TEK的对象。 CM必须为每个单播
+SID创建一个条目，无论SID是否是从一个注册响应消息获得的，还是从一个授权应答消
+息中获得的。”
+索引{ ifIndex，docsIfCmServiceId }
+::= { docsBpiCmTEKTable 1 }
+
+DocsBpiCmTEKEntry ::= 序列{
+docsBpiCmTEKPrivacyEnable
+真值，
+docsBpiCmTEKState
+整数，
+docsBpiCmTEKExpiresOld
+DateAndTime，
+docsBpiCmTEKExpiresNew
+DateAndTime，
+docsBpiCmTEKKeyRequests
+32位计数器，
+docsBpiCmTEKKeyReplies
+32位计数器，
+docsBpiCmTEKKeyRejects
+32位计数器，
+docsBpiCmTEKInvalids
+32位计数器，
+docsBpiCmTEKAuthPends
+32位计数器，
+docsBpiCmTEKKeyRejectErrorCode
+整数，
+docsBpiCmTEKKeyRejectErrorString
+DisplayString，
+docsBpiCmTEKInvalidErrorCode
+整数，
+docsBpiCmTEKInvalidErrorString
+DisplayString
+}
+
+docsBpiCmTEKPrivacyEnable 对象类型
+语法：TruthValue
+最大权限：只读
+状态：现行
+描述
+“这个对象定义了是否这个SID是对运行Baseline Privacy的后备。这类似于在一个
+采用了COS保密性授权选项的后备SID上激活Baseline Privacy。除非对于CM Baseline 
+Privacy是激活的，否则对于任何SID Baseline Privacy都不会得到有效的激活，因为这是
+通过docsBpiCmPrivacyEnable对象来进行管理的。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.2。”
+::= { docsBpiCmTEKEntry 1 }
+
+docsBpiCmTEKState 对象类型
+语法：整数{
+  start(1)，
+  opWait(2)，
+  opReauthWait(3)，
+  operational(4)，
+  rekeyWait(5)，
+  rekeyReauthWait(6)
+}
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是标明的TEK FSM的状态。start(1)状态表示FSM处于初始状态。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.3.1节。”
+::= { docsBpiCmTEKEntry 2 }
+
+docsBpiCmTEKExpiresOld对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是这个FSM最新的TEK的直接前趋到期的实际时刻。如果这个FSM
+只有一个TEK的话，那么这个数值就是这个FSM的激活时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5和4.2.2.9节。”
+::= { docsBpiCmTEKEntry 3 }
+
+docsBpiCmTEKExpiresNew对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是这个FSM的实际的最新TEK的期满时间。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5和4.2.2.9节。”
+::= { docsBpiCmTEKEntry 4 }
+
+docsBpiCmTEKKeyRequests 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM已经发出的密钥请求消息的累计次数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.4节。”
+::= { docsBpiCmTEKEntry 5 }
+
+docsBpiCmTEKKeyReplies对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM收到密钥应答消息的累计次数，包含了一个认证失败消息。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5节。”
+::= { docsBpiCmTEKEntry 6 }
+
+docsBpiCmTEKKeyRejects对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM收到密钥拒绝消息的累计次数，包含了一个认证失败消息。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.6节。”
+::= { docsBpiCmTEKEntry 7 }
+
+docsBpiCmTEKInvalids 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CM收到TEK失效消息的累计次数，包含了一个认证失效消息。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.8节。”
+::= { docsBpiCmTEKEntry 8 }
+
+docsBpiCmTEKAuthPends对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是发生在这个FSM中的授权待定事件的累计次数。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.3.3.3节。”
+::= { docsBpiCmTEKEntry 9 }
+
+docsBpiCmTEKKeyRejectErrorCode对象类型
+语法：整数{
+ none(1)，
+ unknown(2)，
+ unauthorizedSid(4)
+  }
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值枚举了在CM收到的最新的密钥拒绝消息中有关Error-Code的描述。
+如果最新的Error-Code的数值是0，那么这个对象的值是unknown(2)；如果重新启动后一
+直没有接收到密钥拒绝消息的话，这个对象就是none(1)。” 
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.6和4.2.2.16节。”
+::= { docsBpiCmTEKEntry 10 }
+
+docsBpiCmTEKKeyRejectErrorString对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在CM收到的最新的密钥拒绝消息中显示的字符串。如果重新启
+动后一直没有接收到密钥拒绝消息的话，这个对象就是一个0长度的字符串。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.6和4.2.2.6节。”
+::= { docsBpiCmTEKEntry 11 }
+
+docsBpiCmTEKInvalidErrorCode 对象类型
+语法：整数{
+ none(1)，
+ unknown(2)，
+ invalidKeySequence(6)
+  }
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值枚举了在CM收到的最新的TEK无效消息中有关Error-Code的描
+述。如果最新的Error-Code的数值是0，那么这个对象的值是unknown(2)；如果重新启动
+后一直没有接收到TEK失效消息的话，这个对象就是none(1)。” 
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.8和4.2.2.16节。”
+::= { docsBpiCmTEKEntry 12 }
+
+docsBpiCmTEKInvalidErrorString对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在CM收到的最新的TEK无效消息中的显示字符串。如果重新启
+动后一直没有接收到TEK失效消息的话，这个对象就是一个0长度的字符串。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.8和4.2.2.6节。”
+::= { docsBpiCmTEKEntry 13 }
+
+-- CMTS类
+
+docsBpiCmtsObjects对象标识符::= { docsBpiMIBObjects 2 }
+
+-- CMTS的BPI 基本表，以ifIndex作为索引
+
+docsBpiCmtsBaseTable 对象类型
+语法：DocsBpiCmtsBaseEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了各个CMTS MAC接口的基本BP属性。”
+::= { docsBpiCmtsObjects 1 }
+
+docsBpiCmtsBaseEntry 对象类型
+SYNTAXDocsBpiCmtsBaseEntry
+最大权限：不可访问
+状态：现行
+描述
+“各个条目包含着对各个CMTS MAC接口进行描述的对象。对每个具有
+docsCableMaclayer(127) ifType的ifEntry在这个表中的都有一个条目。”
+索引{ ifindex}
+::= { docsBpiCmtsBaseTable 1 }
+
+DocsBpiCmtsBaseEntry ::= 序列{
+docsBpiCmtsDefaultAuthLifetime
+32位整数，
+docsBpiCmtsDefaultTEKLifetime
+32位整数，
+docsBpiCmtsDefaultAuthGraceTime 
+32位整数，
+docsBpiCmtsDefaultTEKGraceTime  
+32位整数，
+docsBpiCmtsAuthRequests
+32位计数器，
+docsBpiCmtsAuthReplies
+32位计数器，
+docsBpiCmtsAuthRejects
+32位计数器，
+docsBpiCmtsAuthInvalids
+Counter32
+}
+
+docsBpiCmtsDefaultAuthLifetime对象类型
+语法：32位整数(1..6048000)
+单位：“seconds”
+最大权限：读/写
+状态：现行
+描述
+“这个对象的数值是CMTS分配的新认证密钥的缺省生命周期(以秒为单位)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.2。”
+::= { docsBpiCmtsBaseEntry 1 }
+
+docsBpiCmtsDefaultTEKLifetime对象类型
+语法：32位整数(1..604800)
+单位：“seconds”
+最大权限：读/写
+状态：现行
+描述
+“这个对象的数值是CMTS分配的新传输加密密钥(Traffic Encryption Key，即TEK)
+的缺省生命周期(以秒为单位)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.2。”
+::= { docsBpiCmtsBaseEntry 2 }
+
+-- 注意：下列2对象已经从本MIB中废除。
+
+docsBpiCmtsDefaultAuthGraceTime 对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：读/写
+状态：废止
+描述
+“这个对象已经废止了，因为DOCSIS CM授权密钥的延长期是由支撑系统来管理的，
+而不是由CMTS来管理的。”
+::= { docsBpiCmtsBaseEntry 3 }
+
+docsBpiCmtsDefaultTEKGraceTime对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：读/写
+状态：废止
+描述
+“这个对象已经废止了，因为DOCSIS CM通讯加密密钥的延长期是由支撑系统来管
+理的，而不是由CMTS来管理的。”
+::= { docsBpiCmtsBaseEntry 4 }
+
+docsBpiCmtsAuthRequests 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给任何CM的认证请求消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.1节。”
+::= { docsBpiCmtsBaseEntry 5 }
+
+docsBpiCmtsAuthReplies对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给任何CM的认证回复消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2节。”
+::= { docsBpiCmtsBaseEntry 6 }
+
+docsBpiCmtsAuthRejects对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给任何CM的认证拒绝消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3节。”
+::= { docsBpiCmtsBaseEntry 7 }
+
+docsBpiCmtsAuthInvalids 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给任何CM的认证失效消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7节。”
+::= { docsBpiCmtsBaseEntry 8 }
+
+-- CMTS认证列表，由ifindex和CM MAC地址检索
+
+docsBpiCmtsAuthTable 对象类型
+语法：DocsBpiCmtsAuthEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了各个和认证相关的属性。CMTS维护着各个CMTS MAC接口上和各个
+支持BPI的CM相关的认证属性。”
+::= { docsBpiCmtsObjects 2 }
+
+docsBpiCmtsAuthEntry 对象类型
+语法：DocsBpiCmtsAuthEntry
+最大权限：不可访问
+状态：现行
+描述
+“每个条目包含着对某个认证授权团体的特征的对象的描述。CMTS必须基于收到的
+认证请求消息就每一个CM的每一个MAC接口创建一个入口，并且在CM授权永久终止之
+前，不必删除这个条目。”
+索引{ ifIndex，docsBpiCmtsAuthCmMacAddress }
+::= { docsBpiCmtsAuthTable 1 }
+
+DocsBpiCmtsAuthEntry ::= 序列{
+docsBpiCmtsAuthCmMacAddress
+MacAddress，
+docsBpiCmtsAuthCmPublicKey
+8位字符串，
+docsBpiCmtsAuthCmKeySequenceNumber
+32位整数，
+docsBpiCmtsAuthCmExpires
+DateAndTime，
+docsBpiCmtsAuthCmLifetime
+32位整数，
+docsBpiCmtsAuthCmGraceTime
+32位整数，
+docsBpiCmtsAuthCmReset
+整数，
+docsBpiCmtsAuthCmRequests
+32位计数器，
+docsBpiCmtsAuthCmReplies
+32位计数器，
+docsBpiCmtsAuthCmRejects
+32位计数器，
+docsBpiCmtsAuthCmInvalids
+32位计数器，
+docsBpiCmtsAuthRejectErrorCode
+整数，
+docsBpiCmtsAuthRejectErrorString
+DisplayString，
+docsBpiCmtsAuthInvalidErrorCode
+整数，
+docsBpiCmtsAuthInvalidErrorString
+DisplayString
+}
+
+docsBpiCmtsAuthCmMacAddress对象类型
+语法：MacAddress
+最大权限：不可访问
+状态：现行
+描述
+“这个对象的数值是应用了联合认证的CM的物理地址。”
+::= { docsBpiCmtsAuthEntry 1 }
+
+docsBpiCmtsAuthCmPublicKey对象类型
+语法：8位字符串(SIZE (0 | 74 | 106 | 140 | 270))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是一个对应于CM公钥的DER-encoded RSAPublicKey ASN.1类型
+的字符串，正如在RSA Encryption Standard (PKCS #1) [22]中定义的那样。码长74、106、
+140和270字节的密钥分别对应于512位、768位、1024位和2048位公钥。如果CMTS
+不保留公钥是话，这个数值就是一个0 长度的字符串。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.2.4节。”
+::= { docsBpiCmtsAuthEntry 2 }
+
+docsBpiCmtsAuthCmKeySequenceNumber对象类型
+语法：32位整数(0..15)
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是这个CM的认证密钥的序列号。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2和4.2.2.10节。”
+::= { docsBpiCmtsAuthEntry 3 }
+
+docsBpiCmtsAuthCmExpires对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在这个CM的当前授权到期时的实际的时钟时间。如果这个CM
+没有处于运行状态的授权的话，那么这个数值就是最新获得的授权终止的时间和日期。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2和4.2.2.9节。”
+::= { docsBpiCmtsAuthEntry 4 }
+
+docsBpiCmtsAuthCmLifetime 对象类型
+语法：32位整数(1..6048000)
+单位：“seconds”
+最大权限：读/写
+状态：现行
+描述
+“这个对象的数值是生命周期(以秒记)，CMTS为这个CM分配的一个认证密钥。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2节和附录A.2。”
+::= { docsBpiCmtsAuthEntry 5 }
+
+docsBpiCmtsAuthCmGraceTime对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是授权密钥的缓期时间(以秒为单位)。在授权密钥真正期满时，CM
+会开始尝试获得一个新的授权密钥开始AuthGraceTime时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.3。”
+::= { docsBpiCmtsAuthEntry 6 }
+
+docsBpiCmtsAuthCmReset对象类型
+语法：整数{
+  noResetRequested(1)，
+  invalidateAuth(2)，
+  sendAuthInvalid(3)，
+  invalidateTeks(4)
+}
+最大权限：读/写
+状态：现行
+描述
+“把这个对象设置为invalidateAuth(2)会导致CMTS把当前的CM认证密钥作废，但
+是不会发出一个认证失效消息，也不会把点播TEK作废。把这个对象设置为
+sendAuthInvalid(3) 会导致CMTS把当前的CM认证密钥作废，并且向CM发出一个认证
+失效消息，但是不会把点播TEK作废。这个对象设置为invalidateTeks(4) 会导致CMTS
+把当前的CM认证密钥作废，向CM发出一个认证失效消息，并且把和这个CM认证相关
+的所有点播TEK作废。阅读这个对象就会返回最新设置的这个对象的数值，如果从最近一
+次CMTS重新启动后就设置过这个对象，就返回noResetRequested(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.2.3.4、4.1.2.3.5和 4.1.3.3.5
+节。”
+::= { docsBpiCmtsAuthEntry 7 }
+
+docsBpiCmtsAuthCmRequests 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS从这个CM收到的认证请求消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.1节。”
+::= { docsBpiCmtsAuthEntry 8 }
+
+docsBpiCmtsAuthCmReplies对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给这个CM的认证回复消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.2节。”
+::= { docsBpiCmtsAuthEntry 9 }
+
+docsBpiCmtsAuthCmRejects对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给这个CM的认证拒绝消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3节。”
+::= { docsBpiCmtsAuthEntry 10 }
+
+docsBpiCmtsAuthCmInvalids 对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发送给这个CM的认证失效消息的次数累计。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7节。” 
+::= { docsBpiCmtsAuthEntry 11 }
+
+docsBpiCmtsAuthRejectErrorCode对象类型
+语法：整数{
+  none(1)，
+  unknown(2)，
+  unauthorizedCm(3)，
+  unauthorizedSid(4)
+}
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值例举了发往CM的最新的认证拒绝信息中的错误代码的描述。如果
+最新的Error-Code 是0的话，这个值会是unknown(2)；如果没有认证拒绝信息发往CM
+的话，那么这个值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3和4.2.2.16节。”
+::= { docsBpiCmtsAuthEntry 12 }
+
+docsBpiCmtsAuthRejectErrorString对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是发送给CM的最新的认证拒绝消息的显示字串。如果CM没有发
+送认证拒绝信息的话，这个值是0长度的字串。” 
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.3和4.2.2.6节。”
+::= { docsBpiCmtsAuthEntry 13 }
+
+docsBpiCmtsAuthInvalidErrorCode 对象类型
+语法：整数{
+  none(1)，
+  unknown(2)，
+  unauthorizedCm(3)，
+  unsolicited(5)，
+  invalidKeySequence(6)，
+  keyRequestAuthenticationFailure(7)
+}
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值例举了发往CM的最新的认证失效信息中的错误代码的描述。如果
+最新的Error-Code 是0的话，这个值会是unknown(2)；如果没有认证失效信息发往CM
+的话，那么这个值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7和4.2.2.16节。”
+::= { docsBpiCmtsAuthEntry 14 }
+
+docsBpiCmtsAuthInvalidErrorString 对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是传给CM的最近的认证失效消息的显示字串。如果CM没有发送
+认证失效信息的话，这个值是0。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.7和4.2.2.6节。”
+::= { docsBpiCmtsAuthEntry 15 }
+
+--CMTS TEK列表，由ifindex和SID检索
+
+docsBpiCmtsTEKTable对象类型
+语法：DocsBpiCmtsTEKEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了和各个CM通讯密钥(Traffic Encryption Key，缩写为TEK)相关的属性。 
+CMTS维护各个CMTS MAC接口上的和每个BPI SID相关的一个TEK。”
+::= { docsBpiCmtsObjects 3 }
+
+docsBpiCmtsTEKEntry对象类型
+语法：DocsBpiCmtsTEKEntry
+最大权限：不可访问
+状态：现行
+描述
+“每个入口包含了描述在某个特定的CMTS MAC接口上的一个TEK组合属性的对象。
+CMTS必须为每个SID和MAC接口创建一个入口，基于接收到的某个密钥请求消息，而且
+不必在CM授权为永久周期之前删除这个入口。”
+索引{ ifIndex，docsIfCmtsServiceId }
+::= { docsBpiCmtsTEKTable 1 }
+
+DocsBpiCmtsTEKEntry ::= 序列{
+docsBpiCmtsTEKLifetime
+32位整数，
+docsBpiCmtsTEKGraceTime
+32位整数，
+docsBpiCmtsTEKExpiresOld
+DateAndTime，
+docsBpiCmtsTEKExpiresNew
+DateAndTime，
+docsBpiCmtsTEKReset
+真值，
+docsBpiCmtsKeyRequests
+32位计数器，
+docsBpiCmtsKeyReplies
+32位计数器，
+docsBpiCmtsKeyRejects
+32位计数器，
+docsBpiCmtsTEKInvalids
+32位计数器，
+docsBpiCmtsKeyRejectErrorCode
+整数，
+docsBpiCmtsKeyRejectErrorString
+DisplayString，
+docsBpiCmtsTEKInvalidErrorCode
+整数，
+docsBpiCmtsTEKInvalidErrorString
+DisplayString
+}
+
+docsBpiCmtsTEKLifetime对象类型
+语法：32位整数(1..604800)
+单位：“seconds”
+最大权限：读/写
+状态：现行
+描述
+“这个对象的数值是生命周期(以秒为单位)，和CMTS为这个TEK分配的密钥有关。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5节和附录A.2。”
+::= { docsBpiCmtsTEKEntry 1 }
+
+docsBpiCmtsTEKGraceTime 对象类型
+语法：32位整数(1..1800)
+单位：“seconds”
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是TEK的延期时刻(以秒为单位)。在TEK确实终止之前，CM应该
+开始尝试获得一个新的TEK来开始TEKGraceTime计时。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，附录A.1.1.1.6。”
+::= { docsBpiCmtsTEKEntry 2 }
+
+docsBpiCmtsTEKExpiresOld对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是对于这个FSM的最新的TEK的直接前趋的终止的实际时刻。如
+果这个FSM只有一个TEK，那么这个数值就是这个FSM的激活的时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5和4.2.2.9节。”
+::= { docsBpiCmtsTEKEntry 3 }
+
+docsBpiCmtsTEKExpiresNew对象类型
+语法：DateAndTime
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是对于这个FSM的最近一次终止的实际时刻。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5和4.2.2.9节。”
+::= { docsBpiCmtsTEKEntry 4 }
+
+docsBpiCmtsTEKReset对象类型
+语法：TruthValue
+最大权限：读/写
+状态：现行
+描述
+“设置这个对象为TRUE会导致CMTS引发当前的活动TEK(由于关键转变周期为复
+数)的失效，并且为相关的SID产生一个新的TEK；CMTS也可能主动产生一个TEK失效
+信息，来完善CMTS 和CM之间的TEK同步。读取这个对象总会返回数值FALSE。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.1.3.3.5节。”
+::= { docsBpiCmtsTEKEntry 5 }
+
+docsBpiCmtsKeyRequests对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发出一个Key请求消息的累计时长。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.4节。”
+::= { docsBpiCmtsTEKEntry 6 }
+
+docsBpiCmtsKeyReplies对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发出一个Key回应消息的累计时长。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.5节。”
+::= { docsBpiCmtsTEKEntry 7 }
+
+docsBpiCmtsKeyRejects对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发出一个Key拒绝消息的累计时长。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.6节。”
+::= { docsBpiCmtsTEKEntry 8 }
+
+docsBpiCmtsTEKInvalids对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是CMTS发出一个TEK失效消息的累计时长。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.8节。”
+::= { docsBpiCmtsTEKEntry 9 }
+
+docsBpiCmtsKeyRejectErrorCode对象类型
+语法：整数{
+ none(1)，
+ unknown(2)，
+ unauthorizedSid(4)
+  }
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值描述了在对这个BPI SID的一个密钥请求进行响应时在最新的密钥
+拒绝信息中发送的错误代码的枚举。如果最新的错误代码的值是0，那么这个值是
+unknown(2)。如果从重新启动到现在没有收到密钥拒绝信息的话，那么这个值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.6 and 4.2.2.16节。”
+::= { docsBpiCmtsTEKEntry 10 }
+
+docsBpiCmtsKeyRejectErrorString 对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是发送的对这个BPI SID的KEY请求的响应中的最新的KEY拒绝
+信息的显示字串。如果从重新启动后没有收到KEY拒绝信息的话，这个值是0。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.6 and 4.2.2.6节。”
+::= { docsBpiCmtsTEKEntry 11 }
+
+docsBpiCmtsTEKInvalidErrorCode对象类型
+语法：整数{
+ none(1)，
+ unknown(2)，
+ invalidKeySequence(6)
+  }
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值例举了对在最新的TEK失效信息中发送的和这个BPI SID相关的错
+误代码的描述。如果最新的错误代码的值是0，那么这个值是unknown(2)；如果从重新启
+动后没有收到TEK失效信息，那么这个值是none(1)。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.8和4.2.2.16节。”
+::= { docsBpiCmtsTEKEntry 12 }
+
+docsBpiCmtsTEKInvalidErrorString对象类型
+语法：DisplayString (SIZE (0..128))
+最大权限：只读
+状态：现行
+描述
+“这个对象的数值是在和这个相关的BPI SID中发送的最新的TEK失效信息的显示字
+串。如果从重新启动后没有收到TEK失效信息的话，这个值是0。”
+参阅
+“DOCSIS Baseline Privacy Interface Specification，4.2.1.8和4.2.2.6节。”
+::= { docsBpiCmtsTEKEntry 13 }
+
+--CMTS Multicast控制类
+
+docsBpiMulticastControl对象标识符::= { docsBpiCmtsObjects 4 }
+
+-- CMTS IP多播映射表，由IP多播地址和前缀，以及ifindex进行检索
+
+docsBpiIpMulticastMapTable对象类型
+语法：DocsBpiIpMulticastMapEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了从各个CMTS MAC接口上IP多播地址前缀到多播SID的映射。”
+::= { docsBpiMulticastControl 1 }
+
+docsBpiIpMulticastMapEntry对象类型
+语法：DocsBpiIpMulticastMapEntry
+最大权限：不可访问
+状态：现行
+描述
+“每个入口包括了描述在一个CMTS MAC接口上从IP多播地址前缀到多播SID的映
+射的描述。当传输下行IP多播信息时，CMTS采用这个映射。”
+索引{ ifIndex，docsBpiIpMulticastAddress，
+ docsBpiIpMulticastPrefixLength }
+::= { docsBpiIpMulticastMapTable 1 }
+
+DocsBpiIpMulticastMapEntry ::= 序列{
+docsBpiIpMulticastAddress IpAddress，
+docsBpiIpMulticastPrefixLength  32位整数，
+docsBpiIpMulticastServiceId  32位整数，
+docsBpiIpMulticastMapControl RowStatus
+}
+
+docsBpiIpMulticastAddress 对象类型
+语法：IpAddress
+最大权限：不可访问
+状态：现行
+描述
+“这个对象描述了这个表项到IP多播地址(前缀)的映射，和 
+docsBpiIpMulticastPrefixLength相关。”
+::= { docsBpiIpMulticastMapEntry 1 }
+
+docsBpiIpMulticastPrefixLength对象类型
+语法：32位整数(0..32)
+最大权限：不可访问
+状态：现行
+描述
+“这个对象描述了在这个表项中IP多播地址前缀的长度。这个对象的数值表示多播地
+址的比较关系中docsBpiIpMulticastAddress位的长度，采用从大到小的顺序。如果IP多播
+地址的更有意义的标志位(docsBpiIpMulticastPrefixLength)和(docsBpiIpMulticastAddress)
+相同，那么IP多播地址和这个行匹配。这个对象一样应用于IP地址掩码。值0对应于掩码
+是0.0.0.0的IP地址，值1对应于掩码是128.0.0.0的IP地址，值8对应于掩码是255.0.0.0
+的IP地址，值32对应于掩码是255.255.255.255的IP地址。”
+::= { docsBpiIpMulticastMapEntry 2 }
+
+docsBpiIpMulticastServiceId对象类型
+语法：32位整数(8192..16368)
+最大权限：只读
+状态：现行
+描述
+“这个对象描述了在这个IP多播地址前缀映射入口中用到的多播SID。”
+--DEFVAL 是由CMTS选择的没有使用的多播SID数值。
+::= { docsBpiIpMulticastMapEntry 3 }
+
+docsBpiIpMulticastMapControl 对象类型
+语法：RowStatus
+最大权限：只读
+状态：现行
+描述
+“这个对象控制和影响了IP多播地址前缀映射的入口。当这个表项启动时，在这个表
+项中没有限制约束改变数值的能力。”
+::= { docsBpiIpMulticastMapEntry 4 }
+
+-- CMTS多播SID授权表，通过ifIndex、多播SID和CM MAC地址来检索
+
+docsBpiMulticastAuthTable 对象类型
+语法：DocsBpiMulticastAuthEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了对各个在各个CMTS的MAC接口上各个CM的各个多播SID授权。”
+::= { docsBpiMulticastControl 2 }
+
+docsBpiMulticastAuthEntry 对象类型
+语法：DocsBpiMulticastAuthEntry
+最大权限：不可访问
+状态：现行
+描述
+“各个表项包含了对于一个CMTS MAC接口的一个CM密钥认证的对象的描述。”
+索引{ ifIndex，docsBpiMulticastServiceId，
+ docsBpiMulticastCmMacAddress }
+::= { docsBpiMulticastAuthTable 1 }
+
+DocsBpiMulticastAuthEntry ::= 序列{
+docsBpiMulticastServiceId 32位整数，
+docsBpiMulticastCmMacAddress MacAddress，
+docsBpiMulticastAuthControl  RowStatus
+}
+
+docsBpiMulticastServiceId 对象类型
+语法：32位整数(8192..16368)
+最大权限：不可访问
+状态：现行
+描述
+“本对象描述了认证的multicast SID。”
+::= { docsBpiMulticastAuthEntry 1 }
+
+docsBpiMulticastCmMacAddress 对象类型
+语法：MacAddress
+最大权限：不可访问
+状态：现行
+描述
+“本对象描述了multicast SID认证应用的CM的MAC地址。”
+::= { docsBpiMulticastAuthEntry 2 }
+
+docsBpiMulticastAuthControl对象类型
+语法：RowStatus
+最大权限：只读
+状态：现行
+描述
+“本对象控制和反映了各个多播SID的CM认证。当这个表项启动时，在这个表项中
+没有限制约束改变数值的能力。”
+::= { docsBpiMulticastAuthEntry 3 }
+
+-- BPI MIB兼容状态(采用占位符通告)
+
+docsBpiNotification对象标识符::= { docsBpiMIB 2 }
+docsBpiConformance对象标识 ::= { docsBpiMIB 3 }
+docsBpiCompliances对象标识 ::= { docsBpiConformance 1 }
+docsBpiGroups对象标识符::= { docsBpiConformance 2 }
+
+docsBpiBasicCompliance 依从模块
+状态：现行
+描述
+“这是实施DOCSIS BPI的设备的兼容性状态。”
+
+模块-- docsBpiMIB
+
+--有条件强制类
+GROUPdocsBpiCmGroup
+描述
+“本类只在CM中实施，不在CMTS中实施。”
+
+--有条件强制类
+GROUPdocsBpiCmtsGroup
+描述
+“本类只在CMTS中实施，不在CM中实施。”
+
+--放宽强制范围(由于对象是只读的，所以没必要)
+-- 对象：docsBpiCmAuthGraceTime
+-- 语法：32位整数(300..1800)
+-- 描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+--放宽强制范围(由于对象是只读的，所以没必要)
+--对象：docsBpiCmTEKGraceTime
+--语法：32位整数(300..1800)
+--描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+-- 放宽强制范围
+对象：docsBpiCmtsDefaultAuthLifetime
+语法：32位整数(86400..6048000)
+描述
+“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+-- 放宽强制范围
+对象：docsBpiCmtsDefaultTEKLifetime
+语法：32位整数(1800..604800)
+描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+--放宽强制范围(和MIB无关的对象)
+--对象：docsBpiCmtsDefaultAuthGraceTime
+--语法：整数(300..1800)
+--描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+--放宽强制范围(和MIB无关的对象)
+--对象docsBpiCmtsDefaultTEKGraceTime
+--语法：整数(300..1800)
+-- 描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+-- 放宽强制范围
+对象docsBpiCmtsAuthCmLifetime
+语法：32位整数(86400..6048000)
+描述
+“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+--放宽强制范围(由于对象是只读的，所以没必要)
+--对象：docsBpiCmtsAuthCmGraceTime
+-- 语法：32位整数(300..1800)
+-- 描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+-- 放宽强制范围
+对象：docsBpiCmtsTEKLifetime
+语法：32位整数(1800..604800)
+描述
+“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+--放宽强制范围(由于对象是只读的，所以没必要)
+--对象：docsBpiCmtsTEKGraceTime
+--语法：32位整数(300..1800)
+--描述
+--“根据[18]中的附录A.2，精确范围和在运行的网络中的最小/最大值相符合。”
+
+::= { docsBpiCompliances 1 }
+
+docsBpiCmGroup对象类
+对象{
+docsBpiCmPrivacyEnable，
+docsBpiCmPublicKey，
+docsBpiCmAuthState，
+docsBpiCmAuthKeySequenceNumber，
+docsBpiCmAuthExpires，
+docsBpiCmAuthReset，
+docsBpiCmAuthGraceTime，
+docsBpiCmTEKGraceTime，
+docsBpiCmAuthWaitTimeout，
+docsBpiCmReauthWaitTimeout，
+docsBpiCmOpWaitTimeout，
+docsBpiCmRekeyWaitTimeout，
+docsBpiCmAuthRejectWaitTimeout，
+docsBpiCmAuthRequests，
+docsBpiCmAuthReplies，
+docsBpiCmAuthRejects，
+docsBpiCmAuthInvalids，
+docsBpiCmAuthRejectErrorCode，
+docsBpiCmAuthRejectErrorString，
+docsBpiCmAuthInvalidErrorCode，
+docsBpiCmAuthInvalidErrorString，
+docsBpiCmTEKPrivacyEnable，
+docsBpiCmTEKState，
+docsBpiCmTEKExpiresOld，
+docsBpiCmTEKExpiresNew，
+docsBpiCmTEKKeyRequests，
+docsBpiCmTEKKeyReplies，
+docsBpiCmTEKKeyRejects，
+docsBpiCmTEKInvalids，
+docsBpiCmTEKAuthPends，
+docsBpiCmTEKKeyRejectErrorCode，
+docsBpiCmTEKKeyRejectErrorString，
+docsBpiCmTEKInvalidErrorCode，
+docsBpiCmTEKInvalidErrorString
+}
+状态：现行
+描述
+“本对象集合提供了CM BPI状态和控制。”
+::= { docsBpiGroups 1 }
+
+docsBpiCmtsGroup对象类
+对象{
+docsBpiCmtsDefaultAuthLifetime，
+docsBpiCmtsDefaultTEKLifetime，
+docsBpiCmtsAuthRequests，
+docsBpiCmtsAuthReplies，
+docsBpiCmtsAuthRejects，
+docsBpiCmtsAuthInvalids，
+docsBpiCmtsAuthCmPublicKey，
+docsBpiCmtsAuthCmKeySequenceNumber，
+docsBpiCmtsAuthCmExpires，
+docsBpiCmtsAuthCmLifetime，
+docsBpiCmtsAuthCmGraceTime，
+docsBpiCmtsAuthCmReset，
+docsBpiCmtsAuthCmRequests，
+docsBpiCmtsAuthCmReplies，
+docsBpiCmtsAuthCmRejects，
+docsBpiCmtsAuthCmInvalids，
+docsBpiCmtsAuthRejectErrorCode，
+docsBpiCmtsAuthRejectErrorString，
+docsBpiCmtsAuthInvalidErrorCode，
+docsBpiCmtsAuthInvalidErrorString，
+docsBpiCmtsTEKLifetime，
+docsBpiCmtsTEKGraceTime，
+docsBpiCmtsTEKExpiresOld，
+docsBpiCmtsTEKExpiresNew，
+docsBpiCmtsTEKReset，
+docsBpiCmtsKeyRequests，
+docsBpiCmtsKeyReplies，
+docsBpiCmtsKeyRejects，
+docsBpiCmtsTEKInvalids，
+docsBpiCmtsKeyRejectErrorCode，
+docsBpiCmtsKeyRejectErrorString，
+docsBpiCmtsTEKInvalidErrorCode，
+docsBpiCmtsTEKInvalidErrorString，
+docsBpiIpMulticastServiceId，
+docsBpiIpMulticastMapControl，
+docsBpiMulticastAuthControl
+}
+状态：现行
+描述
+“本对象的集合为CMTS BPI提供了状态和控制。”
+::= { docsBpiGroups 2 }
+
+docsBpiObsoleteObjectsGroup对象类
+对象{
+docsBpiCmtsDefaultAuthGraceTime，docsBpiCmtsDefaultTEKGraceTime
+}
+状态：废止
+描述
+“这是陈旧的BPI对象的集合。”
+::= { docsBpiGroups 3 }
+
+END
+5. 致谢
+本文档是IPCDN工作组的产物。本MIB的大部分内容是由Chet Birger和Mike StJohns
+构思的。Kazuyoshi Ozawa和Bob Himlin也提出了许多有益的技术更正。
+6. 参考文献
+[1]Harrington，D.，Presuhn，R. and B. Wijnen，“An Architecture for  Describing SNMP 
+Management Frameworks”，RFC 2571，April 1999.
+[2]Rose，M. and K. McCloghrie，“Structure and Identification of  Management 
+Information for TCP/IP-based Internets”，STD 16，RFC 1155，May 1990.
+[3]Rose，M. and K. McCloghrie，“Concise MIB Definitions”，STD 16，RFC 1212，
+March 1991.
+[4]Rose，M.，“A Convention for Defining Traps for use with the SNMP”，RFC 1215，
+March 1991.
+[5]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“Structure of e Management 
+Information for Version 2 (SMIv2)”，STD 58，RFC 2578，April 1999.
+[6]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“Textual Conventions for 
+SMIv2”，STD 58，RFC 2579，April 1999.
+[7]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“Conformance Statements for 
+SMIv2”，STD 58，RFC 2580，April 1999.
+[8]Case，J.，Fedor，M.，Schoffstall，M. and J. Davin，“Simple Network Management 
+Protocol”，STD 15，RFC 1157，May 1990.
+[9]Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser，“Introduction to 
+Community-based SNMPv2”，RFC 1901，January 1996.
+[10]Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser，“Transport Mappings 
+for Version 2 of the Simple Network Management Protocol (SNMPv2)”，RFC 1906，
+January 1996.
+[11]Case，J.，Harrington D.，Presuhn R. and B. Wijnen，“Message Processing and 
+Dispatching for the Simple Network Management Protocol (SNMP)”，RFC 2572，April 
+1999.
+[12]Blumenthal，U. and B. Wijnen，“User-based Security Model (USM) for version 3 
+of the Simple Network Management Protocol (SNMPv3)”，RFC 2574，April 1999.
+[13]Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser，“Protocol Operations 
+for Version 2 of the Simple Network Management Protocol (SNMPv2)”，RFC 1905，
+January 1996.
+[14]Levi，D.，Meyer，P. and B. Stewart，“SNMP Applications”，RFC 2573，April 1999.
+[15]Wijnen，B.，Presuhn，R. and K. McCloghrie，“View-based Access Control Model 
+(VACM) for the Simple Network Management Protocol (SNMP)”，RFC 2575，April 1999.
+[16]St. Johns，M.，editor，“Radio Frequency (RF) Interface Management Information 
+Base for MCNS/DOCSIS compliant RF interfaces”，RFC 2670，August 1999.
+[17]St. Johns，M.，editor，“DOCSIS Cable Device MIB，Cable Device Management 
+Information Base for DOCSIS compliant Cable Modems and Cable Modem Termination 
+Systems”，RFC 2669，August 1999.
+[18]“Data-Over-Cable Service Interface Specifications：Baseline Privacy Interface 
+Specification SP-BPI-I02-990319”，DOCSIS，March 1999，http://www.cablemodem.com/.
+[19]“Data-Over-Cable Service Interface Specifications：Cable Modem Radio 
+Frequency Interface Specification SP-RFI-I05-991105”，DOCSIS，November 1999，
+http://www.cablemodem.com/.
+[20]“Data-Over-Cable Service Interface Specifications：Operations Support System 
+Interface Specification RF Interface SP-OSSI-RF- I02-990113”，DOCSIS，January 1999，
+http://www.cablemodem.com/.
+[21]“Data-Over-Cable Service Interface Specifications：Baseline Privacy Plus 
+Interface Specification SP-BPI+-I05-000714”，DOCSIS，July 2000，
+http://www.cablemodem.com/.
+[22]RSA Laboratories，“The Public-Key Cryptography Standards”，RSA Data 
+Security Inc.，Redwood City，CA.
+[23]Bradner，S.，“Key words for use in RFCs to Indicate Requirement Levels”，BCP 
+14，RFC 2119，March 1997.
+[24]Case，J.，Mundy，R.，Partain，D.，and B. Stewart，“Introduction to Version 3 
+of the Internet-standard Network Management Framework”，RFC 2570，April 1999.
+7. 需要考虑的安全问题
+BPI为DOCSIS基于同轴电缆的数据服务提供了数据加密技术。支持BP的cable 
+modem拥有由厂商预置的RSA公钥/私钥对。公钥用于加密认证密钥，认证密钥用于对 一
+个或更多的通讯加密密钥(Traffic Encryption Key，缩写为TEK)进行加密。TEK既对上行数
+据流加密，又对下行数据流加密。请参阅[18]来获得有关BP规范的进一步消息。
+尤其是，BPI不支持认证服务。CMTS应用不鼓励依靠CM的MAC地址来提供服务授
+权–尤其是，对于在这个MIB中的 docsBpiMulticastAuthTable。BPI+为CM提供了认证服
+务，并且不久工作组将发布针对BPI+管理的一个MIB 。
+这个MIB规范包含了一系列可读写的对象，应保护它们免受未授权的修改，防止服务
+拒绝和服务偷窃攻击；尤其是，以下这些对象：重置机器状态(如 docsBpiCmAuthReset)、
+改变密钥生命期(如 docsBpiCmtsDefaultAuthLifetime)、改变重获密钥的宽限期(如 
+docsBpiCmtsDefaultAuthGraceTime)以及控制多播流量(如docsBpiMulticastControl 组重
+的大多数对象) 。
+保护这些对象免受无保证访问的 最好方法是实行SNMPv3框架提供的安全特性。特别
+推荐采用基于用户的安全模式[12]和基于可视化的访问控制模式[15]。
+保护CM免受未授权访问较弱些的方法包括使用来自cable设备MIB [17]的
+docsDevNmAccess表，以禁止未授权的网络管理工作站改变配置；使用无线电频率接口的
+SNMP MIB对象和SNMP 写访问控制配置文件选项来设置MIB对象值，并禁止在cable 
+modem启动时执行SNMP SET操作。注意：这种机制很容易导致未经授权的网络管理工
+作站“spoofing(伪装)”成一个合法的网络管理工作站的源地址。
+8. 知识产权
+IETF不考虑任何关于知识产权或其他权利的有效性或适用范围的问题，这些权利可能
+附属于那些实现和使用本文档描述的技术的文档中声明，基于此产权声明的许可不是必须
+的。而且也无须表示为了识别此声明而做的努力。关于标准制定和标准相关的IETF版权声
+明过程的信息可以在BCP-11中找到。可以从IETF秘书处得到出版物的有效版权声明的复
+制和许可证书，还可以使用此详述的制定者和使用者的私人授权，以便得到通用的授权和许
+可。
+IETF邀请任何感兴趣的组织注意其版权、专利或专利应用、其它专有权利，它们可能
+需要使用这个标准的技术。请告知IETF 执行董事会相关的信息。
+9. 作者地址
+Richard Woundy
+Cisco Systems
+250 Apollo Drive
+Chelmsford，MA 01824
+U.S.A.
+Phone：+1 978 244 8000
+EMail：rwoundy@cisco.com
+10. 完整的版权声明
+Copyright (C) The Internet Society (2001)。版权所有。
+本文档及其译文可以拷贝和提供给他人，且其衍生物，如评论、解释或帮助实施的作品
+可以全部或部分地定制、拷贝、出版和发布，对此我们不加任何限制，前提是上述版权声明，
+及本段内容包含在所有的拷贝和派生作品中。然而，本文档本身不允许以任何方式修改，例
+如删除Internet社团或其他Internet组织的版权声明或参考，除非是为了开发Internet标准
+的需要。即便在这种情况下，也需要添加Internet标准中定义的版权声明，或者根据需要把
+他翻译成英语以外的其他语言。
+上述准许的有限许可是永久性的， 无论是Internet社团以及其继承者或代理者都将不
+会废止这些许可。
+本文档及其中包含的信息基于“AS IS”提供，而且INTERNET社团和IETF拒绝所有
+授权、表达或影射，包括但不限于任何这里使用的消息的授权将不会违背任何版权或者隐含
+的商业性授权或对特定的合理目的。
+致谢
+目前，RFC编者活动的基金由Internet社团提供。
+
+RFC3083——Baseline Privacy Interface Management Information Base for DOCSIS Compliant Cable Modems 
+and Cable Modem Termination Systems  遵循DOCSIS的Cable Modem和CMTS的PBI的管理信息数据库
+
+
+2
+RFC文档中文翻译计划

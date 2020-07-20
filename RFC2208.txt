@@ -1,0 +1,207 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：jonel_t（jonel_t  tian_lj@china.com）
+译文发布时间：2001-7-25
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，
+但必须保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                       A. Mankin, Ed.
+Request for Comments: 2208                                        USC/ISI
+Category: Informational                                          F. Baker
+                                                                
+CiscoSystems
+                                                     B. Braden
+                                                     USC/ISI
+                                                     S. Bradner
+                                                     Harvard
+                                                     M. O`Dell
+                                           UUNET Technologies
+                                                   A. Romanow
+                                               Sun Microsystems
+                                              A. Weinrib
+                                             Intel Corporation
+                                                   L. Zhang
+                                               UCLA                                             
+September 1997
+
+资 源 预 留 协 议 (RSVP)
+                       ――版本1  适 用 性 声 明
+关于配置的一些指导
+(Resource ReSerVation Protocol (RSVP)
+Version 1 Applicability Statement
+Some Guidelines on Deployment)
+
+
+                 
+本备忘录的状态：
+本备忘录提供关于Internet社区的信息。它不指定任何一种形式的标准。本备忘录的
+发布不受任何限制。
+
+摘要
+
+本文档描述RSVP、相应的综合服务协议及其他资源预留组件的适用性，提供现时配置
+资源预留的指导。本文档和第一次提交的RSVP和综合服务规范一起加入RSVP标准轨迹
+中。
+
+目录
+1.介绍	2
+2.影响RSVP配置的问题	3
+2.1.可扩展性	3
+2.2.安全考虑	3
+2.3.策略控制	4
+3.建议	4
+4.参考	4
+5.作者地址	5
+
+1.介绍
+RSVP [RFC 2205]是一个单播和多播的信令协议，被设计来安装和维护在数据流路径
+上的每个路由器的预留声明信息。RSVP对这些声明的处理被定义在由综合服务工作组
+（WG）指定的[RFC 2211] 和 [RFC 2212]的服务中。这些服务和RSVP同时被引入IETF
+的标准轨迹中。从现在起，缩略语RSVP被用作信令协议和与之合并在一起的综合服务
+规范的简称。
+
+RSVP必须与几个附加组件联合使用，如下表所示：
+表1   资源预留的附加组件
+
+1.	用于期望服务的信息格式的参数能被表示。[RFC 2210]中列出了这些格式的一
+         个推荐标准集。
+2.	用来实现一或两个[RFC 2211] 和 [RFC 2212]模式的路由器和主机机制（如分
+   组分类和调度，接入控制算法）也被加进标准轨迹中。
+3.	用于接入期望的控制和资源使用的信息格式的参数能被表示。RSVP 工作组宪章
+         中有一个这些格式的用于标准轨迹的小公共子集。RSVP协议规范的策略对象仅 
+         在这时是可选的。
+4. 实现期望的接入控制策略功能的各种定位机制，包括授权和其他安全机制。
+  
+     在表1中描述的每个组件的一些格式中，支持RSVP的应用可以通过IP网络获得区
+分服务质量。网络化的多媒体应用，大多需要（或受益于）一个可预测的终端用户经
+验，将会是RSVP信令服务的首批用户。
+    因为RSVP和综合服务及表1所列的其他部件标志了IP网络服务模式的一个极大变
+革，所以RSVP受到了很大的关注，并促使它以一个标准轨迹RFC而被发布。目前，很
+多操作系统和路由器供应商把RSVP和综合服务集成在他们的产品中，以备即将到来的
+应用。本适用性声明的目的是描述当前已知可行的RSVP规范的使用，并标识限制范围
+及正在进行的工作提出的某些限制。
+  
+2.影响RSVP配置的问题
+   因为还存在大量明显会影响配置成功的问题，因此大范围的配置RSVP必须小心。
+
+2.1.可扩展性
+   在一个路由器上运行RSVP所要求的资源需求（处理和存储）根据单独的会话的数
+量而按比例增长（如，RSVP预留）。因此，在一个高带宽链路上支持大量小的预留会
+很容易使路由器过载，这样作是不策略的。而且，当前一些路由产品或它们的某些高
+速接口（如OC－3或以上）很难具有实现分组分类和调度的能力，这些能力被用来提
+供预留流的区分服务。
+   这些问题表明在目前的高带宽骨干网上配置RSVP一般是不合适的。在将来，这些
+骨干网的营运商将不会选择天真地为每个单独的流实现RSVP。另外，在骨干网的“边
+缘”汇聚那些需要特别处理的流的技术正在发展。在骨干网内部，作为一种满足单个
+流的端到端需求的一种方法，大量花费较少的途径因此而被用来为一个整体的汇聚流
+留出资源。
+   在近期内，大量供应商将用多种不同的方法来汇聚预留。这不是IETF目前在此领
+域标准开发中正在进行的工作。BOF，区分服务的未来方向，在1997年7月，Memphis 
+IETF考虑IETF关于在这和其他问题上如何进行下一步工作。鼓励关于汇聚技术和经念
+的文档的公开。
+  
+2.2.安全考虑
+    RSVP 工作组（WG）提交的推荐标准中包括两个与安全相关的文档[Baker96, RFC 
+2207]。[Baker96] 提出了拒绝服务攻击和偷窃服务攻击。[RFC 2207]介绍了本身使
+用了IPSEC的数据流的RSVP机制。
+    第一个文档被推荐用来防止对RSVP路由器的欺骗性预留请求；这些请求可能被用
+来获得没有授权的服务或者用拒绝服务攻击来锁住网络资源。修改或欺骗预留请求被
+相邻路由器之间的每一跳MD5校检和（在一个Integrity对象中）检查。
+如前所述，RSVP的每一跳认证确保用于路由器的密钥管理和分配得以解决和配置。在
+找到一个有效的密钥架构前，将使用手工加密的会话整体。另外，[Baker96]
+可能被RFC 2085修改。
+    在路由器间所需要的密钥架构不仅仅是RSVP独有的：普遍认为在路由架构中存在
+大量拒绝服务攻击（与RSVP根本无关），这只能通过配置一个密钥架构来解决。   
+    偷窃服务攻击风险要求用户小心配置。一个基本的预防措施是在支持RSVP的架构
+中对新的和改变的过虑器规范设定管理日志，如[RFC 2206]的新流陷入。
+    [Baker96]中定义的Integrity对象在策略控制中也可能会起作用，这将在2.3中
+进行描叙。
+    第二个与安全相关的文档提供一种用于传输和用户字节已加密的载流机制。尽管
+某些应用极大的受益于这种加密，但这与RSVP或预留的安全功能无关。
+    下面关于策略控制的章节补充了对RSVP授权安全的讨论。
+   
+2.3.策略控制
+    策略控制提出了在一个预留协议可被用来设置不平衡服务时谁可以，或谁不可以
+获得预留的问题。
+    目前RSVP规范为与预留一起的传输控制信息定义了一种机制。然而，该规范并没
+有定义策略本身。现在供应商已声明他们将使用RSVP定义的机制来实现专有策略。
+    RSVP工作组正在为即将使用Integrity对象的会话指定一个简单的标准化策略对
+象和完全的简单机制。本适用性声明在完成工作组宪章时会作修正。
+在作出配置RSVP的任何决定前，确保供应商提供的有效策略控制适合于应用目标是明
+智的。除了缺乏在任何策略领域（如接入控制、授权和计费）的文档化策略机制外，
+社区对限制Internet服务的描述，设置和控制策略也没有经验。
+    因此供应商的解决方案很可能会经常修改，特别是在IETF还没有开发出任何策略
+规范前。
+
+3.建议
+ 在RSVP规范的当前形式下，在一个intranet运行的多媒体应用将会是首先的
+益者。SNA/DLSW被认为是另一个受益的“应用”。
+    在一个单一的或相应管理域数目小的intranet内，扩展性、安全性和接入策略都
+比在全球Internet上更容易管理。在一个单一的Internet服务提供商那里使用用于小
+数目流的RSVP和支持组件，跟在一个intranet上使用相似。
+    目前关于RSVP的经验仅来自限制试验和intranet配置上运行的测试。我们建议在
+不需解决第二节中所述的那些问题时还有可观的益处的话，人们可以开始在intranet
+或ISP环境下（如上所述）使用RSVP。
+   
+下面是引自RFC 2026的关于推荐标准技术的使用：
+ 
+    实现者应视推荐标准为不成熟的规范。实现它们以获得经验和验证、测试、阐明
+规范是可以考虑的。然而，如果发现了问题或确定了更好的解决方案，推荐标准的内
+容将会作更改，因此建议在一个充满争议的环境下不要配置这些标准的实现。
+    第二节中列出的扩展性、安全和策略控制的一般问题都是正在研究和发展的主
+题，如第三方的预留或区分服务的设置，大多不在本适用性声明内。
+  
+4.参考
+   [Baker96]  Baker, F., "RSVP Cryptographic Authentication", Work in
+           Progress.
+
+   [RFC 2206], Baker, F. and J. Krawczyk, "RSVP Management Information
+           Base", RFC 2206, September 1997.
+
+   [RFC 2207]  Berger, L. and T. O'Malley, "RSVP Extensions for IPSEC
+           Data Flows", RFC 2207, September 1997.
+
+   [RFC 2211] Wroclawski, J., "Specification of Controlled-Load
+           Network Element Service", RFC 2211, September 1997.
+
+   [RFC 2212] Shenker, S., C. Partridge and R. Guerin, "Specification
+           of Guaranteed Quality of Service", RFC 2212, September 1997.
+
+   [RFC 2205]  Braden, R. Ed. et al, "Resource ReserVation Protocol
+           -- Version 1 Functional Specification", RFC 2205,
+           September 1997.
+
+   [RFC 2210] Wroclawski, J., "The Use of RSVP with IETF Integrated
+           Services", RFC 2210, September 1997.
+
+5.作者地址
+   Fred Baker                    Abel Weinrib
+   Cisco Systems                 Intel Corporation
+   Phone: 408-526-4257           Phone: 503-264-8972
+   EMail: fred@cisco.com         EMail: aweinrib@ibeam.intel.com
+   Bob Braden
+   USC/ISI                       Lixia Zhang
+   4676 Admiralty Way            UCLA Computer Science Department
+   Marina Del Rey, CA 90292      4531G Boelter Hall
+   Phone: 310-822-1511           Los Angeles, CA 90095-1596 USA
+   EMail: braden@isi.edu         Phone: 310-825-2695
+                                 EMail: lixia@cs.ucla.edu
+   Scott Bradner                 Allyn Romanow
+   Harvard University            Sun Microsystems
+   Phone: 617-495-3864           Phone: 415-786-5179
+   EMail: sob@harvard.edu        EMail: allyn@eng.sun.com
+   Michael O'Dell		 Allison Mankin	
+   UUNET Technologies		 mankin@east.isi.edu
+   Phone: 703-206-5471
+   EMail: mo@uu.net
+
+
+RFC 2208—Resource Reservation Protocol (RSVP)           资源预留协议（RSVP）
+
+
+1
+     RFC文档中文翻译计划 

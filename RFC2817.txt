@@ -1,0 +1,412 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：陶志荣（dick_hw  jerrytaowx@263.net）
+译文发布时间：2001-8-7
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必
+须保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                            R. Khare
+Request for Comments: 2817                      4K Associates / UC Irvine
+Updates: 2616			         				         	 S. Lawrence
+Category: Standards Track                      	    Agranat Systems, Inc.
+May 2000
+
+
+在HTTP/1.1中升级到TLS
+    (Upgrading to TLS Within HTTP/1.1)
+
+
+本备忘录的状态
+
+本文档为Internet社区定义Internet标准协议，同时征求改进意见和建议。关于本
+协议的现状和标准化状态请参阅“Internet官方协议标准”(STD 1)。本备忘录的发布不受
+任何限制。
+
+版权声明
+Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+摘要
+
+本文档描述如何使用HTTP/1.1的升级机制在一个现存的TCP连接上发起安全传输
+层(TLS)。这样就允许安全的和不安全的HTTP通信共享同一个众所周知的端口（在这
+个例子中，http在80端口而不是在像https在443端口）。这种做法也支持“虚拟主
+机”，因此一个HTTP+TLS服务器能区分发往在同一个IP地址上的几个主机的消息。
+HTTP/1.1 [1]中将升级定义为逐跳的机制，本备忘录也描述了用于跨越HTTP代理
+建立端到端隧道的HTTP CONNECT机制。最后，本备忘录为公用HTTP状态码和公用或
+私有升级产品符号建立了新的IANA注册。
+本备忘录不影响到当前“https”URI方案的定义，该方案已经定义了一个单独的
+名字空间（http://example.org/ 和 https://example.org/ 不等价）。
+
+
+
+
+
+
+
+目录
+1.  动机	2
+2．介绍	3
+2.1.  相关术语	3
+3. 客户请求升级到TLS之上的HTTP	3
+3.1.  可选的升级	3
+3.2. 强制升级	4
+3.3 服务器对升级请求的确认	4
+4 服务器请求升级到TLS之上的HTTP	4
+4.1 选项通知	4
+4.1 强制通知	4
+5 通过代理的升级	5
+6 使用4xx（客户错误）状态码的原理	6
+7 IANA的考虑	6
+7.1 HTTP状态码登记	7
+安全考虑	7
+7.1 https:URI方案含义	8
+7.2 CONNECT的安全考虑	8
+参考	8
+作者地址	9
+附录A　致谢	10
+完整版权声明	10
+致谢	11
+
+
+1.  动机
+过去在SSL3[3]上配置HTTP是用一个唯一的URI及TCP端口号，这样同单独的
+HTTP相区分。方案“http”意味着在80端口单独的HTTP协议，而“https”表示在
+443端口的SSL之上的HTTP协议。类似的，其它应用协议（例如：snews，ftps）为区
+分安全和不安全的使用，要求使用二个端口号。这个方法使得可用的众所周知的端口
+数减半。
+在1997年12月华盛顿特区IETF会议上，应用区主管及IESG重申不赞成使用并行
+的“安全”端口号。HTTP/1.1的升级机制可以在一个打开的HTTP连接上建立传输层安
+全[6]。
+自最近两年来，大家已经广泛接受了这个建议，但对实现一个取代通常的用于网
+络浏览的443端口没有多大兴趣。实际上，本备忘录不影响当前对https:URI的解
+释。但是，在HTTP之上建立的新的应用协议如Internet打印协议[7]，需要这样的机
+制使得IETF标准化进程前进一步。
+升级机制也解决了“虚拟主机”问题。HTTP/1.1服务器不是给一个主机分配多个
+IP地址，而是使用主机：头来区分web服务。由于HTTP/1.1的使用日益流行，越来越
+多的ISP提供基于名字的虚拟主机，使得IP地址空间不会马上耗尽。
+TLS（及SSL）和HTTP的早期版本一样受制于：初始化的握手不指定需要的主机
+名，而只依赖于IP地址。使用明文的HTTP/1.1升级：作为TLS握手的序幕，――基于
+初始的主机：头选择证书，――可使得ISP同样能提供基于名字的安全虚拟主机。
+2．介绍
+TLS又名SSL（安全套接字层），建立一个私有端到端连接，选项包括使用多种密码系
+统的相互之间的强认证。开始时，一次握手过程使用三个子协议来设置一个记录层，认证
+端点，设置参数，和报告错误。然后，由一个分层记录协议处理加密，压缩和重组连接的
+剩余部分。后者希望做成完全透明。例如，在TLS的记录标记或认证和HTTP/1.1的大块编
+码或认证之间没有关联。
+客房和服务器都能使用HTTP/1.1[1]升级机制（14.42节）来指示TLS安全连接是必要
+的。本备忘录定义了“TLS/1.0”升级记号和一个新的HTTP状态码，“426－需要升级”。
+小节3和小节4描述了直接相连的客房和服务器的操作。如小节5中阐述的，在实施任
+何操作之前中间代理必须建立端到端的隧道。
+2.1.  相关术语
+在本文中的关键字“必须”，“必须不”，“要求”，“应该”，“不应该”和“可
+能”的解释见[RFC2119]。
+3. 客户请求升级到TLS之上的HTTP
+当客户发送一个有包含记号“TLS/1.0”的升级包头的HTTP/1.1请求，它表示请
+求服务器在转换到TLS/1.0之后完成当前的HTTP/1.1请求。 
+3.1.  可选的升级
+当一个不安全的响应可接受时，一个客户在任何明文的HTTP请求期间可以要求转
+换到安全的操作流程：
+
+    GET http://example.bank.com/acct_stat.html?749394889300 HTTP/1.1
+    Host: example.bank.com
+    Upgrade: TLS/1.0
+Connection: Upgrade
+
+在这个例子中，服务器可以对明文的HTTP请求作正常响应或是转换到安全的操作中
+（细节见下一小节）。
+注意在HTTP/1.1[1]中定义“无论在HTTP/1.1消息中何时出现升级关健字，该关健字
+必须出现在一个连接头的域中（14.10小节）”。
+3.2. 强制升级
+	若无法接受一个不安全的响应，客户必须首先发送一个选项请求来完成到TLS/1.0的
+切换（若可能的话）。
+
+       OPTIONS * HTTP/1.1
+       Host: example.bank.com
+       Upgrade: TLS/1.0
+       Connection: Upgrade
+
+3.3 服务器对升级请求的确认
+如HTTP/1.1[1]中定义的，如果服务器准备初始化TLS握手，必须发送中间的“101转
+换协议”且必须包括一个定义它要转换到的协议栈记号的升级响应头： 
+
+       HTTP/1.1 101 Switching Protocols
+       Upgrade: TLS/1.0, HTTP/1.1
+       Connection: Upgrade
+
+	注意在101转换协议升级头中列出的协议记号定义了一个自底向上的栈。
+	如HTTP/1.1[1]，10.1.2小节中定义的：“服务器将在收到终止101响应的空行后立
+即将协议转换至响应的升级头域定义的协议。
+	一旦TLS握手成功完成，服务器必须继续对原来请求的应答。任何TLS握手失败必须
+通过TLS错误告警规范导致连接中断，。
+4 服务器请求升级到TLS之上的HTTP
+升级响应头域宣告一个服务器可能接受的协议升级。和“426升级请求”状态码相结
+合，服务器能发送一个客户必须接受的协议升级来完成请求。
+4.1 选项通知
+如在HTTP/1.1[1]中定义的，服务器可以在任何除了101或426的响应中包含一个升级
+头表示转换到任何列出的协议（组合）。
+4.1 强制通知
+	服务器可以使用“426需要升级”表示没有TLS无法完成客户请求，这个响应必须包含
+一个定义了需要的TLS版本记号的升级头域。
+
+      HTTP/1.1 426 Upgrade Required
+      Upgrade: TLS/1.0, HTTP/1.1
+Connection: Upgrade
+
+服务器应该在426响应中包含一个消息体以一种可读形式指示错误原因和描述另外对用
+户可用的路线。
+注意，即使客户愿意使用TLS，它出必须使用在第3节中的操作来进行；在426响应之
+后TLS握手不能马上开始。
+5 通过代理的升级
+	作为一个逐跳的头部，HTTP的每一对参加者间要协商升级。若一个用户代理发送一个
+带升级头的请求给代理，它要求的是在自己和代理之间的改变而不是端与端之间的改变。
+	因为TLS特别要求端到端的连接提供认证并防备中间人攻击，本备忘录定义了CONNECT
+方法用以建立一个跨越代理的隧道。
+隧道一旦建立，第3节描述的操作都可用于建立TLS连接。
+
+5.1 逐跳升级的含义
+	当一个源服务器从代理收到一个升级头并以101转换协议响应，它只是改变自己和代
+理之间连接的协议。同样，一个代理可以返回给客户101响应来改变该连接上的协议，该
+协议独立于与源服务器通信的协议。
+	这种情况使得诊断426响应变得更加复杂。由于升级是一个逐跳的头部，一个不识别
+426响应的代理可能会删去相随的升级头部，使得客户无法决定如何进行协议转换。若客户
+端收到一个没有相随的升级头部的426状态码，它将如5.2节中描述的那样请求一个端到端
+隧道连接并一直请求以获得需要的升级信息。
+	这个端到端的升级定义是一个深思熟虑的选择。这允许代理每端的增量实施，和在级
+联的代理间的优化协议，而无需知道改变之外的部分。
+
+5.2 用CONNECT请求一隧道
+
+CONNECT方法请求代理代表它建立一个连接通道。请求命令行的请求URI部分总是如URI通
+用语法[2]定义的一个‘authority'，该定义指明请求连接的目的主机名和端口号，由冒
+号分隔：
+
+      CONNECT server.example.com:80 HTTP/1.1
+      Host: server.example.com:80
+
+其它HTTP机制能和CONNECT方法一起正常使用――除了端到端的协议升级请求――由于必
+须先建立隧道这是当然的。
+例如，proxy authentication可被用来建立创建隧道的机构：
+
+      CONNECT server.example.com:80 HTTP/1.1
+      Host: server.example.com:80
+      Proxy-Authorization: basic aGVsbG86d29ybGQ=
+
+如同任何其它的管道HTTP/1.1请求，由隧道通过的数据可以在空行后立即发送。通常的警
+告是：若最终的响应是拒绝的话，数据可以被丢弃，若有超过一个TCP数据段未完成，则
+连接可以不做任何响应而被复位。
+
+5.3 使用CONNECT建立一个隧道
+	对CONNECT请求的任何成功（2xx）的响应都表示代理已经和被请求的主机及相应端口
+建立了连接，并且已经切换到在同该服务器的连接上开通隧道。
+	代理本身可能必须通过另一个代理才能到达请求的源服务器。在这种情况下，第一个
+代理应该生成同下一个代理建立连接的请求，请求一个同authority的通道。代理绝不能
+对2xx状态码响应，除非它已经有一个到authority直接的或隧道的连接。
+	一个源服务器接收到对自己的连接请求可以用2xx状态码响应，表示连接已经建立。
+	如果在任何时候任何一方断连，任何来自于该端的数据将传送到另一方，之后另一方
+的连接也被代理终止。若有到先断连一端的数据未传送，这些数据都将被丢弃。
+
+
+6 使用4xx（客户错误）状态码的原理
+	可靠的，共同协商的升级特性需要一个明确的失败信号。426升级请求状态码允许服务
+器明确地声明必须提供一个给定资源想要的协议扩展。
+	起先看起来，响应应具有重定向的某种形式(3xx码)，类似到一个https:URI的旧式重
+定向。但不理解升级机制的用户代理使得不能这样做。
+	设想某个3xx代码已被赋与“需要升级”的含义；一个不能识别它的用户代理将把它
+当做300。它可能在响应中寻找一个“Location”头并试图重复对头部域中的URL的请求。
+由于它不知道升级以合并TLS层，它最终在新的URL上会再次失败。
+
+7 .IANA的考虑
+	如BCP 26[10]中描述的，IANA将为二种名字空间登记：
+	HTTP状态码
+	HTTP升级记号
+
+7.1 HTTP状态码登记
+	HTTP状态码的登记定义了在HTTP响应的状态行中的状态码记号。这个名字空间的初始
+值是由这些定义的：
+1.	HTTP/1.1标准草案
+2.	Web分布式创作及版本[4][定义420-424]
+3.	WebDAV高级集合[5]（正在制订）[定义425]
+4.	第6节[定义426]
+要加入到该名字空间的值应该以标准记录文档格式提交IETF应用组。任何这种文档应该通
+过HTTP/1.1[1]草案的状态词“过时”或“更新”使得可追踪来源。
+
+7.2 HTTP升级记号登记
+
+	HTTP升级记号登记为产品记号定义了名字空间，该名字空间用于在升级HTTP头部域中
+分辩协议。每一个登记的记号应该同一个或一组规范相联系并有相联系的信息。
+	HTTP/1.1[1]标准草案定义了这些遵从产品生产的记号：
+	产品（product）= 记号["/" 产品版本]
+	产品版本 = 记号
+
+	如BCP 26[10]中描述的，登记应该基于先来先服务的原则。这些定义不需要是IETF文
+档或是IESG关注的课题，但应该遵守下列原则：
+1.	一个记号一旦登记，就永远是登记了的。
+2.	登记必须指定一个负责登记的团体。
+3.	登记必须指定一个联系办法。
+4.	登记必须指定记号需要的文档。
+5.	负责的团体可以随时改变登记项。IANA将记录下所有这种改变，并使它对需要的人可
+用。
+6.	对一个“产品”记号第一次登记负责的团体在他们能够登记前必须同意同“产品”记号
+一起的“版本”记号的晚些时候的登记。
+7.	若确实需要，IESG可以重新指定一个记号的负责团体。通常这只是在负责团体无法联
+系到时才会这样。
+
+	本规范定义协议记号“TLS/1.0”作为TLS协议[6]定义的协议的标识符号。
+	并不要求升级记号的定义是公众可用的，但登记的联系信息应该是。
+
+8.安全考虑
+	潜在的中间人攻击（删除升级头部）和目前http/https混用一样：
+. 移去升级头与重写网页来将https://links改变为http://links类似。
+. 只有在服务器首先通过安全或不安全的通道公开这类信息才会造成这种风险。
+. 若客户知道服务器可处理TLS，它就会坚持发送不带选项如OPTIONS的升级请求。
+. 最后如https:定义警告的，“用户应该仔细检查服务器提供的证书以确定是否符合他
+们的期望。
+
+	此外，对于未明确激活TLS的客户，服务器可在响应中使用除了101或426的升级头来
+通告TLS能力。既然TLS能力应该作为服务器的特性而不是就在手边的资源，它应一次发送
+就足够，让客户知道这个事实以在需要时使用。
+
+8.1 https:URI方案含义
+
+	本备忘录没有影响‘https’的含义，广泛采用的超文本内容可以使用‘http’来区分
+安全和不安全的资源。
+连接时安全特性的选择留给客户和服务器。这允许每一方用任何可用的信息作出决
+定。例如，用户代理可以依靠有关网络安全方面的用户设置，如“对不在我的本地网络上
+的所有POST操作都要求使用TLS”，或服务器可应用如‘本页面的FORM的提交和处理必须
+用TLS’等资源存取规则。
+
+8.2 CONNECT的安全考虑
+
+	一个类属的TCP通道是充满安全风险的。首先，这种授权应该被限制在一小部分端
+口。这里定义的升级机制只是在80端口的隧道上需要。第二，既然隧道数据对代理不透
+明，对其它众所周知和保留端口的隧道有额外的风险。例如，假定一个HTTP客户连接到25
+端口，他可以通过SMTP传播垃圾邮件。
+
+参考
+   [1]  Fielding, R., Gettys, J., Mogul, J., Frystyk, H., Masinter, L.,
+        Leach, P. and T. Berners-Lee, "Hypertext Transfer Protocol --
+        HTTP/1.1", RFC 2616, June 1999.
+
+   [2]  Berners-Lee, T., Fielding, R. and L. Masinter, "URI Generic
+        Syntax", RFC 2396, August 1998.
+
+   [3]  Rescorla, E., "HTTP Over TLS", RFC 2818, May 2000.
+
+   [4]  Goland, Y., Whitehead, E., Faizi, A., Carter, S. and D. Jensen,
+        "Web Distributed Authoring and Versioning", RFC 2518, February
+        1999.
+
+   [5]  Slein, J., Whitehead, E.J., et al., "WebDAV Advanced Collections
+        Protocol",  Work In Progress.
+
+   [6]  Dierks, T. and C. Allen, "The TLS Protocol", RFC 2246, January
+        1999.
+
+   [7]  Herriot, R., Butler, S., Moore, P. and R. Turner, "Internet
+        Printing Protocol/1.0: Encoding and Transport", RFC 2565, April
+        1999.
+
+   [8]  Luotonen, A., "Tunneling TCP based protocols through Web proxy
+        servers",  Work In Progress.  (Also available in: Luotonen, Ari.
+        Web Proxy Servers, Prentice-Hall, 1997 ISBN:0136806120.)
+
+   [9]  Rose, M., "Writing I-Ds and RFCs using XML", RFC 2629, June
+        1999.
+
+   [10] Narten, T. and H. Alvestrand, "Guidelines for Writing an IANA
+        Considerations Section in RFCs", BCP 26, RFC 2434, October 1998.
+
+   [11] Bradner, S., "Key words for use in RFCs to Indicate Requirement
+        Levels", BCP 14, RFC 2119, March 1997.
+
+作者地址
+   Rohit Khare
+   4K Associates / UC Irvine
+   3207 Palo Verde
+   Irvine, CA  92612
+   US
+
+   Phone: +1 626 806 7574
+   EMail: rohit@4K-associates.com
+   URI:   http://www.4K-associates.com/
+
+   Scott Lawrence
+   Agranat Systems, Inc.
+   5 Clocktower Place
+   Suite 400
+   Maynard, MA  01754
+   US
+
+   Phone: +1 978 461 0888
+   EMail: lawrence@agranat.com
+   URI:   http://www.agranat.com/
+
+附录A　致谢
+   The CONNECT method was originally described in a Work in Progress
+   titled, "Tunneling TCP based protocols through Web proxy servers",
+   [8] by Ari Luotonen of Netscape Communications Corporation.  It was
+   widely implemented by HTTP proxies, but was never made a part of any
+   IETF Standards Track document. The method name CONNECT was reserved,
+   but not defined in [1].
+
+   The definition provided here is derived directly from that earlier
+   memo, with some editorial changes and conformance to the stylistic
+   conventions since established in other HTTP specifications.
+
+   Additional Thanks to:
+
+   o  Paul Hoffman for his work on the STARTTLS command extension for
+      ESMTP.
+   o  Roy Fielding for assistance with the rationale behind Upgrade:
+      and its interaction with OPTIONS.
+   o  Eric Rescorla for his work on standardizing the existing https:
+      practice to compare with.
+   o  Marshall Rose, for the xml2rfc document type description and tools
+      [9].
+   o  Jim Whitehead, for sorting out the current range of available HTTP
+      status codes.
+   o  Henrik Frystyk Nielsen, whose work on the Mandatory extension
+      mechanism pointed out a hop-by-hop Upgrade still requires
+      tunneling.
+   o  Harald Alvestrand for improvements to the token registration
+      rules.
+
+完整版权声明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+RFC2817—Upgrading to TLS Within HTTP/1.1               在HTTP/1.1中升级到TLS
+
+
+1
+RFC文档中文翻译计划

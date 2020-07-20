@@ -1,0 +1,44 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：陈贵敏（efoxxx   efoxxx@263.net）
+译文发布时间：2001-7-3
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                        Alex McKenzie
+Request for Comments No. 179                 BBN
+NIC No. 7119                                 22 June 1971
+Category: C.9
+Updates:  107
+Obsoletes:  none
+              
+
+连接的数字分配 
+（RFC179——Link Number Assignments ） 
+
+今天，Steve Crocker 请求我发布关于从现在起，从2一直到71的连接数字(十进制)
+用于连接将会定为合法的通知。与之相应的是，我现在正在写的Host-Host 协议文档将会
+包含以下的声明定义：
+
+    
+   连接分配如下：
+连接数             分配任务
+
+0	               控制连接
+2 -71              连接用
+1, 72-190          保留－现在不用
+191	               仅用于UCLA的网络测量中心管理下的测量工作
+192	– 255         个人实验用
+     
+
+[ This RFC was put into machine readable form for entry ]
+     [ into the online RFC archives by Kai Henningsen 5/97 ]  
+RFC179——Link Number Assignments                  连接的数字分配 
+
+
+1
+RFC文档中文翻译计划

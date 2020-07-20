@@ -1,0 +1,1883 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者： Jessie（zhenm2000  jessie0630@263.net）
+译文发布时间：2001-6-14
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保
+留本文档的翻译及版权信息。
+
+
+Network Working Group                                           J. Linn
+Request for Comments: 2078                      OpenVision Technologies
+Category: Standards Track                                  January 1997
+Obsoletes: 1508
+
+   
+
+通用安全服务应用接口（GSS-API） V2
+(RFC2078 Generic Security Service Application Program Interface, Version 2)
+
+备忘录状态
+   这个备忘录为因特网社区提供信息。它没有详细说明任何一种网络标准。这个备忘录的发布
+没有限制。
+ 
+摘要
+在rfc1508中定义的通用安全服务应用接口（GSS-API）以一种通用的方式为调用者提供安
+全服务，它支持多种底层机制和技术，允许应用程序在源代码级移植到不同环境中。这个规范
+定义了不依赖于底层机制和编程语言环境的GSS-API服务和原语。还需要被其他人完成的相关
+的规范是：
+    1、绑定特定语言的参数定义文档。
+    2、在具体安全机制上实现GSS-API服务的Token格式、协议和处理过程的定义文档。
+这个规范修订RFC-1508，根据实现经验和提出的要求做了更详细、增强的改进。希望本规
+范或者起后续版本，在标准化的道路上，成为后续发展GSS-API规范的一个基础。
+目录
+1:GSS-API的特征和概念
+1.1:GSS-API的构造
+1.1.1:信任状
+1.1.1.1:信任状构造和概念
+1.1.1.2:信任状管理
+1.1.1.3:默认的信任状解析
+1.1.2:令牌
+1.1.3:安全上下文
+1.1.4:机制类型
+1.1.5:命名
+1.1.6:通道绑定
+1.2:GSS-API的特点和发布
+1.2.1:状态报告
+1.2.2:Per-Message安全服务可用性
+1.2.3: Per-Message重发检测和顺序性
+1.2.4:保护的级别
+1.2.5:匿名支持
+1.2.6:初始化
+1.2.7:上下文建立期间Per-Message的保护
+1.2.8:实现的健壮性
+2:接口描述
+2.1:信用状管理调用
+2.1.1:GSS_Acquire_cred 调用
+2.1.2:GSS_Release_cred 调用
+2.1.3:GSS_Inquire_cred 调用
+2.1.4:GSS_Add_cred 调用
+2.1.5:GSS_Inquire_cred_by_mech 调用
+2.2:上下文级调用
+2.2.1:GSS_Init_sec_context 调用
+2.2.2:GSS_Accept_sec_context 调用
+2.2.3:GSS_Delete_sec_context 调用
+2.2.4:GSS_Process_context_token 调用
+2.2.5:GSS_Context_time 调用
+2.2.6:GSS_Inqiure_context 调用
+2.2.7:GSS_Wrap_size_limit 调用
+2.2.8:GSS_Export_sec_context 调用
+2.2.9:GSS_Import_sec_context 调用
+2.3:Per-Message调用
+2.3.1:GSS_GetMIC 调用
+2.3.2:GSS_VerifyMIC 调用
+2.3.3:GSS_Wrap 调用
+2.3.4:GSS_UnWrap 调用
+2.4:支持调用
+2.4.1:GSS_Display_status 调用
+2.4.2:GSS_Indicate_mechs 调用
+2.4.3:GSS_Compare_name 调用
+2.4.4:GSS_Display_name 调用
+2.4.5:GSS_Import_name 调用
+2.4.6:GSS_Release_name 调用
+2.4.7:GSS_Release_buffer 调用
+2.4.8:GSS_Release_OID_set 调用
+2.4.9:GSS_Create_empty_OID_set 调用
+2.4.10:GSS_Add_OID_set_member 调用
+2.4.11:GSS_Test_OID_set_member 调用
+2.4.12:GSS_Release_OID 调用
+2.4.13:GSS_OID_to_str 调用
+2.4.14:GSS_Str_to_OID 调用
+2.4.15:GSS_Inquire_names_for_mech 调用
+2.4.16:GSS_Inquire_mechs_for_name 调用
+2.4.17:GSS_Canonicalize_name 调用
+2.4.18:GSS_Duplicate_name 调用
+3:GSS-API V2使用的数据结构定义
+3.1:机制独立的Token格式
+3.2:机制独立的输出名字对象(Exported Name Object)格式
+4:名字类型定义
+4.1:主机名字服务形式
+4.2:用户名字形式
+4.3:机器UID形式
+4.4:字符串UID形式
+5:特定机制的例子说明
+5.1:Kerberos V5,单独TGT
+5.2:Kerberos V5,双重TGT
+5.3:X.509认证框架
+6:安全考虑
+7:有关内容
+附录A:机制设计约束
+附录B:和GSS-V1的兼容性
+1:GSS-API的特征和概念
+GSS-API在下列模式中使用。一个典型的GSS-API调用者是通讯协议本身，调用GSS-API，
+用可信性、完整性和机密性的安全服务来保护他的通讯。调用者接受一个本地GSS-API实现提
+供的一个令牌，并且把令牌传送给远程系统的对应方；对方接收令牌并把其传送给他的GSS-API
+本地实现处理。通过GSS-API这种方式实现的可用的安全服务在基于公钥和私钥的底层加密技
+术的多种机制上可实现的。
+GSS-API把双方安全上下文初始化操作从使用上下文的pre_message数据源认证操作和保
+护传送消息的完整性操作中分离开来。（初始化操作——GSS_Init_sec_context()和
+GSS_Accept_sec_context()调用；数据源认证操作和保护传送消息的完整性操作——
+GSS_GetMIC()和GSS_VerifyMIC()调用）（这个安全服务定义，和其他在这篇文档中使用的定义，
+对应于ISO74982-2-1988（E）提供的标准，安全体系结构）。当建立安全上下文时，GSS-API允
+许上下文发起者可选的使用它的信任状，这意味着上下文的接收者可以根据发起者的行为来初
+始化安全上下文。Pre_message的GSS_Wrap()和GSS_Unwrap()调用提供了数据源的认证，数据
+完整性的服务（同GSS_GetMIC()和GSS_VerifyMIC()提供的），也提供加密服务的选择——作为
+在调用时的选项。其他调用为GSS-API使用者提供支持功能。
+以下段落提供一个例子说明使用GSS-API涉及的数据流程——被客户端和服务器通过一种
+机制独立的方式使用，来建立安全上下文和传输被保护的数据。这个例子假设已经获得信用状。
+这个例子假设底层认证技术能够使用一个Token中载有的元素认定客户（向服务器），同时使用
+一个返回的Token向客户端认证服务器（互相认证）；这个假设对当前的CAT文档的机制成立，
+但对于其他的加密技术和相关协议不一定为成立。
+客户调用GSS_Init_sec_context()和用targ_name表示的服务器建立一个安全上下文，并
+且设置mutual_req_flag，因而在上下文建立过程中完成互相认证。GSS_Init_sec_context()
+返回一个output_token传递给服务器，并且指示GSS_S_CONTINUE_NEEDED状态以等待互相认证
+的顺序完成。如果mutual_req_flag没有被设置，初始化调用GSS_Init_sec_context()将返回
+GSS_S_COMPLETE状态。客户发送output_token给服务器端。
+服务器传递接收到的Token作为GSS_Accept_sec_context()的输入参数input_token。
+GSS_Accept_sec_context()显示GSS_S_COMPLETE状态，根据src_name认证客户的标识，并且
+生成将要传递给客户的output_token。服务端传递output_token给客户。
+客户把接收到的Token传递给GSS_Init_sec_context()作为后续调用的input_token参数,
+它处理Token中的数据以完成从客户发起的互相认证。这次调用GSS_Init_sec_context()返回
+GSS_S_COMPLETE状态，表示成功的互相认证和上下文建立的完成。
+客户端产生数据消息并且把它传递个GSS_Wrap()，GSS_Wrap()完成数据源的认证，数据完
+整性，（可选的）消息的加密处理，封装结果为output_message，标识GSS_S_COMPLETE状态。
+客户端发送output_message给服务器端。
+服务器端传递接收到的消息给GSS_Unwrap().GSS_Unwrap()解封装，如果消息加密了就解
+密，并且验证数据源的可信性和数据完整性的检查。GSS_Unwrap()通过返回GSS_S_COMPLETE状
+态表示成功确认，同时返回结果output_message。
+为了说明这个例子，我们假设服务端表示“out-of-band”的意思为：当在一个被保护的消
+息从客户端传送到服务端后，这个上下文将不被使用了。在这个前提下，服务端调用
+GSS_Delete_sec_context以更新上下文级的信息。可选的，服务端的应用可以提供一个token
+缓存给GSS_Delee_sec_context()，以接收一个context_token，传递给客户端，请求客户端将
+上下文级信息删除。
+如果接收到一个服务器传送来的context_token，客户端传递context_token给
+GSS_Peocess_context_token（）——它在客户端系统上删除上下文级消息后返回
+GSS_S_COMPLETE状态。
+GSS-API的设计假定和强调以下几个基本目标：
+机制独立：GSS-API定义了一个接口来使用密码技术实现强壮的认证和其他安全服务—
+—在独立于特定的底层机制的通用层上。例如，GSS-API提供的服务可以被密钥技术实现（例
+如，Kerberos）或者公钥技术实现（例如 X.509）。
+协议环境独立：GSS-API独立于使用它的通讯协议组，允许在多种协议环境中使用。在
+适当的环境中，一个中介的实现"veneer"——它是面向一个特定的通讯协议（例如，RPC）的，
+可以被提出——在调用那个协议和GSS-API的应用程序中间，因此GSS-API功能的起用和协议
+通讯的起用是同步的。
+协议联合的独立：GSS-API安全上下文构造是独立于通讯协议相关的构造的。这个特点
+允许单独的GSS-API实现可以被多种协议模块使用，以利于调用这些模块的应用程序。GSS-API
+服务也可以被应用程序直接调用，完全独立于协议关联。
+适应多种实现：GSS-API客户不是被限制存在于实现GSS-API的系统定义的TCB（Trusted 
+Computing Base）范围内；安全服务被以一种既适应intra-TCB调用，又适用extra-TCB调用
+的方式说明。
+1.1:GSS-API构造
+这节描述组成GSS-API的基本元素。
+1.1.1:信任状
+1.1.1.1:信任状构造和概念
+信任状提供了允许使用GSS-API的双方建立安全上下文的先决条件。调用者可以指定用于
+上下文发起或者接收的默认的信任状元素。另一方面，需要对特定的信任状结构做出明显的选
+定的GSS-API调用者，可以通过GSS-API提供的信任状句柄（cred_handles）对信任状引用。
+在任何一种情况，调用者的信任状引用都是间接的，被GSS-API的实现维护，并且不要求调用
+着访问选定的信任状元素。
+一个单独的信任状结构可以用于开始一个输出的上下文，接收输入的上下文。当信任状为
+使用而被获得时，需要在这些模式的操作的调用者可以指定这种情况：允许底层机制优化他们
+的处理过程和存储要求。一个特定机制定义的信任状元素可以包含多个加密密钥，例如，使用
+不同算法用于完成认证和消息加密的密钥。
+一个GSS-API信任状结构可以包含多个信任元素，每个都包含特定底层机制的识别信息
+（mech_type）,但一个给定信任状结构中的元素集都代表同一个实体。一个信任状结构的内容
+将根据特定的GSS-API实现所支持的mech_type集而不同。每个信任状元素表示被它的机制需
+求以建立上下文（在特定主体上）的数据，和用于上下文发起、上下文接收时使用的独立的信
+任状引用。给定信任状中的多个信任状元素重叠机制、使用模式和有效期的组合是不允许的。
+一般的，一个单独的mech_type用于在特定的发起者和特定的目标间建立所有的安全上下
+文。支持代表多个mech_type的信任状元素集的主要目的是允许一个系统的发起者（支持多种
+类型）向目标发起上下文，目标只提供支持发起者系统支持集合的一个子集。
+1.1.1.2:信任状管理
+一个底层系统特定的机制和位于GSS-API底层的OS功能的责任是保证获得和使用信任状—
+—关联它的特定实体在系统中被制约于适当处理过程。这个责任应该被实现者认真对待，作为
+一个实体使用主体信任状的能力等同于这个实体成功声明主体身份的能力。
+一旦GSS-API的信任状集建立起来，信任集到系统中其他处理或者类似结构的传递性是一
+个本地问题，没有被GSS-API定义。例如，一个本地策略是信任状被作为一个给定帐户login
+的结果被接收，或者代表那个帐户的使用权利，以被在那个帐户下运行的其他进程访问或者传
+递。
+信任状的建立进程（特别是用户完成的行为而不是服务器过程时）可能要求访问密码或者
+其他被本地保护的东西，并且暴露尽可能少的时间。结果，通过本地方式，在用户login时执
+行预备信任状的建立过程被是合适的，它的结果被缓存以用于以后引用。这个预备信任状为后
+来的使用将被保留（以系统说明方式），或者：
+当调用GSS-API的GSS_Acquire_cred()时被访问，返回一个显示的信任状引用句柄。
+构成将被安装的默认的信任状元素，并且在处理中要求一个默认的信任状时被使用。
+1.1.1.3:默认的信任状解析
+gss_init_sec_context()和gss_accept_sec_context例程允许值GSS_C_NO_CREDENTIAL被
+说明作为其信任状参数。这个特定的信任状句柄表示应用程序需要的作为默认主题。当特定的
+GSS-API实现与判定默认适当机制的行为无关时，推荐使用以下例程的默认行为，以利于移植
+性：
+GSS_Init_sec_context:
+(i)如果只有一个单独的主体能发起安全上下文——是他的应用程序授权使用的行为，则这
+个主体被使用，否则
+(ii)如果平台维护一个默认的网络标识，并且如果应用程序被授权具有为了发起安全上下
+文标识的行为，则对应那个标识的主体被使用，否则
+(iii) 如果平台维护一个默认的本地标识，并且提供把本地标识转换为网络标识的手段，
+并且如果应用程序被授权具有为了发起安全上下文标识的应像网络标识到本地默认标识的行
+为，则对应那个标识的主体被使用，否则
+(iv)一个用户配置的默认标识将被使用。
+GSS_Accept_sec_context:
+(i)如果只有一个单独的经过认证的主体标识具有接收安全上下文的能力，则这个主体将被
+使用，否则
+(ii)如果机制能够通过检查上下文建立的Token判定目标主体的标识，并且如果接收应用
+程序被授权作为接收安全上下文的主体，则主题标识被使用，否则
+(iii) 如果机制支持任何主体接收上下文，并且没有互相认证，任何应用程序被授能接收
+安全上下文的主体都可以被使用，否则
+(iv)一个用户配置的默认标识将被使用。
+以上规则的目的是在任何可能的情况下允许发起者和接收者使用默认的行为建立安全上下
+文。应用程序使用默认行为比使用GSS_Acquire_cred来取得一个特定标识更容易跨机制和平台
+的移植。
+1.1.2:令牌
+令牌是传递在GSS-API调用者间的数据元素，并且分为两类。上下文令牌被交换以用来在
+双方间建立和管理安全上下文。Per_message 令牌和特定的上下文关联并且被交换以提供对对
+应数据安全服务（数据源的认证、完整性、可选择的机密性）。
+第一个上下文级标识（从GSS_Init_sec_context()获得）是被要求在开始的部分必须表示
+出一个个全局可解释的机制标识符，例如，一个安全机制的对象标识符（OID）。令牌的其余部
+分和其他令牌的整个内容一样，说明一个使用的特定底层机制以支持GSS-API。这篇文章的第
+三部分为GSS-API支持机制的设计者提供第一个上下文级令牌的头部描述，随后跟随机制说明
+消息。
+令牌内容从GSS-API调用者来看是不透明的。他们在最终系统的GSS-API实现中产生，提
+供给调用着传递给远程系统对应的GSS-API调用者，并且被远端的GSS-API实现者处理。令牌
+被GSS-API调用输出（并且被传递给对方的GSS-API调用），调用返回的状态标识说明调用是否
+成功完成。令牌传递可以以in-band的方式发生，集成到被GSS-API调用者使用的传送其他数
+据的同一个流中，或者以out-of-badn方式跨越逻辑分离的通道。
+不同的GSS-API 令牌用于不同的目的（例如，上下文发起、上下文接收、在一个已建立的
+上下文上保护消息数据等），并且GSS-API的调用有责任区分接收到的令牌类型,使用对应的安
+全上下文关联他们，传递他们给适当的GSS-API处理例程。根据调用者的协议环境，这些区分
+可以有以下几种方式完成。以下例子说明区分令牌类型的手段：
+——基于语句信息的隐式标志（例如，一个新联合中的所有令牌将被认为上下文建立令牌
+直到上下文建立完成，在此之后，所有的令牌将被认为是使用那个上下文处理的数据对象）
+——在调用协议层显示的标识
+——这些方法的混合物
+一般的，在令牌中封装的数据包括内部的机制标志信息，使机制层处理模块能够区分令牌
+在机制中不同的用途。这种内部的机制层标志推荐给机制的设计者，并且使机制可以判断一个
+调用者是否传递一个特定的令牌给一个不适当的GSS-API例程处理。
+基于特定底层加密技术和协议的基本元素，支持这些的基本元素的GSS-API的开发并不意
+味着使用这种GSS-API机制的GSS-API调用者能够和使用同样技术和协议的的对方在GSS-API
+范围之外进行互操作，或者和一个基于同样底层技术的实现不同机制的对方进行互操作。
+GSS-API 令牌的格式定义是和特定的机制联合的，并且集成这些令牌到调用者协议的技术，不
+能和基于相同技术的非GSS-API调用令牌互操作。
+1.1.3:安全上下文
+安全上下文在双方间被建立，联合使用每方本地建立的信任状或者是通过代表接收的信任
+状。多个上下文在一对双方间可同时存在，使用相同或者不同的信任状集。当信任过期时，使
+用不同信任状的多个上下文共存有利于延续。基于相同信任状的多个上下文间的区分是通过区
+分在安全情形中不同的信息流来服务于程序。
+GSS-API是独立与底层协议和地址结构的，通过它的调用者来传输GSS-API所提供的数据
+元素。作为这些因素的结果，调用者的责任是分析通讯消息，从调用者提供的数据元素中分离
+出GSS-API相关的数据元素。GSS-API是独立于面向连接或者非连接的底层通讯服务的。
+在安全上下文和相关通讯协议联合间没有任何相互关系被规定（可选的通道绑定功能，在
+文档中的1.1.6节中讨论，代表这个规则的一个故意例外，在GSS-API支持的机制中支持额外
+的保护特性）。这种分离特性允许GSS-API可以被使用在一个广范围的通讯环境中。并且简化了
+单个调用的调用顺序。在多种场合（依赖于底层安全协议，和机制相关，并且和缓存信息的可
+用性相关），用于上下文设置的语句信息可以和原始签名的用户数据同时发送，而不用提取额外
+的信息交换。
+1.1.4:机制类型
+为了成功的与目标方建立安全上下文，对发起方和目标方都支持底层机制类型（mech_type）
+进行标识是必须的。机制的定义不仅包含使用特定的加密技术（或者混合的或者可选择的加密
+技术），并且也定义数据元素（机制将要使用的以支持安全服务）交换的语法和语义。
+建议调用者发起上下文时说明默认的mech_type_value，允许系统特定的功能或者被
+GSS-API实现者调用的功能来选择适当的mech_type，但调用者可以在需要时直接使用特定的
+mech_type。
+在不同的环境中，与对方建立安全上下文时标识共享mech_type的方法将改变。例子包括
+（但不限于）：
+使用固定的mech_type，在环境中的配置文件定义
+基于目标说明的语义规范，通过检查目标名字
+在名字服务或其他数据库中查找目标名字以标识被目标支持的mech_types
+显示的在GSS-API调用者间握手以便于安全上下文的设置
+当在GSS-API双方间传送时，mech_type说明符（在3节，表示为对象标识符OIDs）服务
+限定于限定相关标识的解释。（对象标识符的结构和编码定义在ISO/ICE8824，ASN.1规范和
+ISO/ICE8825为ASN.1的BER说明）使用分层次的结构OIDs以排除关于mech_type说明符的不
+准确的解释。例如，代表DASS mech_type的OID，是1.3.12.2.1011.7.5，是Kerberos V5机
+制的，更进一步先进级是1.2.840.113554.1.2.2。
+1.1.5:命名
+GSS-API避免指定名字结构，把用以发起或者接收安全上下文而跨接口传递的名字看作完
+整（透明）的对象。这个方法支持了GSS-API在多种底层安全机制之上实现的目标，不同的机
+制处理和认证具有不同的形式的名字。在任意的名字环境集合中提供通用的名字转换功能服务
+超出了GSS-API的范围；在一个特定最终系统上，支持名字形式之间转换的本地功能和可用性
+是被希望的。
+通过不同的GSS-API参数使用不同的名字类别。
+——内部形式（在此文档中表示为INTERNAL NAME），对调用者是透明的，由每个具体的
+GSS-API实现定义。支持的多重名字空间类型的GSS-API实现必须维护内部标签以明确解释给
+定的名字。机制名（MN）是一个特殊的INTERNAL NAME实例，保证包含的元素只对应一个机制。
+在此规范中，保证发出MN或者要求MN作为输入的函数调用被说明。
+——连续的串（"flat"）形式(在此文档中标识为OCTET STRING)；被OID标签伴随以标
+识所对应的名字空间。根据标签的值，flat名字可以是被显示的或不是可显示的串，以用于直
+接被接收或者显示给最终用户。Flat名字的标标签允许GSS-API调用者和底层GSS-API机制区
+分名字类型以判定是否有能力处理相关的名字类型，避免因为错误解释一个类型名字为另一个
+名字类型而导致的别名问题。
+——GSS-API输出名字对象（Export Name Object），一个flat名字的特殊实例，被特定
+的OID值标识，载有有适于二进制比较的规范形式的名字。
+除了提供以类型标识名字的方式外，这个规范为特定的应用程序调用还定义了一些基本元
+素以支持命名环境的独立性。为了使调用者不需要自己解释名字的内部语法或者语义，为他们
+提供了一些基本的服务，定义的调用函数包括：用于名字比较的GSS_Compare_name()，用于显
+示名字可读串的GSS_Display_name()，用于转换输入的GSS_Import_name()，用于内部名字释
+放的GSS_Release_name()和内部名字复制的GSS_Duplicate_name()。（期望这些提出的
+GSS-API调用函数在多个最终系统上被实现，实现基于这些最终系统内现存在的维护系统特定
+类型名字的基本功能；                          也包括希望GSS-API提供给GSS-API调用
+者可移植的方式以完成特定的操作，在认证的名字上支持授权和审核要求。）
+GSS_Import_name()实现可以支持给定名字空间多个可打印句法（例如，多种可选择的X.509 
+DN名字的表示），允许调用者机动的选择一种表示形式。GSS_Display_name()实现输出一个选
+定的、适应他们操作环境的可打印句法；选择是一个本地问题。对于希望具有跨越多个可选择
+的打印语法可移植性的调用者，应该避免基于可打印名字形式的名字比较实现，而应该使用
+GSS_Compare_name()调用来判定一个内部格式的名字是否和另外一个匹配。
+GSS_Canonicalize_name()和GSS_Export_name()可以使调用者获得和处理一个Exported 
+Name Object，规范和转化依据于一个特定的GSS_API机制的处理过程。Exported Name Object
+也可以作为GSS_Import_name()的输入，产生一个等价的MNs。设计的这些功能是为了高效的存
+储和比较名字（例如，在访问控制列表中使用）。
+以下图表说明了名字相关的GSS-API处理函数的期望的数据流程。
+
+                        GSS-API library defaults
+                               |
+                               |
+                               V                         text, for
+   text --------------&gt;  internal_name (IN) -----------&gt; display only
+         import_name()          /          display_name()
+                               /
+                              /
+                             /
+    accept_sec_context()    /
+          |                /
+          |               /
+          |              /  canonicalize_name()
+          |             /
+          |            /
+          |           /
+          |          /
+          |         /
+          |        |
+          V        V     &lt;---------------------
+    single mechanism        import_name()         exported name: flat
+    internal_name (MN)                            binary "blob" usable
+                         ----------------------&gt;  for access control
+                            export_name()
+
+1.1.6:通道绑定
+GSS-API允许调用者提供通道绑定（chan_binding）信息的概念。在上下文建立期间，通
+过使用通道绑定加强质量，用以提供双方间的实体鉴别——通过限制范围（在范围中攻击者截
+取的上下文建立令牌能被拒绝）。特别的，他们可以使GSS-API调用者把一些底层通讯通道（保
+护的机制使用此通讯通道）的相关特性（例如，地址，加密密钥的传输表现形式）绑定给安全
+上下文建立，也可以绑定应用程序相关的数据。
+发起安全上下文的调用者必须判定合适的通道绑定的值以提供给GSS_Init_sec_context()
+调用作为输入，并且相同的值必须被上下文目标提供给GSS_Accept_sec_context()——为了使
+双方的GSS-API机制来验证接收到的令牌是否正确处理了通道相关特性。使用或者不使用
+GSS-API通道绑定功能由调用者选择。GSS-API可以在一个通道绑定表示为NULL的环境中工作。
+鼓励实现者在他们的机制中使用调用者提供的通道绑定数据，但不是必须要求。调用者不能假
+设底层机制为通道绑定消息提供机密保护。
+当非空的通道绑定被调用者提供时，通过解析绑定的内容可以增强安全（不是通过简单重
+现这些在令牌内的绑定值或者通过对他们计算来检查完整性），并且依靠在定义的格式中的特定
+数据来表现。到最后，机制实现者间同意定义通道绑定参数内容的通用解释，包括上下文发起
+者和接收者的地址说明符（内容依赖于通讯协议环境）。（这些约定被写进GSS-API机制说明和
+GSS-API C语言绑定说明中。）为了GSS-API调用者可以在多个机制间移植并且对每一个机制提
+供的安全功能完全的使用，强烈推荐GSS-API调用者提供和这些约定以及和他们所操作的网络
+环境一致的通道绑定。
+1.2:GSS-API的特点和发布
+这节描述了关于GSS-API的操作，GSS-API提供的安全服务和设计文档的注释。
+1.2.1:状态报告
+每个GSS-API调用提供两个状态以返回值，主状态值提供一个机制独立的调用状态标识（例
+如：GSS_S_COMPLETE，GSS_S_FAILURE，GSS_S_CONTINUE_NEEDED），足够使一个调用者以普通方
+式驱动一个普通的控制流程。表1以表格方式总结了定义的major_status返回码。
+表1 GSS-API主要的状态编码
+致命的错误编码
+GSS_S_BAD_BINDINGS                                 通道绑定错位
+GSS_S_BAD_MECH                                     不支持要求的机制
+GSS_S_BAD_NAME                                     提供的名字无效
+GSS_S_BAD_NAMETYPE                                 提供了不支持的名字类型
+GSS_S_BAD_STATUS                                   无效的输入状态选择
+GSS_S_BAD_SIG                                      令牌含有无效的完整性检查
+GSS_S_CONTEXT_EXPIRED                              指定的安全上下文过期
+GSS_S_CREDENTIALS_EXPIRED                          信任状过期
+GSS_S_DEFECTIVE_CREDENTIALS                        有缺陷的信任状
+GSS_S_DEFECTIVE_TOKEN                              有缺陷的Token
+GSS_S_FAILURE                                      GSS-API层未说明的错误
+GSS_S_NO_CONTEXT                                   没有指定有效的安全上下文
+GSS_S_NO_CRED                                      没有提供有效的信任状
+GSS_S_BAD_QOP                                      不支持的QOP值
+GSS_S_UNAUTHORIZED                                 操作未授权
+GSS_S_UNAVAILABLE                                  操作无效
+GSS_S_DUPLICATE_ELEMENT                            要求的信任元素重复
+GSS_S_NAME_NOT_MN                                  名字包含多机制元素
+
+消息状态编码
+GSS_S_COMPLETE                                     正常结束
+GSS_S_CONTINUE_NEEDED                              需要继续调用例程
+GSS_S_DUPLICATE_TOKEN                              重复的Pre-message Token
+GSS_S_OLD_TOKEN                                    过期的Pre-message Token
+GSS_S_UNSEQ_TOKEN                                  滞后的Pre-message Token
+GSS_S_GAP_TOKEN                                    超前的Pre-message Token
+
+Minor_status提供更详细的状态信息——包含底层安全机制特定的状态编码信息。
+Minor_status的值在这篇文档中没有说明。
+GSS_Init_sec_context()和GSS_Accept_sec_context()调用提供GSS_S_CONTINUE_NEEDED 
+major_status 返回和可选的消息输出，所以在应用程序中，机制使用的不同数量的消息不需要
+以单独的编码路径反映。另外，这种情况也提供给顺序的调用GSS_Init_sec_context()和
+GSS_Accept_sec_context()。在GSS-API的上下文初始化调用中，同样的机制被使用用来包装
+多方认定。
+对于那些为了建立安全上下文而需要和第三方服务器进行互操作的的mech_types，GSS-API
+上下文建立调用可以阻碍与第三方交互挂起的完成。
+另一方面，没有任何GSS-API调用挂起于和对方的GSS-API实体的连续互操作。所以，本
+地的GSS-API的状态返回不能反映发生在远程对应系统上的不可预知的或是同步的例外，反映
+这种状态信息是GSS-API之外的GSS-API调用者的责任。
+1.2.2:Pre-Message安全服务可用性
+当一个安全上下文建立后，两个标志被返回以标识在上下文上可用的Pre-Message保护安
+全服务集：
+integ_avail标志标识Pre-Message的完整性和数据源认证服务是可用的
+conf_avail标志标识Pre-Message的机密服务是可用的，并且如果integ_avail不返回
+TRUE，它也将不能返回TRUE。
+GSS-API调用者希望预消息安全服务能够在上下文建立时检查这些标志的值，并且必须知
+道integ_avail返回FALSE值意味着调用GSS_GetMIC()或者GSS_Wrap()（基于相关的上下文）
+时对用户数据消息没有任何加密保护。
+GSS-API的预消息完整性和数据源的认定服务对接收的调用者提供了一种保证——在安全
+上下文上对方对消息应用了保护，对应于上下文在初始化时命名的实体。GSS-API预消息机密
+服务对调用发送者提供了保证——消息内容被保护从可访问者那里，而不是上下文命名的对方。
+GSS-API预消息保护服务，作为名字应用的类别，是面向于协议数据单元尺寸操作的。他
+们对单元数据的加密操作，在标识中传递加密控制信息，并且在GSS_Wrap中，包装数据单元。
+这些简单的功能不是面向高效率的流范例协议的数据保护（例如telnet），如果加密必须应用
+八进制到八进制基础上。
+1.2.3:预消息重发的检测和序列
+某些底层的mech_type在支持的上下文基础上提供对消息的重发检测和消息的顺序发送的
+支持。这些可选择的保护特性与上下文建立操作本身的重发检测和顺序特性是不同的。是否存
+在在上下文级的重发或者顺序特性是底层机制类型功能下的一个完整的功能，并且不是可以被
+调用者选用或者忽略的
+调用者初始化上下文提供的标志（replay_det_req_flag和sequence_req_flag）定义是否在上
+下文建立时使用预消息的重发检测和顺序特性，。发起方系统的GSS-API实现能决定作为机制类
+型的功能是否支持这些特性，而不需要和对方协商。当启动这些功能时，这些特性向接收者提
+供一个标志--做为GSS-API处理输入信息的结果，标识这些信息是否被检测到有重复或是顺序
+不对。检测这些事件不能防止可疑信息发给接收者；对于可疑信息的正确的处理过程是一个调
+用者的策略。
+应用于接收消息的重复检测和顺序服务的语义，作为可见的跨接口由GSS-API提供给它的
+客户端，内容如下：
+当replay_det_state是TRUE时，可能的major_status返回（为了正确的形式和正确的消
+息签名）为以下内容：
+1.GSS_S_COMPLETE标识窗口（时间和空间顺序）内消息允许重复事件被检测，并且当前消
+息不是那个窗口以前处理的消息的回应。
+2	.GSS_S_DUPLICATE_TOKEN表示接收到消息上的加密校验值是正确的，但此消息被认为是以
+前处理过消息的一个重复。
+3.GSS_S_OLD_TOKEN表示接收到消息上的加密校验值是正确的，但那条消息用于检测重发
+已经过期了。
+当sequence_state是TRUE时，格式和签名正确的消息的major_state可能的返回值如下：
+1.GSS_S_COMPLETE标识窗口（时间和空间顺序）内消息允许重复事件被检测，并且当前消
+息不是那个窗口以前处理的消息的回应。并且没有以前处理过的消息丢失（相对于最后接到的
+消息——已经在上下文上用正确的加密检测值处理过）。
+2.GSS_S_DUPLICATE_TOKEN标识在已经接收到的消息上的完整性值检测是正确的。但这条
+消息被认为是以前处理消息的一个重复。
+3. GSS_S_OLD_TOKEN表示接收到消息上的完整性校验值是正确的，但那条消息用于检测重
+发已经过期了。
+4.GSS_S_UNSEQ_TOKEN标识在已接收消息上的加密校验值是正确的，但是对于在上下文上
+已经处理过的消息来说，他在顺序流上提前的。[注意：机制可以被建立以提供严格的顺序服务
+形式，传送一条特定的信息只有在所有的以前处理过的消息以正确的顺序传递之后。这种支持
+类型和GSS-API的情形（接收者接收所有消息，不管是否按顺序，提供他们给GSS-API函数确
+认——只在每次时，不包括GSS-API内的缓存中的消息）是矛盾的。GSS-API工具提供的支持
+功能，帮助客户端完成严格的消息流完整性检测——由通讯协议提供的，和顺序联合，以一种
+高效率的方式，但是GSS-API本身不提供在此级别上的流完整性检测服务。
+5.GSS_S_GAP_TOKEN标识在已接收消息上的加密校验值是正确的，但是相对于最后接收到
+的并且在上下文上有一个正确的加密检测值的消息来说，一个或者多个以前顺序的消息没有被
+成功处理。
+作为消息流完整性特点（特别是顺序）可以和特定的应用程序通讯范例接口，并且支持可
+能的资源特性，强烈推荐mech_type支持这些特性——当上下文建立时，允许他们对于发起者
+请求有选择的激活。上下文的发起者和接收者提供相应的指示器（replay_det_state和
+sequence_state）,表示这些特性在一个特定的上下文上是否激活。
+一个mech_type支持的预消息重发检测例子可以（当replay_det_state是TRUE时）实现
+以下特性：底层机制可以通过GSS_GetMIC和GSS_Wrap来插入时间戳到输出的数据元素中，并
+且维护（在一个时限窗口内）一个缓存（被发起者-接收者对限制）标志接收到的数据被
+GSS_VerifyMIC和GSS_Unwrap处理过。当这些特性激活时，例外状态返回
+（GSS_S_DUPLICATE_TOKEN和GSS_S_OLD_TOKEN）将被提供——当GSS_VerifyMIC和GSS_Unwrap
+和消息一起出现时，用来检测重复的以前消息或者验证最近接收到的消息在缓存中是否过期。
+1.2.4:保护质量
+一些mech_types提供给他们的用户以很好的控制方式用来对pre-message进行保护。允许
+调用者为特定消息的保护请求可选的动态安全保护。一个预消息保护质量参数（类似于服务质
+量，或者QOS）在当前机制支持的不同的QOP中选择。在多QOP的mech_type的上下文建立时，
+上下文级的数据提供多保护质量的前提数据。
+普遍认为调用者中的多数不希望去直接的说明机制特定的QOP控制，而要求选择一个默认
+的QOP。QOP值的定义、选择和非默认的值是机制相关的，并且不同的机制没有相同的QOP值序。
+非默认QOP值的使用的意义要求调用者熟悉机制的QOP定义，和非可移植的结构。GSS_S_BAD_QOP
+的major_state值被定义以标识一个给定的QOP值不被安全上下文支持，大多数是因为值不被
+底层机制识别。
+1.2.5:匿名支持
+在有些环境中，一个应用程序希望认定对方并且/或者通过使用GSS-API的Pre-Message服
+务来保护通讯，但却不暴露自己的标识。例如，考虑一个应用，他提供读访问一个科研数据库，
+并且允许任意的请求者查询。这种服务的客户希望认证服务端，但是因为私人原因不希望把自
+己的标识透漏给服务端。
+在普通的GSS-API使用中，上下文发起者的标识作为上下文建立过程的一部分对于上下文
+的接收者有效的。为了提供匿名支持，一个功能（输入anon_req_foag给
+GSS_Init_sec_context()）被提供，通过他，上下文发起者可以要求他们的标识不提供给上下
+文接收者。机制没有被要求有这个需求，但是调用者将被通知（通过从GSS_Init_sec_context()
+返回的anon_state标识）这个要求是否可用。在匿名中，作为匿名原则不需要实现认证意味着
+为了建立安全上下文的信任状不是必须的。
+以下的对象标识符(OID)被提供表示匿名名字的方法，并且可以被用于比较，以用于检测在
+机制独立的情况下，一个名字是否代表一个匿名用户：
+{1(iso), 3(org), 6(dod), 1(internet), 5(security), 6(nametypes), 
+3(gss_anonymous_name)}
+对应于这个定义的推荐的符号名是GSS_C_NT_ANONYMOUS
+anon_state和mutual_state的四种可能的组合如下：
+anon_state == FALSE, mutual_state == FALSE:发起者证明给目标
+anon_state == FALSE, mutual_state == TRUE: 发起者证明给目标，目标证明给发起者
+anon_state == TRUE, mutual_state == FALSE:发起者作为匿者证明给目标
+anon_state == TRUE, mutual_state == TRUE: 发起者作为匿者证明给目标，目标证明给发起
+者
+1.2.6:初始化
+GSS-API没有定义任何初始化调用（例如，在接口中，调用必须优先于其他调用）。这种情
+况意味着，GSS-API实现必须能够自己自初始化。
+1.2.7:上下文建立期间的预消息保护
+当安全上下文的建立是在GSS_S_CONTINUE_NEEDED状态时，一个工具在GSS-V2中定义以保
+护和缓存数据信息，以用于这种场合——调用方已经拥有处理过程需要的会话密钥。特别的，
+一个新的布尔状态，叫prot_ready_state，被加入到GSS_Init_sec_context、
+GSS_Accept_sec_context、GSS_Inquire_context返回的信息集中，
+对于上下文建立调用，这个状态布尔值是有效的和可解释的，当相关的major_status是
+GSS_S_CONTINUE_NEEDED或者是GSS_S_COMPLETE。GSS-API的调用者（发起者和接收者）可以
+设想预消息保护（由GSS_Wrap，GSS_Unwrap，GSS_GetMIC，GSS_VerifyMIC）是可用的并且对
+以下情况是准备好的：port_ready_state==TRUE或者major_status==GSS_S_COMPLETE，尽管在
+GSS_S_COMPLETE返回前互相认证不能被保证。
+这篇文档完全的、向后兼容的——对于GSS-API V1调用者，他们不需要知道port_ready_state
+的存在，将从GSS_S_COMPLETE中获得需要的行为，但他们在GSS_S_COMPLETE返回前不能使用
+预消息保护。
+在完成上下文建立前，GSS_V2机制返回TRUE的port_ready_state不是必须要求的（事实上，
+有些机制不能发展使用消息保护密钥，特别是上下文接收者，在上下文建立完成之前）。它是被
+希望的，而不是必须的：在完成上下文建立基础之上，GSS-API V2机制将返回值为TRUE的
+port_ready_state，如果他们支持预消息保护（事实上，GSS-V2应用程序不应该假设值为TRUE
+的port_ready_state总是和GSS_S_COMPLETE的major_state一起返回，因为GSS-V2实现可能
+继续支持GSS-V1机制代码，而GSS-V1永远不返回TRUE port_ready_state）
+当port_ready_state返回TRUE时，机制将设置这些上下文服务标识标志（deleg_state，
+mutual_state，replay_det_state，sequence_state，anon_state，trans_state，conf_avail，
+integ_avail）代表工具的确定性，在那时，在上下文建立时变得可用。在port_ready_state
+先于GSS_S_COMPLETE返回的情况下，在GSS_S_COMPLETE返回时，额外的功能被确认和随后表
+示是可能的。
+1.2.8:实现的强壮性
+这节推荐一些GSS-API有利于健壮实现方面的行为。
+在一个GSS-API安全上下文中，如果一个Token为了处理而被表示，并且对那个上下文，
+此标识被检测为无效的，为了处理以后的有效的标识，上下文状态不能被中断。
+在GSS-API实现中，一些本地条件被排除（例如，不可用的存储器），临时的或是永久的，
+在GSS-API安全上下文标识的成功处理上，通常产生GSS_S_FAILURE 的major_status返回，
+伴随着本地的 minor_status。在此条件下，为了强壮的操作，以下建议：
+调用错误时应该释放任何他占用的资源，因此调用者可以再次调用，而不用担心失去更多
+的资源。
+在一个已建立的安全上下文上的一个单独调用的失败不应排除相同安全上下文的后续调
+用。
+在任何可能的时候，对于GSS_Delete_sec_context调用将成功处理，即使其他调用不能成
+功执行，因此，上下文相关的资源可以被释放。
+2:接口描述
+这节描述GSS-API的服务接口，把提供的调用分为4组。信任状管理调用涉及主体获得和
+释放信任状。上下文级调用涉及管理主体间的安全上下文。Per-message调用涉及在已建立的
+安全上下文上保护单独的信息。支持调用为GSS-API的调用者提供一些辅助性的功能。表2以
+表格的形式分类和总结了调用。
+表 2:GSS-API调用
+信任管理
+GSS_Acquire_cred                                获得信用状以使用
+GSS_Release_cred                                使用后释放信用状
+GSS_Inquire_cred                                显示信用状的信息
+GSS_Add_cred                                    增加性的构造信用状
+GSS_Inquire_cred_by_mech                        显示指定机制的信用状信息
+上下文级调用
+GSS_Init_sec_context                            初始化输出安全上下文
+GSS_Accept_sec_context                          接收输入的安全上下文
+GSS_Delete_sec_context                          当上下文不需要时，删除上下文
+GSS_Process_context_token                       处理接到的上下文令牌
+上下文的控制Token
+GSS_Context_time                                标识留在上下文上的有效时间
+GSS_Inquire_context                             显示上下文的信息
+GSS_Wrap_size_limit                             检查GSS_Wrap标识尺寸限制
+GSS_Export_sec_context                          传递上下文到其他处理过程
+GSS_Import_sec_context                          导入传递来的上下文
+PER-MESSAGE调用
+GSS_GetMIC                               应用完整性检查，作为从消息中分离的Token被
+接收
+GSS_VerifyMIC                            检查随同消息的Token的完整性
+GSS_Wrap                                 签名，可选的加密，、封装
+GSS_Unwrap                               拆封装，需要的解密，完整性检查
+支持调用
+GSS_Display_status                       转换状态编码到可打印的形式
+GSS_Indicate_mechs                       显示本地系统支持的mech_type
+GSS_Compare_name                         比较两个名字
+GSS_Display_name                         转换名字到可打印的形式
+GSS_Import_name                          转换可打印的名字到规格化的名字
+GSS_Release_name                         释放存储的规格化形式的名字
+GSS_Release_buffer                       释放可打印名字的存储0
+GSS_Release_OID                          释放OID对象的存储
+GSS_Release_OID_set                      释放OID集对象存储
+GSS_Create_empty_OID_set                 创建空的OID集
+GSS_Add_OID_set_member                   加成员到OID集中
+GSS_Text_OID_set_member                  测试OID是否是OID集中的成员
+GSS_OID_to_str                           显示OID为字符串
+GSS_str_to_OID                           从字符串中构造OID
+GSS_Inquire_names_for_mech               显示机制支持的名字类型
+GSS_Inquire_mechs_for_name               显示支持名字类型的机制
+GSS_Canonicalize_name                    转换名字到指定机制形式
+GSS_Export_name                          输出指定机制名字
+GSS_Duplicate_name                       复制名字对象
+2.1:信任状管理调用
+这些GSS-API调用提供信任状管理的相关功能。在和其网络实体（目录或者认证服务器）
+交换信息时是否挂起的这些特点部分依赖于操作系统说明（在GSS-API范围之外的），所以在这
+个文档中没有说明。
+在GSS-API中定义的GSS_Acquire_cred()调用支持应用程序的可移植性，一个特殊的是面
+向于支持服务器应用程序的可移植性。一般认为（对于一般的系统和机制）为了服务端的处理
+进程，用于用户交互的信任状可以从不同的信任状中被管理；在那种环境中，GSS-API的实现
+者有责任区分这些情况，并且这些区分过程是本地问题。GSS_Release_cred()调用为调用者提
+供了一种手段标识GSS-API不用再要求使用信任状。GSS_Inquire_cred()调用允许调用者判定
+信任状结构的信息。GSS_Add_cred()调用允许调用者加入元素到一个已存在的信用状结构中，
+允许多机制信任状的重复构造。GSS_Inquire_cred_by_mech调用允许调用者获得特定机制描述
+信任的信息状。
+2.1.1:GSS_Acquire_cred
+输入：
+desired_name INTERNAL NAME, -NULL 需要本地确认的默认值
+lifetime_req INTEGER, 按秒记；0要求默认
+desired_mechs SET OF OBJECT IDENTIFIER, 空集合需要系统默认选择
+cred_usage INTEGER 0代表INITIATE-AND-ACCEPT， 1代表INITIATE-ONLY， 2代表ACCEPT-ONLY
+输出；
+major_status INTEGER
+minor_status INTEGER
+output_cred_handle CREDENTIAL HANDLE
+actual_mechs SET OF OBJECT IDENTIFIER
+lifetime_rec INTEGER 按秒记，或者是保留值INDEFINITE
+返回major_status编码：
+GSS_S_COMPLETE表示要求的信任被成功的建立，在lifetime_rec表示的期间中，和在
+cred_usage中要求的使用相适应。适用于在actual_mechs中表示mech_types集，这些信任可
+以被以后的使用引用——通过output_cred_handle中的值。
+GSS_S_BAD_MECH表示当前GSS-API实现不支持的mech_type被要求，导致信任建立操作失败。
+GSS_S_BAD_NAMETYPE表示提供的desired_name是不可解释的，或者是一种不被底层GSS-API
+机制支持的类型，所以没有信任可以被建立——陪伴desired_name
+GSS_BAD_NAME表示提供的desired_name和术语（内部组成类型说明信息）不一致，所以没有
+信任可以被建立——陪伴desired_name
+GSS_S_FAILURE表示信任建立过程失败——因为GSS-API级未说明的原因，包括缺乏建立和使
+用信任的认证，和相关的在输入参数desired_name中的标识名字。
+2.1.2:GSS_Release_cred_call
+输入：
+cred_handle CREDENTIAL HANDLE – NULL说明当默认的信任行为被要求释放时，信任元素被
+使用
+输出：
+major_status INTEGER
+minor_status INTEGER
+返回major_status编码
+GSS_S_COMPLETE表示被输入cred_handle引用的信任被调用者释放——为了后续者访问的目
+的。其他被认证的处理过程共享的访问信用效率是一个本地问题。
+GSS_S_NO_CRED表示没有任何释放动作被执行，可能是因为输入的cred_handle无效或者因为
+调用者缺乏认证来访问引用的信任。
+GSS_S_FAILURE表示释放操作由于GSS-API级未说明的原因失败
+为调用者提供一钟方法以明确的要求释放信任，当他们的使用不在需要时。注意系统说明的信
+用管理功能也可能存在，例如为保证进程间共享的信用被正确的删除——当相关进程都结束时，
+尽管没有没有明显的释放请求被这些进程发出。假设这种情况：多个调用者没有被排除获得对
+同一个信任具有访问的权限，调用GSS_Release_cred不能被假定删除一个特定的信任集——基
+于系统基础上
+2.1.3:GSS_Inquire_cred调用
+输入：
+cred_handle CREDENTIAL HANDLE – NULL说明信任元素——当默认的信任行为被要求——被
+使用的查询
+输出：
+major_status INTEGER
+minor_status INTEGER
+cred_name INTERNAL NAME
+lifetime_rec INTEGER 按秒记，或者保留值INDEFINITE
+cred_usage INTEGER, 0=INITIATE-AND-ACCEPT, 1=INITIATE-ONLY, 2=ACCEPT-ONLY
+mech_set SET OF OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE表示被输入参数cred_handle引用的信用是有效的，并且输出cred_name，
+lifetime_rec，cred_usage值代表，分别的，信任相关的宿主名称，保持的生命时间，适当的
+使用模块，和支持的机制类型。
+GSS_NO_CRED表示没有任何关于引用信用的信息能被返回，或者是因为输入的cred_handle无
+效，或者因为调用者缺少访问引用信任的认证。
+GSS_S_DEFECTIVE_CREDENTIAL表示引用的信用无效
+GSS_S_CREDENTIAL_EXPIRED表示引用的信用已经过期
+GSS_S_FAILURE表示因为GSS-API没有说明的原因的操作失败
+GSS_Inquire_cred调用被定义主要用来这些调用者的使用——要求使用默认的信任行为而不是
+通过使用GSS_Acquire_cred调用显示的获得信用。他可以使调用者判断信任结构的关联宿主名
+字，保留的有效期，安全上下文开始的可用性或者可接受和支持的机制。
+对一个多机制的信用，返回的“lifetime”说明符表示最短的生命期——在信任中的所有的机
+制元素（为了上下文开始或者接收的目的）
+GSS_Inquire_cred应该为"cred_usage"表示INITIATE-AND-ACCEPT——如果有以下两个条
+件：
+（1）在信任中存在一个元素——允许上下文开始使用一些机制
+（2）在信任中存在一个元素——允许上下文接收一些机制（允许的，但不是必须的，限定一些
+机制和（1）相同）
+如果满足条件（1），但不满足（2），GSS_Inquire_cred 应该标识cred_usage为INITIATE-ONLY。
+如果满足条件（2），但不满足（1），GSS_Inquire_cred 应该标识cred_usage为ACCEPT-ONLY。
+调用者要求能很好的消除二意性——在可用的联合间（生命期，使用模式，机制应该调用的
+GSS_Inquire_cred_by_mech例程——传给那个例程一个mech OID——GSS_Inquire_cred返回）
+2.1.4:GSS_Add_cred 调用
+输入：
+input_cred_handle CREDENTIAL HANDLE – 掌握信任结构——由GSS_Acquire_cred或者
+GSS_Add_cred调用创建，或者NULL加入元素到集合中——调用者应用——当默认的信任行为
+被说明时。
+Desired_name INTERNAL NAME – NULL要求默认的本地判定
+Initator_time_req INTEGER 按秒记，0代表默认值
+Desired_mech OBJECT IDENTIFIER
+cred_usage INTEGER 0=INITIATE-AND-ACCEPT， 1=INITIATE-ONLY， 2=ACCEPT-ONLY
+输出：
+major_status INTEGER
+minor_status INTEGER
+output_cred_handle  CREDENTIAL HANDLE，-NULL代表要求信任元素将被加到信任结构（由
+input_cred_handle表示）中的适当地方，非NULL要求建立新的信任结构和句柄
+actual_mechs  SET OF OBJECT IDENTIFIER
+initiator_time_rec INTEGER 按秒，或者是保留值INDEFINITE
+acceptor_time_rec  INTEGER 按秒，或者是保留值INDEFINITE
+cred_usage INTEGER, 0=INITIATE-AND-ACCEPT, 1=INITIATE-ONLY, 2=ACCEPT-ONLY
+mech_set SET OF OBJECT IDENTIFIER——被信任支持的所有机制集合
+返回的major_status编码：
+GSS_S_COMPLETE表示被参数input_cred_handle引用的信用是有效的，并且从GSS_Add_cred
+得来的信任在initiator_time_rec和acceptor_time_rec表示的期间是有效的。满足在
+cred_usage中要求的用途，和在actual_mechs代表的机制
+GSS_S_DUPLICATE_ELEMENT表示输入的desired_mech说明了一个机制——他所引用的信用已经
+包含了cred_usage和有效期间所说明的信用元素。
+GSS_S_BAD_MECH表示输入的desired_mech代表一个不被GSS-API实现支持的机制，导致
+GSS_Add_cred操作失败
+GSS_S_BAD_NAMETYPE表示提供的desired_namen不能被解释或者是不被应用与底层的GSS-API
+机制支持的类型，所以GSS_Add_cred不能在那个名字上完成。
+GSS_S_NO_CRED表示input_cred_handle引用不可用或者信用不可访问
+GSS_S_FAILER操作失败——GSS-API级没有说明的原因（未知原因），包括缺乏建立的认证或者使
+用信用代表要求的标识。
+GSS_Add_cred使调用者能够重复的构建信任，通过在后续的操作中加入信任元素，对应于不同
+的机制。这些提供了在多个环境中的特定的值，因为major_status和minor_status值（在每
+次重复中被返回的）是个别的可视的，可以基于每个机制被明确的解释。
+同样的输入desired_name，或者是默认的引用，在所有的GSS_Acquire_cred和GSS_Add_cred
+调用中被使用，以对应一个特定的信任。
+2.1.5:GSS_Inquire_cred_by_mech调用
+输入：
+cred_handle CREDENTIAL HANDLE – NULL说明当默认的信任行为被要求时使用的信任元素将
+被查询
+mech_type OBJECT IDENTIFIER 说明其信任将被查询的机制。
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+cred_name INTERNAL NAME, -- 保证是MN
+lifetime_rec_initiate INTEGER – 按秒,或者是保留值INDEFINITE
+lifetime_rec_accept INTEGER – 按秒，或者是保留值INDEFINITE
+cred_usage INTEGER, -0=INITIATE-AND-ACCEPT, 1=INITIATE-ONLY,2=ACCEPT-ONLY
+返回的major_status编码
+GSS_S_COMPLETE表示被输入参数cred_handle引用的信用是有效的。输入的mech_type表示的
+机制被信任中的元素表示，并且输出的cred_name，lifetime_rec_initiate，
+lifetime_rec_accept，和cred_usage值分别代表信任关联主体的名字，余下的时间，和适用
+的使用模式。
+GSS_S_NO_CRED表示没有任何关于引用信任的信息被返回。可能因为输入的cred_handle无效
+或者因为调用者缺乏访问引用信用的认证。
+GSS_S_DEFECTIVE_CREDENTIAL表示引用信任无效
+GSS_S_CREDENTIALS_EXPIRED表示引用的信用已经过期。
+GSS_S_BAD_MECH表示引用的信用不含有要求机制的元素。
+GSS_S_FAILURE表示操作失败（因为GSS-API没有说明的原因）
+GSS_Inquire_cred_by_mech允许调用者在多机制环境中获得特定的数据（在一个信任结构中的
+生命期，使用模式和机制的联合）。Lifetime_rec_initiate结果表示上下文初始化目的的可用
+的生命期；Lifetime_rec_accept结果表示上下文接收目的的可用的生命期；
+2.2:上下文级调用
+这组调用主要用于建立和管理双方间安全上下文。一个上下文发起调用GSS_Init_sec_context，
+结果产生一个标识，被调用者传给目标。在目标方，那个标识传递给GSS_Accept_sec_context。
+依据于底层的mech_type和说明的参数，附加的标识交换可能在以后的上下文建立过程中被执
+行；这种交换行为由GSS_Init_sec_context和GSS_Accept_sec_context返回的
+GSS_S_CONTINUE_NEEDED值决定。
+建立上下文的任何一方可以调用GSS_Delete_sec_context以更新上下文信息，当一个上下文不
+在需要时。GSS_Process_context_token用来处理接收带有上下文级控制信息的标识。
+GSS_Context_time允许调用者判断一个建立的上下文的有效时间。GSS_Inquire_context返回
+描述上下文特点的状态信息。GSS_Wrap_size_limit允许调用者判断由GSS_Wrap操作产生的标
+识的尺寸。GSS_Export_sec_context和GSS_Import_sec_context使在终端处理过程间能传递
+活动的上下文。
+2.2.1:GSS_Init_sec_context调用
+输入：
+claimant_cred_handle  CREDENTIAL HANDLE, -NULL 说明使用默认的值
+input_context_handle  CONTEXT HANDLE, -0 表示还没有被赋值
+targ_name  INTERNAL NAME
+mech_type  OBJECT IDEDTIFIER，-NULL 说明使用默认值
+deleg_req_flag  BOOLEAN
+mutual_req_flag  BOOLEAN
+replay_det_req_flag  BOOLEAN
+sequence_req_flag  BOOLEAN
+anon_req_flag  BOOLEAN
+lifetime_req  INTEGER, -0说明是默认的lifetime
+chan_bindings  OCTET STRING
+input_token  OCTET STRING –NULL或者从目标接收的标识
+输出 ：
+major_status INTEGER
+minor_status INTEGER
+output_context_handle CONTEXT HANDLE
+mech_type OBJECT IDENTIFIER, 实际的机制被表示，永远不会为NULL
+output_token  OCTET STRING, -NULL 或者是传送给目标上下文的标识。
+Deleg_state BOOLEAN
+Mutual_statue BOOLEAN
+Replay_det_state BOOLEAN
+Sequence_state BOOLEAN
+Anon_state  BOOLEAN
+Trans_state  BOOLEAN
+Port_ready_state  BOOLEAN
+Conf_avail  BOOLEAN
+Integ_avail  BOOLEAN
+Lifetime_rec  INTEGER 按秒，或者是保留值INDEFINITE
+这个调用可以阻碍某些mech_types的挂起的网络交互。对于这些mech_types，认证的服务端
+或者其他网络实体必须参考上下文发起的行为，一产生一个output_token以适应对说明目标的
+表示。
+返回的major_status编码：
+GSS_S_COMPLETE表示上下文级信息被成功初始化，并且他返回的output_token可以为目标提
+供足够的信息，在新建立的上下文上完成预消息的处理。
+GSS_S_CONTINUE_NEEDED表示在返回的output_token中的控制信息必须发送给目标，并且他的
+回复必须被接收并且作为参数input_token传递给后续的调用GSS_Init_sec_context，在预消
+息处理被执行（在这个上下文的联合之中）之前
+GSS_S_DEFECTIVE_TOKEN表示在input_token上的一致性检查失败，阻止基于这个那个标识的
+处理过程被执行。
+GSS_S_DEFECTIBE_CREDENTIAL表示在信任结构上（被claimant_cred_handle引用）的一致性
+检查操作失败，阻止了使用那个信任结构的处理过程被执行。
+GSS_S_BAD_SIG表示接收到的input_token含有一个不正确的完整性检查。所以上下文建立不
+能被完成。
+GSS_S_NO_CRED表示没有上下文被建立，因为输入的cred_handle无效，或者是因为引用的信
+任只队上下文接收者使用是有效的，或者是因为调用者缺乏访问引用信用的认证。
+GSS_S_CREDENTIAL_EXPIRED表示通过输入参数claimant_cred_handle提供的信任不在有效，
+所以上下文建立不能被完成。
+GSS_S_BAD_BINDINGS表示一个错配（调用者提供的通道绑定和那些从input_token中取出的通
+道绑定）被发现，表示一个安全相关的事件，阻止了上下文的建立。（这个结果将只被
+GSS_Init_sec_context返回，因为上下文中的mutual_state是TRUE。）
+GSS_S_OLD_TOKEN表示input_token对于完整性检查以过期了。这是一个在上下文建立期间严
+重的错误。
+GSS_S_DUPLICATE_TOKEN表示输入的标识已有一个正确的完整性检查，但是一个重复的已经被
+处理。这是一个在上下文建立期间严重的错误。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由输入的context_handle提供）被认可；对于后
+续的调用，这个major_status值GSS_S_CONTINUE_NEEDED被返回。
+GSS_S_BAD_NAMETYPE表示提供的targ_name是一种应用于底层GSS-API机制不能被解释或支持
+的类型，所以上下文建立过程不能被完成。
+GSS_S_BAD_NAME表示提供的targ_name与内部说明类型标识符术语不一致，所以上下文建立不
+能被完成。
+GSS_S_BAD_MECH表示接收一个上下文建立标识或者接收一个调用者要求的机制不能被本地系统
+支持或者被调用者活动的信任支持。
+GSS_S_FAILURE表示上下文建立过程因为GSS-API级没有说明的原因而没有完成，并且没有
+GSS-API定义的恢复行为是有效的。
+这个例程被上下文发起者使用，通常发出一个（或者，对于多步交换的情况，多余一个）
+output_token，以适用被目标的使用——在选定的mech_type类型的协议内。在被
+claimant_cred_handle引用的信用结构中的使用信息，GSS_Init_sec_context使用目标的
+trag_name初始化建立安全上下文所需要的数据结构。Trag_name可以是任何有效的INTERNAL 
+NAME；他不需要是一个MN，claimant_cred_handle必须对应于相同的可用的信任结构——在最
+初调用GSS_Init_sec_context和在后续的调用中——由GSS_S_CONTINUE_NEEDED状态返回导致
+的；在上下文建立顺序中，不同的协议循序（被GSS_S_CONTINUE_NEEDED工具规范的）将要求
+在不同方面访问信任，
+参数input_context_handle是0时，说明还没有被赋值，在第一次GSS_Init_sec_context调
+用关联给定的上下文时。如果成功（例如，如果被GSS_S_COMPLETE或者GSS_S_CONTINUE_NEEDED
+陪伴），并且只有在成功的条件下，初始化调用GSS_Init_sec_context调用返回一个非0的
+output_context_handle，以用于这个上下文的将来引用使用。一旦一个非0的
+output_context_handle被返回，GSS-API调用者将调用GSS_Delete_sec_context来释放上下
+文相关资源——如果在以后上下文建立过程中出错时。或者是一个已建立的上下文不在需要时。
+当需要继续尝试GSS_Init_sec_context以完成上下文建立时，以前返回的非0句柄值将进入参
+数input_context_handle，并且将在参数output_context_handle返回中响应。在这种继续尝
+试下（并且只在继续尝试情况下），input_token值被使用，以提供从上下文的目标中返回的标
+识。
+参数chan_bindings被调用者使用以提供安全上下文的信息绑定，底层通讯通道的安全相关特
+性（例如，地址，加密密钥）。这个文档的1.1.6节有更多的关于参数usage的讨论。
+参数input_token含有从目标方接收来的信息，并且只在major_status是
+GSS_S_CONTINUE_NEEDED 情况下调用GSS_Init_sec_context才有效。
+建立到目标的通讯路径是调用者的责任，包括通过这条路径传送任何返回的output_token（独
+立于返回的major_status值）给目标。Output_token能和第一个应用程序提供的输入信息（将
+被GSS_GetMIC和GSS_Wrap使用成功建立的上下文来处理）一起被传输。
+发起者可以通过输入标志请求各种上下文级的功能：deleg_req_flag要求访问权限的代表，
+mutual_req_flag要求多重认证，replay_det_req_flag要求在上下文建立传递消息过程中进行
+重发检测，sequence_req_flag要求顺序被执行（关于重发检测和顺序特性的更多信息，参看
+1.2.3），anon_req_flag要求发起者的不能在标识（将要被传递给接收者）中传递。
+不是所有的可选的要求特性对所有的底层mech_type是有效的。对应的返回状态值
+deleg_state，mutual_state，replay_det_state，和sequence_state表示，作为mech_type
+能力的一个处理功能，和发起者提供的输入标志，特性集合将在上下文上被激活。返回的
+trans_state值表示上下文对于其他的处理进程是否是可传递的——通过使用
+GSS_Export_sec_context。这些状态状态标识符的值没有被定义，除非函数返回的major_status
+的值是GSS_S_COMPLETE或者随着值为GSS_S_CONTINUE_NEEDED的major_status返回的
+port_ready_state值是TRUE时；对于后一种情况，其他特性可能没有被确认或者表示——随
+着TRUE的port_ready_state，将在随后返回的GSS_S_COMPLETE时被确认或者显示。
+返回的anon_state和port_ready_state的值对于由GSS_Init_sec_context返回的
+major_state的值GSS_S_COMPLETE和GSS_S_CONTINUE_NEEDED是重要的。当anon_state返回
+TRUE时，这表示既不是当前的标识，也不是以前的标识传递，或者已经传递的发起者身份标识。
+调用者希望完成上下文建立——只是在提供的匿名支持可以传送一个从GSS_Init_sec_context
+返回的的标识给对方——如果标识的anon_state标志是TRUE时。当和GSS_S_CONTINUE_NEEDED 
+major_status联合的port_ready_state返回TRUE时，他表示预消息保护操作可以在上下文上
+被应用。1.2.7节有关于这个功能的更多的讨论。
+当为提供调用者要求的精确的功能集合失败时，不能导致上下文建立的失败；这是调用者的特
+权——删除上下文——如果提供的特性集不适合调用者的使用
+返回的mech_type值表示应用于上下文上的特定机制，只是随着major_status GSS_S_COMPLETE
+才有效，并且永远不会表示为默认值。注意，对于自己执行握手的机制情况，返回的mech_type
+结果可以表示选择的机制——被一个OID表示而不是传入到输入参数mech_type中的
+conf_avail返回值表示上下文是否支持预消息的加密服务，可以通知调用者通过
+conf_req_flag传递给GSS_Wrap的加密请求能否有效。在相似的情况integ_avail返回值表示
+预消息完整性保护服务是否（通过GSS_GetMIC或者GSS_Wrap）——在已建立的上下文上。这
+些状态标识符的值没有被定义，除非例程的major_status表示为GSS_S_COMPLETE，或者随着
+major_status GSS_S_CONTINUE_NEEDED返回的port_ready_state是TRUE时。
+输入的lifetime_req表示一个希望的时间上限——将建立的上下文的生命周期，0代表默认的
+生命周期。Lifetime_rec返回值说明上下文有效的生命期最长时间，计算是从当前开始的。依
+靠机制的能力，信任生命期，本地策略，他可能和lifetime_req中要求的不一致。如果上下文
+的生命期没有限制，这可以被返回一个保留值INDEFINITE的lifetime_req表示。Lifetime_req
+的值没有被定义，除非major_status的值返回GSS_S_COMPLETE。
+如果mutual_state是TRUE，这种情形将在output_token中反映。在这个上下文上的在目标的
+端的调用GSS_Accept_sec_context将返回一个标识，将被后续的GSS_Init_sec_context调用
+处理，以完成互相认证。
+2.2.2:GSS_Accept_sec_context调用
+输入
+acceptor_cred_handle CREDENTIAL HANDLE, -- NULL说明使用默认
+input_context_handle CONTEXT HANDLE, -- 0 说明没有被赋值
+chan_bindings OCTET STRING,
+input_token OCTET STRING
+输出
+major_status INTEGER,
+minor_status INTEGER,
+src_name INTERNAL NAME, -- 保证将是 MN
+mech_type OBJECT IDENTIFIER,
+output_context_handle CONTEXT HANDLE,
+deleg_state BOOLEAN,
+mutual_state BOOLEAN,
+replay_det_state BOOLEAN,
+sequence_state BOOLEAN,
+anon_state BOOLEAN,
+trans_state BOOLEAN,
+prot_ready_state BOOLEAN, -- 1.2.7节讨论
+conf_avail BOOLEAN,
+integ_avail BOOLEAN,
+lifetime_rec INTEGER, - 按秒，或者是保留值 INDEFINITE
+delegated_cred_handle CREDENTIAL HANDLE,
+output_token OCTET STRING -NULL 或者是将要传递给发起者上下文的标识
+这个调用可以阻碍网络交互挂起——对于这些mech_types——目录服务或者其他网络实体必须
+参考上下文接收者的行为以确认接收的input_token。
+返回的major_status编码：
+GSS_S_COMPLETE 表示上下文级的数据结构被成功的初始化，并且预消息处理可以在此上下文上
+执行。
+GSS_S_CONTINUE_NEEDED 表示在返回的output_token中控制信息必须发给发起者，并且必须接
+收到一个返回并且传递给参数input_token以调用GSS_Accept_sec_context，在这个上下文上的
+预消息处理完成之前。
+GSS_S_DEFECTIVE_TOKEN 表示在input_token上的一致性检查执行失败，阻止了基于这个标识的
+进一步的处理
+GSS_S_DEFECTIVE_CREDENTIAL表示在被acceptor_cred_handle应用的信任结构上的一致性检查
+执行失败，组织了使用这个信任结构的进一步处理执行
+GSS_S_BAD_SIG 表示接收到的input_token含有一个不正确的完整性检查，所以上下文建立不能
+被完成。
+GSS_S_DUPLICATE_TOKEN表示在接收到的input_token上的完整性检查是正确的，但是接收到的
+input_token被认定是一个已经处理过的input_token的重复。没有新的上下文被建立。
+GSS_S_OLD_TOKEN表示对接收到的input_token的完整性检查是正确的，但是input_token以过
+期。没有心得上下文被建立。
+GSS_S_NO_CRED表示没有上下文被建立，因为输入的cred_handle是无效的，或者因为信任引用
+只对上下文发起者的使用是有效的，或者因为调用者没有访问引用信任的认证。
+GSS_S_CREDENTIALS_EXPIRED表示通过输入参数acceptor_cred_handle提供的信任无效，所以上
+下文建立没有完成。
+GSS_S_BAD_BINDINGS表示通过调用者提供的chan_bindings和从input_token中检测出的不匹
+配，显示出安全相关事件，阻碍了上下文的建立。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由输入的context_handle提供）被确认；这个
+major_status只在后续调用跟随GSS_S_CONTINUE_NEEDED状态返回时返回。
+GSS_S_BAD_MECH表示接到的上下文建立的标识说明的机制不能被本地的系统支持，或者被调用
+者激活的信任。
+GSS_S_FAILURE表示上下文因为GSS-API级未说明的原因没有完成，并且没有接口定义恢复行为
+是有效的。
+The GSS_Accept_sec_context例程被上下文目标使用。使用被输入的acceptor_cred_handle参
+数引用的信任结构的消息，可以验证输入的input_token（随着上下文建立的成功完成）并返回
+使用的mech_type和认证的src_name。返回的src_name是被保证为一个MN，在机制的以建立的上
+下文下被处理。Acceptor_cred_handle必须对应同一个有效的信任信任结构——在初始化调用
+GSS_Accept_sec_context和任何后续调用（由GSS_S_CONTINUE_NEEDED产生）；被
+GSS_S_CONTINUE_NEEDED机制规范的的不同的协议顺序将在上下文建立的不同阶段要求访问信
+任。
+Input_context_handle参数是0，说明还没有被赋值，在给定的上下文上的第一个
+GSS_Accept_sec_context调用上。如果成功（例如，如果陪伴major_status为GSS_S_COMPLETE
+或者为GSS_S_CONTINUE_NEEDED）,并且只有成功，最初的GSS_Accept_sec_context调用将返回
+一个非0的output_context_handle——用于在这个上下文上的将来使用。一旦一个非0的
+output_context_handle被返回，GSS-API调用者应该调用GSS_Delete_sec_context以上下文相
+关的资源——如果在以后的上下文建立阶段有错误发生，或者不在需要建立上下文。
+Chan_binding参数被调用者使用来提供绑定安全上下文的信息给底层通讯通道安全相关的特性
+（例如，地址、加密密钥等）。这篇文章的1.1.6节讨论关于这个参数的使用。
+返回状态结果（deleg_state，mutual_state，replay_det_state，sequence_state，anon_state，
+trans_state，和port_ready_state）反映和GSS_Init_sec_context中一样的信息，并且在同样
+的返回状态条件下，他们的值是有意义的。
+Conf_vavil返回值表示上下文是否支持预消息保密服务，然后通知调用者是否要求（通过输入
+给GSS_Wrap的参数conf_req_flag来加密）可以被满足。在相似的情形中，integ_avail返回的
+值表示预消息的完整性服务是否有效——通过在已建立的上下文上的GSS_GetMIC()或者
+GSS_Wrap。这些值在同样的返回状态条件下是有意义的——正如在GSS_Init_sec_context下描
+述的。
+Lifetime_rec的返回值只是在GSS_S_COMPLETE major_status才是有效的，并且表示上下文有效
+的时间长度——和现在的差距时间。
+Mech_type的返回值表示上下文使用的机制，只是在随着major_status为GSS_S_COMPLETE时才有
+效，并且永远不能表示为默认值。
+Delegated_cred_handle结果只有在deleg_state为TRUE时，才有意义，并且为目标提供了一个
+引用代表的手段。Output_token结果，当为非NULL，提供了一个上下文级的标识给上下文发起
+者以完成上下文建立的步骤。如在GSS_Init_sec_context说明的，任何返回的标识将传递给上
+下文的一方（在这个情形下，是上下文发起者），独立于返回的major_status的值。
+注意：一个目标必须能区分一个上下文级的input_token——他将传递给
+GSS_Accept_sec_context，从传递给GSS_VerifyMIC或者GSS_Unwrap的预消息的数据元素。这些
+数据元素可以到达一个单一的应用消息，并且在预消息能成功处理之前，
+GSS_Accpet_sec_context必须被执行。
+2.2.3: GSS_Delete_sec_context调用
+输入：
+context_handle CONTEXT HANDLE
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+output_context_token OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示上下文被确认，并且相关的上下文信息被更新。如果调用者提供一个非NULL
+的缓存接收output_context_token，并且机制返回一个非NULL的令牌到缓存，则
+output_context_token准备好了传递给上下文的对应方。
+GSS_S_NO_CONTEXT表示输入的context_handle没有提供确认的有效的上下文，所以没有删除动
+作被执行。
+GSS_S_FAILURE表示上下文被确认了，但是GSS_Delete_sec_context操作没有被执行——因为
+GSS-API级未说明的原因。
+这个调用可以阻止网络交互的挂起，当一个安全上下文将被删除时，一个通告将被中心服务发
+出。
+这个调用可以被安全上下文的任何一放调用，以更新上下文相关信息。如果一个非空的
+output_context_token参数被调用者提供，则一个输出的output_context_token可以被返回给
+调用者。如果一个output_context_token提供给调用者，他能被传递给上下文的对方以通知对
+方的GSS-API实现者——对应的上下文信息也能被更新。（一旦一个上下文被建立，有关的双方
+希望保留信任状和上下文相关信息——直到消息过期或者GSS_Delete_sec_context被调用）
+context_token使用的通知上下文删除的工具为了兼容GSS-API V1而被保留。为了当前的使用，
+推荐上下文的双方独立的调用GSS_Delete_sec_context，传递一个null的
+output_context_token缓存以表示没有任何context_token被要求。GSS_Delete_sec_context
+的实现者应该删除本地保存的上下文相关信息。
+试图在一个已删除的上下文上执行预消息的处理将导致一个错误返回。
+2.2.4:  GSS_Process_context_token 调用
+输入：
+context_handle CONTEXT HANDLE,
+input_context_token OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+返回的major_status编码：
+GSS_S_COMPLETE表示input_token被成功处理——关联于被context_handle引用的上下文。
+GSS_S_DEFECTIVE_TOKEN表示在接收到的context_token上一致性检查失败，阻止了在那个标识
+上的进一步处理被执行。
+GSS_S_NO_CONTEXT表示输入的context_handle提供的上下文被认为无效。
+GSS_S_FAILURE表示上下文被确认，但是GSS_Process_context_token操作没有被执行——因为
+在GSS-API级上未被说明的原因。
+这个调用用于处理context_tokens——一旦上下文建立后从一方接收到的，和对应的上下文状
+态信息。这个函数的一个用途是处理被GSS_Delete_sec_context产生的context_tokens；
+GSS_Process_context_token将不能阻止网络交互的挂起。另一个用途是处理标识——表示对方
+的上下文建立失败——在本地的GSS-API实现已经表示GSS_S_COMPLETE状态后。
+2.2.5:  GSS_Context_time 调用
+输入：
+context_handle CONTEXT HANDLE,
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+lifetime_rec INTEGER – 按秒，或者保留值INDEFINITE
+返回的major_status编码：
+GSS_S_COMPLETE表示引用的上下文是有效的，并且在lifetime_rec表示的时段内也是有效的。
+GSS_S_CONTEXT_EXPIRED表示关于引用的上下文的数据已经过期了。
+GSS_S_CREDENTIALS_EXPIRED表示上下文被确认，但是他相关的信任状是过期了。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由输入的context_handle提供）被确认
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因失败。
+这个调用用来决定当前建立的上下文将保持有效的时间。
+2.2.6:   GSS_Inquire_context 调用
+输入：
+context_handle CONTEXT HANDLE,
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+src_name INTERNAL NAME,  -- 上下文发起者的名字，保证将为MN
+targ_name INTERNAL NAME,  -- 上下文目标的名字，保证将为MN 
+lifetime_rec INTEGER – 按秒，或者是保留值INDEFINTE
+mech_type OBJECT IDENTIFIER, -- 支持这个安全上下文的机制
+deleg_state BOOLEAN,
+mutual_state BOOLEAN,
+replay_det_state BOOLEAN,
+sequence_state BOOLEAN,
+anon_state BOOLEAN,
+trans_state BOOLEAN,
+prot_ready_state BOOLEAN,
+conf_avail BOOLEAN,
+integ_avail BOOLEAN,
+locally_initiated BOOLEAN, -- TRUE —— 发起者， FALSE —— 接收者
+返回的major_status编码：
+GSS_S_COMPLETE表示参考的上下文是有效的并且src_name, targ_name, lifetime_rec, 
+mech_type, deleg_state,mutual_state, replay_det_state, sequence_state, 
+anon_state,trans_state, prot_ready_state, conf_avail, integ_avail, and 
+locally_initiated返回值描述了上下文的对应特性。
+GSS_S_CONTEXT_EXPIRED表示提供的context_handle被确认，但是参考的上下文已经过期。不是
+major_status和minor_status的返回值没有被定义。
+GSS_S_NO_CONTEXT表示由输入的context_handle提供的上下文没有被确认。不是major_status
+和minor_status的返回值没有被定义。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因失败。不是major_status和
+minor_status的返回值没有被定义。
+这个调用用来获取描述安全上下文特性的信息。
+2.2.7:   GSS_Wrap_size_limit 调用
+输入：
+context_handle CONTEXT HANDLE,
+qop INTEGER,
+output_size INTEGER
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+max_input_size INTEGER
+返回的major_status编码：
+GSS_S_COMPLETE表示一个成功的标识尺寸：一个输入信息（字节长度等于max_input_size返回
+的值）将产生一个输出标识不超过由output_size参数提供值——当传入给GSS_Wrap处理（在有
+参数context_handle表示的上下文上）和由参数qop提供的质量保护说明符时。
+GSS_S_CONTEXT_EXPIRED表示提供的输入context_handle是确认的，但是参考的上下文过期了。
+不是major_status和minor_status的返回值没有被定义。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由输入的context_handle提供）被确认。不是
+major_status和minor_status的返回值没有被定义。
+GSS_S_BAD_QOP表示提供的QOP值没有被上下文确认或者支持。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因而失败。不是major_status和
+minor_status的返回值没有被定义。
+这个调用用来判定最大的输入数据——传递给GSS_Wrap，不用产生一个别调用者说明值还大的
+输出token。
+2.2.8:   GSS_Export_sec_context 调用
+输入：
+context_handle CONTEXT HANDLE
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+interprocess_token OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示引用的上下文成功的输出给一个代表——在interprocess_token中，并且
+对调用者使用永远是无效的。
+GSS_S_UNAVAILABLE表示上下文的输出功能是无效的，使用引用的上下文。（这种情况只发生在
+上下文的trans_state的值是FALSE情况）。不是major_status和minor_status的返回值没有被定
+义。
+GSS_S_CONTEXT_EXPIRED表示提供的输入context_handle能被确认，但是引用的上下文已经过
+期。不是major_status和minor_status的返回值没有被定义。
+GSS_S_NO_CONTEXT表示没有有效的上下文被确认——对于输入的context_handle提供的。不是
+major_status和minor_status的返回值没有被定义。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因失败。不是major_status和
+minor_status的返回值没有被定义。
+这个调用产生一个内部处理标识以传递给终端系统中的另一个处理进程，以传送安全上下文的
+控制给那个进程。内部处理标识的接收者调用GSS_Import_sec_context以接收。
+GSS_Export_sec_context操作被定义只用来和安全上下文（完全的成功的建立的）一起使用。
+（例如，那些GSS_Init_sec_context和GSS_Accept_sec_context返回GSS_S_COMPLETE 
+major_status的上下文。）
+为了保证可移植性，一个GSS_Export_sec_context的调用者必须保证上下文不能被继续使用—
+—一旦他被输出：随着输出，被context_handle引用的上下文不能再保持有效。进一步，可移
+植的调用者不能假设一个给顶的内部处理标识被GSS_Import_sec_context导如超过一次，因此
+创建一个上下文的多个实例。GSS-API实现可以检测和拒绝多导入的尝试，但是不能要求那样做。
+在内部处理里包含的内部表达一个实现定义的本地问题。内部处理标识不能假设可以传递给不
+同的GSS-API实现者。
+推荐GSS-API实现者采用政策以适用操作环境以定义处理集合（适用于导入上下文的条件），但
+是这个领域的说明限制是一个本地问题。候选的例子包括进程间操作（在同一个用户标识的行
+为上）传送，或者比较同一个工作的处理进程。但是，在一些实现中，强制这种策略是不可能
+的。
+为了支持以上目标，实现者可以保护传输的上下文数据——通过使用加密保护在内部处理标识
+中的数据，或者通过使用内部处理标识作为一种方法以参考一个本地的内部处理通讯功能（被
+其他方法保护），而不是直接存储上下文数据到标识中。
+一个公开上下文的传递可以暴露信任状——用于建立上下文，，对于特定的机制和实现。调用者
+应该注意传递上下文进程的可信性。尽管GSS-API实现可以提供自己的关于输出上下文的保护集
+合，调用者有责任保护从内部处理标识于暴露状态下，并且注意上下文被传递给正确的目标进
+程。
+2.2.9:   GSS_Import_sec_context 调用
+输入：
+interprocess_token OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+
+context_handle CONTEXT HANDLE
+返回的major_status编码：
+GSS_S_COMPLETE表示被输入的interprocess_token表示的上下文已经成功的传递给了调用者，
+并且通过输出的context_handle的进一步使用是有效的。
+GSS_S_CONTEXT_EXPIRED表示被输入的interprocess_token表示的上下文已经过期。不是
+major_status和minor_status的返回值没有被定义。
+GSS_S_NO_CONTEXT表示被输入的interprocess_token表示的上下文无效。不是major_status和
+minor_status的返回值没有被定义。
+GSS_S_DEFECTIVE_TOKEN表示被输入的interprocess_token有缺陷。不是major_status和
+minor_status的返回值没有被定义。
+GSS_S_UNAVAILABLE表示上下文输入功能在引用的上下文上的使用无效。不是major_status和
+minor_status的返回值没有被定义。
+GSS_S_UNAUTHORIZED表示被输入的interprocess_token表示的上下文对于传输给调用者是未被
+授权的。表示被输入的interprocess_token表示的上下文。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因失败。不是major_status和
+minor_status的返回值没有被定义。
+这个调用处理一个内部进程标识——被GSS_Export_sec_context产生，使被调用者使用的传输
+上下文是可用的。在GSS_Import_sec_context成功操作后，输入的上下文对被输入进程使用是
+有效的。
+关于这个调用的安全和授权的进一步讨论，请参看2.2.8节的讨论。
+2.3:  Per-message calls
+这组调用用于在已建立的安全上下文上对消息进行保护的操作。这些调用中的任何一个都不能
+阻止网络交互的挂起。这些调用可以被上下文发起者或者目标者启动。这组的四个成员可以分
+为两对：从GSS_GetMIC输出适用于GSS_VerifyMIC输入，从GSS_Wrap输出适用于GSS_Unwrap输入。
+GSS_GetMIC和GSS_VerifyMIC支持数据源认证和数据完整性服务。当GSS_GetMIC在一个输入消息
+被使用时，他产生一个预消息标识——包含数据项——允许底层机制提供特定的安全服务。原
+始的消息，随着产生的预消息标识，被传送给远方；这两个数据元素被GSS_VerifyMIC处理，他
+在分离的标识上验证消息。
+GSS_Wrap和GSS_Unwrap支持调用者要求的机密性，除了由GSS_GetMIC和GSS_VerifyMIC提供的原
+始数据的身份认证和完整性服务。GSS_Wrap输出一个数据元素，封装可选的加密用户数据，和
+相关的标识数据项。从GSS_Wrap输出的数据元素被传递给远方并且在那个系统上被GSS_Unwrap
+处理。GSS_Unwrap联合解密处理、数据项的相关认证和完整性确认。
+2.3.1:  GSS_GetMIC 调用
+注意：这个调用是和在这个规范的前一版本定义的GSS_Sign调用功能相同。为了向后兼容，推
+荐实现者支持这个功能——在表现的两个名字上；不赞成使用GSS_Sign引用这个功能.
+输入：
+context_handle CONTEXT HANDLE,
+qop_req INTEGER,-0 specifies default QOP
+message OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+per_msg_token OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示一个完整性检测，在一个已建立的安全上下文上，成功应用并且那个消息
+和对应的per_msg_token已为传输准备好。
+GSS_S_CONTEXT_EXPIRED表示上下文相关的数据项已经过期了，所有要求的操作不能被执行。
+GSS_S_CREDENTIALS_EXPIRED表示上下文已经确认，但是他相关的信任状已经过期，所以要求的
+操作不能被完成。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由context_handle提供）被确认。
+GSS_S_BAD_QOP表示提供的QOP值没有确认或者被上下文支持。
+GSS_S_FAILURE表示上下文被确认，但要求的操作因为GSS-API级没有说明的原因而执行失败。
+使用被context_handle引用的安全上下文，对输入的消息（随着时间戳后者是支持mech_type
+说明的机制包含的其他数据）应用完整性检查并且在per_msg_token中返回结果。Qop_req参数，
+在1.2.4节中讨论的，允许质量保护控制。调用者传送消息和pre_msg_token给目标。
+GSS_GetMIC功能在消息和per_msg_token被送到对方之前完成；GSS_GetMIC成功的应用不能保证
+当消息到达目标时，对应的GSS_VerifyMIC能被执行成功。
+当这个函数被调用时，不支持预消息保护服务的机制应该返回GSS_S_FAILURE。
+2.3.2:  GSS_VerifyMIC 调用
+注意：这个调用是和在这个规范的前一版本定义的GSS_Verify调用功能相同。为了向后兼容，
+推荐实现者支持这个功能——在表现的两个名字上；不赞成使用GSS_Sign引用这个功能.
+输入：
+context_handle CONTEXT HANDLE,
+message OCTET STRING,
+per_msg_token OCTET STRING
+输出：
+qop_state INTEGER,
+major_status INTEGER,
+minor_status INTEGER,
+返回的major_status编码：
+GSS_S_COMPLETE 表示消息被成功的验证。
+GSS_S_DEFECTIVE_TOKEN表示在接收到的per_msg_token上的一致性检查执行失败，阻止了在那
+个标识上的操作进一步进行。
+GSS_S_BAD_SIG表示接收到的per_msg_token包含一个错误的消息完整性检查。
+GSS_S_DUPLICATE_TOKEN, GSS_S_OLD_TOKEN, GSS_S_UNSEQ_TOKEN,and GSS_S_GAP_TOKEN出现在
+可选的预消息重发检测特性的联合中——在1.2.3节中描述；他们的语义在这节中定义。
+GSS_S_CONTEXT_EXPIRED表示上下文相关的数据项已经过期，所以要求的操作不能被完成。
+GSS_S_CREDENTIALS_EXPIRED表示上下文已经被确认，但是相关的信任状已经过期，所以相关的
+操作不能被执行。
+GSS_S_NO_CONTEXT表示没有有效的上下文（有输入的context_handle提供）被确认。
+GSS_S_FAILURE表示上下文被确认，但是GSS_VerifyMIC操作因为GSS_API级未说明的原因执行失
+败。
+使用被context_handle引用的安全上下文，验证输入的per_msg_token含有适当的完整性检查
+（对输入的消息，并且应用任何活动的重发检测或者顺序特性。返回一个关于qop的标志——在
+qop_state结果中应用于消息的处理。因为GSS_VerifyMIC例程从来不提供加密服务，他的实现
+者不能在输出的qop_state的加密域中返回非0值。
+当这个函数被调用时，不支持预消息保护服务的机制应该返回GSS_S_FAILURE。
+2.3.3: GSS_Wrap 调用
+注意：这个调用是和在这个规范的前一版本定义的GSS_Seal调用功能相同。为了向后兼容，推
+荐实现者支持这个功能——在表现的两个名字上；不赞成使用GSS_Seal引用这个功能.
+输入：
+context_handle CONTEXT HANDLE,
+conf_req_flag BOOLEAN,
+qop_req INTEGER,-0 specifies default QOP
+input_message OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+conf_state BOOLEAN,
+output_message OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示input_message被成功处理并且output_message准备好被传送。
+GSS_S_CONTEXT_EXPIRED表示上下文相关的数据项已经过期，所以要求的操作不能被完成。
+GSS_S_CREDENTIALS_EXPIRED表示上下文已被确认，但是他相关的信任状已经过期，所以要求的
+操作不能被完成。
+GSS_S_NO_CONTEXT表示没有有效上下文被确认（由输入的context_handle提供）
+GSS_S_BAD_QOP表示提供的QOP值没有被确认或者支持上下文。
+GSS_S_FAILURE表示上下文被确认，但是GSS_Wrap操作因为GSS-API级不能说明的原因不能被执
+行。
+执行数据源的认证和数据完整性功能的GSS_GetMIC。如果输入的conf_req_flag是TRUE，要求加
+密应用到input_message。机密性可以不被所有的mech_type或者所有的实现支持；返回的
+conf_state标志表示机密性是否为input_message提供。Qop_req参数，在1.2.4节中讨论中解释，
+允许质量保护控制。
+在所有的情形中，GSS_Wrap调用产生一个单独的output_message数据元素，和控制信息一样包
+含用户数据（可选的加密）。
+2.3.4: GSS_Unwrap 调用
+注意：这个调用是和在这个规范的前一版本定义的GSS_Unseal调用功能相同。为了向后兼容，
+推荐实现者支持这个功能——在表现的两个名字上；不赞成使用GSS_Unseal引用这个功能.
+输入：
+context_handle CONTEXT HANDLE,
+input_message OCTET STRING
+输出：
+conf_state BOOLEAN,
+qop_state INTEGER,
+major_status INTEGER,
+minor_status INTEGER,
+output_message OCTET STRING
+返回major_status编码：
+GSS_S_COMPLETE表示input_message被成功的处理并且输出的output_message是有效的。
+GSS_S_DEFECTIVE_TOKEN表示在per_msg_token（从input_message中读取的）上的一致性检查被
+执行失败，阻止正在执行的进一步被处理。
+GSS_S_BAD_SIG表示对消息的一个不正确的完整性检查被发现。
+GSS_S_DUPLICATE_TOKEN, GSS_S_OLD_TOKEN, GSS_S_UNSEQ_TOKEN, and GSS_S_GAP_TOKEN的值
+出现在可选的预消息重发检测（在1.2.3节描述）联合中；他们的语义描述在这节。
+GSS_S_CONTEXT_EXPIRED表示上下文相关数据项已经过期，所以要求的操作不能被完成。
+GSS_S_CREDENTIALS_EXPIRED表示上下文已经被确认，但是他相关的信任状已经过期，所以要求
+的操作不能被完成。
+GSS_S_NO_CONTEXT表示没有有效的上下文（由输入的context_handle提供）被确认。
+GSS_S_FAILURE表示上下文被确认，但是GSS_Unwrap操作因为GSS-API级未说明的原因而操作失
+败。
+GSS_Wrap产生一个处理的数据元素。返回的conf_state值表示加密是否应用在input_message
+上。如果conf_state是TRUE，GSS_Unwrap解密input_message。返回一个qop（应用在已处理的
+消息上）表示在qop_state结果中。GSS_Wrap处理数据的完整性，数据源的认证检查功能由
+GSS_VerifyMIC在一段明文数据上传送。明文数据在output_message中返回。
+当这个函数被调用时，不支持预消息保护服务的机制应该返回GSS_S_FAILURE。
+2.4:  Support calls
+这组调用为GSS-API调用者提供一些有用的支持功能函数，他们独立已建立的上下文状态。他们
+关于阻止或者非阻止状态（在网络交互中）的特性没有被说明。
+2.4.1:  GSS_Display_status 调用
+输入：
+status_value INTEGER,-GSS-API major_status or minor_status返回值
+status_type INTEGER,-1 —— major_status, 2 —— minor_status
+mech_type OBJECT IDENTIFIER-mech_type 将为翻译minor_status而被使用
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+status_string_set SET OF OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示一个有效的可显示的状态表示（可能表示多余一个状态事件——在
+state_value中编码）在返回的status_string_set中是有效的。
+GSS_S_BAD_MECH表示与一个不支持的mech_type的转换被要求，所以转换不能被完成。
+GSS_S_BAD_STATUS表示输入的status_value是无效的，或者输入的status_type的值不是1或2，
+所以转换不能被完成。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因执行失败。
+为调用者提供一种手段以转换GSS-API返回的major和minor状态编码到一种可显示的表达中。
+2.4.2:  GSS_Indicate_mechs 调用
+输入：
+无
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+mech_set SET OF OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE表示一个有效的机制集合在mech_set中被返回。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因执行失败。
+允许调用者在本地系统上判定机制集合类型的有效性。这个调用支持特定的调用者——在
+GSS_Acquire_cred中要求非默认的mech_types集合，并且不应该被其他调用者需要。
+2.4.3:  GSS_Compare_name 调用
+输入：
+name1 INTERNAL NAME,
+name2 INTERNAL NAME
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+name_equal BOOLEAN
+返回的major_status编码：
+GSS_S_COMPLETE表示 name1和 name2 是可比的，并且name_equal结果表示name1 和 name2 是
+否表示同一个实体。
+GSS_S_BAD_NAMETYPE表示name1和name2含有不被应用底层GSS-API机制支持的内部类型，或者两
+个名字类型是不同的和不可比的，所以比较操作不能被完成。
+GSS_S_BAD_NAME表示输入的名字是错误形式的（在内部类型说明符中），所以比较操作不能被完
+成。
+GSS_S_FAILURE表示调用操作因为GSS-API级未说明的原因执行失败。
+所有的调用者比较两个内部名字表示用来判定他们是否引用同一个实体。如果传给
+GSS_Compare_name的任何一个名字表示一个匿名的实体，GSS_Compare_name将表示为FALSE。
+Name1 和 name2 是MN不是必须要求的；对于某些实现和和情况，GSS_S_BAD_NAMETYPE将被返回，
+表示名字不可比，对于输入的名字都不是一个MN的情况。
+2.4.4:  GSS_Display_name 调用
+输入：
+name INTERNAL NAME
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+name_string OCTET STRING,
+name_type OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE表示在返回的name_string中的显示名字表示是有效的。
+GSS_S_BAD_NAMETYPE表示提供的名字是不能被应用于底层的GSS-API机制解释的类型，所以没有
+可显示的表示能被产生。
+GSS_S_BAD_NAME表示提供的名字的内容不是由内部表示的名字类型组成，所以可显示的表示不
+能被产生。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因不能被执行。
+允许调用者转换一个内部名字表示为显示形式——关联与描述的名字空间类型。显示形式的语
+法是一个本地问题。
+如果输入名字表示一个匿名标识，一个保留值（GSS_C_NI_ANONYMOUS）将被返回给name_type。
+2.4.5:  GSS_Import_name 调用
+输入：
+input_name_string OCTET STRING,
+input_name_type OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+output_name INTERNAL NAME
+返回major_status编码：
+GSS_S_COMPLETE表示一个有效的名字表示在output_name中输出并且被在output_name_type中
+的值描述。
+GSS_S_BAD_NAMETYPE表示input_name_type不能被应用于底层GSS-API的机制支持，所以导入操
+作不能被完成。
+GSS_S_BAD_NAME表示提供的input_name_string在input_name_type中是错误形式的，所以导如
+操作不能被完成。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因而不能执行。
+允许调用者提供一个名字表示作为字节串，和他一起的指定的名字空间类型应该被解析，转换
+表示为一个内部形式以适用其他GSS-API函数的输入。Input_name_string的语法定义在名字类
+型的联合中；根据input_name_type，相关的input_name_string可以是或者不是可显示的串。
+注意：input_name_type参数服务与描述和限制相关的input_name_string的解释；他不说明返
+回的output_name的数据类型。如果一个机制声明支持一个特殊的名字类型，他的
+GSS_Import_name操作能够接收所有的可能值——与在名字类型中定义的外部名字语法是一致
+的。这些输入值可以对应为：
+（1）本地注册的实体（他已获得信任状）
+（2）非本地实体（他不能获得本地信任状，但可以被发起安全上下文的目标或者接收安全上下
+文的发起者参考），或者，
+（3）以上两个都不是
+判断一个特定名字是否属于类（1）、（2）或者（3）（以上描述的）不能保证被GSS_Import_name
+功能正确的执行。
+被GSS_Import_name操作产生的内部名字可以是一个单独机制的MN，并且象在单一机制实现中的
+MN，但是可移植的调用者不能依靠这个特性（也不能，假设GSS_Import_name的输出可以被直接
+传递给GSS_Export）name，不用先通过GSS_Canonicalize_name处理）。
+2.4.6: GSS_Release_name 调用
+输入：
+name INTERNAL NAME
+输出：
+major_status INTEGER,
+minor_status INTEGER
+返回的major_status编码：
+GSS_S_COMPLETE表示输入名字的相关存储被成功的释放了。
+GSS_S_BAD_NAME表示输入名字参数不包含一个有效的名字。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因不能被执行。
+允许调用者释放内部名字表示相关的存储。这个调用的行为依据语言和编程环境——在GSS-API
+实现的操作中，并且在应用绑定的规范中进一步细化；特殊的，这个调用在内存自动管理时可
+能是多余的。
+2.4.7: GSS_Release_buffer 调用
+输入：
+buffer OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER
+返回的major_status编码：
+GSS_S_COMPLETE表示输入缓存的相关的存储被成功的释放了。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因不能被执行。
+允许调用者释放被另一个GSS-API调用分配的字节串缓存相关的存储。这个调用的行为依赖与语
+言和编程环境——GSS-API实现者的操作，并且在应用绑定的规范中进一步细化；特殊的，这个
+调用在内存自动管理时可能是多余的。
+2.4.8: GSS_Release_OID_set 调用
+输入：
+buffer SET OF OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER
+返回的major_status编码：
+GSS_S_COMPLETE表示输入对象标识符集合相关存储被成功的释放。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因不能被执行。
+允许调用者释放被另一个GSS-API调用分配的字节串缓存相关的存储。这个调用的行为依赖与语
+言和编程环境——GSS-API实现者的操作，并且在应用绑定的规范中进一步细化；特殊的，这个
+调用在内存自动管理时可能是多余的。
+2.4.9: GSS_Create_empty_OID_set 调用
+输入：
+无
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+oid_set SET OF OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE 表示成功完成
+GSS_S_FAILURE 表示操作失败
+创建一个对象标识符集合包含无对象标识符，那种情况可以使用GSS_Add_OID_member函数随后
+加入成员。这些函数被使用用来构建机制对象标识符集合，作为GSS_Acquire_cred的输入。
+2.4.10: GSS_Add_OID_set_member 调用
+输入：
+member_oid OBJECT IDENTIFIER,
+
+oid_set SET OF OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+返回的major_status编码：
+GSS_S_COMPLETE表示成功的操作。
+GSS_S_FAILURE表示操作失败
+加入一个对象标识符到对象标识符集合中。这个函数为了和GSS_Create_empth_OID_set函数的
+联合使用——当为GSS_Acquire_cred的输入构建一个机制OID时。
+2.4.11: GSS_Test_OID_set_member 调用
+输入：
+member OBJECT IDENTIFIER,
+set SET OF OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+present BOOLEAN
+返回的major_status编码：
+GSS_S_COMPLETE 表示成功完成
+GSS_S_FAILURE 表示操作失败
+查询一个对象标识符集合以确定一个特定对象标识符是否是他的成员。这个例子被用于OID集合
+——由GSS_Indicate_mechs返回，GSS_Acquire_cred和GSS_Inquire_cred。
+2.4.12: GSS_Release_OID 调用
+输入：
+oid OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER
+返回的major_status编码：
+GSS_S_COMPLETE 表示成功完成
+GSS_S_FAILURE 表示操作失败
+
+允许调用者释放被另一个GSS-API调用分配的关联于一个OBJECT IDENTIFIER缓存的存储。这个
+调用的行为依赖与语言和编程环境——GSS-API实现者的操作，并且在应用绑定的规范中进一步
+细化；特殊的，这个调用在内存自动管理时可能是多余的。
+2.4.13: GSS_OID_to_str 调用
+输入：
+oid OBJECT IDENTIFIER
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+oid_str OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE 表示成功完成
+GSS_S_FAILURE 表示操作失败
+GSS_OID_to_str返回一个串表示输入OID——以数字ASN.1语法格式（花括号包含，空格分隔，
+例如{2 16 840 1 113687 1 2 1}）。串可以使用GSS_Release_buffer释放。如果输入oid不能表
+示一个有效的对象表示符，GSS_S_FAILURE状态被返回，oid_str结果返回是NULL。
+2.4.14: GSS_Str_to_OID 调用
+输入：
+oid_str OCTET STRING
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+oid OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE 表示成功完成
+GSS_S_FAILURE 表示操作失败
+GSS_Str_to_OID构建并且返回一个OID——从他的可显示形式；实现应该能从为GSS_OID_to_str
+的描述中接收数字ASN.1语法形式。并且这个形式应该被使用，以利于可移植性，但是这个函数
+的实现也应该接收其他的格式（例如，1.2.3.3.）。使用GSS_Release_OID应该能释放OID。如果
+输入的oid_str不能被转换为OID，GSS_S_FILURE状态将被返回，并且oid结果是NULL。
+2.4.15:  GSS_Inquire_names_for_mech 调用
+输入：
+input_mech_type OBJECT IDENTIFIER, -- mechanism type
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+name_type_set SET OF OBJECT IDENTIFIER
+返回的major_status编码：
+GSS_S_COMPLETE表示输出name_type_set包含一个名字类型列表——被本地有效的机制（被
+input_mech_type标识）支持的。
+GSS_S_BAD_MECH表示被input_mech_type标识的机制在本地实现不被支持，导致查询失败。
+GSS_S_FAILURE表示要求的操作因为GSS-API级没有说明的原因不能被执行。
+允许调用者判定名字类型的集合——被本地说明的有效的机制支持的。
+2.4.16: GSS_Inquire_mechs_for_name 调用
+输入：
+input_name INTERNAL NAME,
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+mech_types SET OF OBJECT IDENTIFIER
+返回major_status编码：
+GSS_S_COMPLETE表示表示对象标识符的集合，对应于为处理input_name的机制集合，在
+mech_types中是有效的。
+GSS_S_BAD_NAME表示input_name不能被处理。
+GSS_S_BAD_NAMETYPE表示input_name的类型不能被GSS-API实现支持。
+GSS_S_FAILURE表示要求的操作不能被执行——因为GSS-API级没有说明的原因。
+这个函数返回一个机制集合，使用他，input_name可以被处理。在使用后，mech_types对象应
+该被调用者使用GSS_Release_OID_set调用释放。注意：希望GSS_Inquire_mechs_for_name的实
+现操作基于可用机制能力的描述上；不能保证所有标识的机制必须能规范一个特定的名字（经
+过GSS_Canonicalize_name调用）。
+2.4.17: GSS_Canonicalize_name 调用
+输入：
+input_name INTERNAL NAME,
+mech_type OBJECT IDENTIFIER  -- 必须是明确的机制，不能是默认的说明符
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+output_name INTERNAL NAME
+返回的major_status编码：
+GSS_S_COMPLETE表示input_name的机制说明的简化，被mech_type标识的机制处理，在
+output_name中是有效的。
+GSS_S_BAD_MECH表示的标识机制不被支持。
+GSS_S_BAD_NAMETYPE表示输入名字不含有一个适用与标识的机制处理的元素。
+GSS_S_BAD_NAME表示名字含有一个适用与标识的机制处理的元素，但是这个元素不能被成功的
+处理。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因不能被执行。
+这个函数产生一个GSS-API内部的名字，他可以包含一个对应于多机制的元素，用于转换被
+mech_type标识的机制为MN。
+2.4.18: GSS_Export_name 调用
+输入：
+input_name INTERNAL NAME, -- 要求是 MN
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+output_name OCTET STRING
+返回的major_status编码：
+GSS_S_COMPLETE表示在output_name中的输入名字的表示是有效的。
+GSS_S_NAME_NOT_MN表示输入名字包含对应与多机制的元素，所以不能被输出为一个单机制平台
+形式。
+GSS_S_BAD_NAME表示输入的名字是一个MN，但不能被处理。
+GSS_S_BAD_NAMETYPE表示输入的名字是一个MN，但是他的类型不能被GSS-API实现支持。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因不能被执行。
+这个例程创建一个平台名字表示，适合于字节比较或者是给GSS_Import_name的输入——和保留
+的GSS-API 输出名字对象OID，冲发出的内部形式MN中，例如，被GSS_Canonicalize_name或者
+GSS_Accept_sec_context。
+发出的GSS-API输出名字对象是自描述的；没有相关的参数级OID被这个调用发出。这个平台表
+示有一个机制独立的包装层组成，在这个文档的3.2节定义，包括一个机制定义的名字表示形式。
+在所有情况下，被GSS_Export_name输出的平台名字（对应一个特定的输入MN）必须是不变的—
+—在特定安装期间内。
+GSS_S_NAME_NOT_MN状态编码用来提供使实现拒绝输入名字不是MN的名字。这篇规范的目的不是
+要求所有非MN的输入名字必须被拒绝。
+2.4.19: GSS_Duplicate_name call
+输入：
+src_name INTERNAL NAME
+输出：
+major_status INTEGER,
+minor_status INTEGER,
+dest_name INTERNAL NAME
+返回的major_status编码：
+GSS_S_COMPLETE表示dest_name引用一个内部名字对象——包含同样的名字——传递给
+src_name的。
+GSS_S_BAD_NAME表示输入名字是无效的
+GSS_S_BAD_NAMETYPE表示输入名字类型不被GSS-API实现支持。
+GSS_S_FAILURE表示要求的操作因为GSS-API级未说明的原因不能被执行。
+这个例程处理输入的内部名字src_name，并且返回另一个引用（dest_name）给名字——他可以
+被使用，即使src_name被释放掉后。（注意：这个实现可以通过拷贝或者通过使用引用）
+3:GSS-API V2的数据结构定义
+这节的子部分定义了GSS-V2使用的一般的数据结构——为了互操作和可移植的目的。
+3.1:机制独立的标识格式
+这节描述机制独立级的封装表示——为了一个GSS_API上下文建立顺序的初始化标识，结合将
+要在此上下文上使用的机制类型标识符，使标识能够被GSS-API的对方清楚的解析。对于
+internet标准GSS-API机制，初始化建立上下文表示，这种格式是要求的；使用非初始化标识
+是可选的。
+标识标签的编码格式来源于ASN.1和DER（这节以后部分包含每一个说明性的ASN.1语法），但
+是具体的表现是直接由八进制术语定义的，而不是在ASN.1级别上——为了不使用ASN.1处理
+代码而更容易的实现。
+标识标签包含以下元素，按顺序：
+1. 0x60 – [APPLICATION 0] SEQUENCE标签：表示构造形式，定义编码长度。
+2. 标识八进制长度，说明后来数据的长度（例如，在此列表中3-5元素的总长度，机制定义标
+识对象跟随的标签）。这些元素由变长的八进制组成。
+2a.如果显示值小于128，将被表示为单个字节（8bit）。高位为0，其余位表示实际的值。
+2b.如果显示值大于128，将被表示为2个或者多个字节，第一字节的8位设为1，其余的bits
+说明其他的字节数量。后续的字节表示值，每个字节8位。字节的最小数量用于长度编码（例
+如，没有字节代表长度为零，将被包含在长度编码中）。
+3. 0x06 – 对象标识符的标签
+4. 对象标识符长度 – 编码对象标识符的长度（字节数）包含在5中，编码规则在2a、2b中
+5.对象标识符八进制 – 字节的可变数量，以ASN.1 BER规则编码：
+5a. 第一个字节包含两个值的和：（1）高层对象标识符组建，乘与40，和（2）第二级对象标
+识符组件。这个特殊的情况唯一一点，其中对象标识符被编码，一个单独的字节被表示为一个
+或者多个组件内容。
+5b.后续的字节，如果需要，在表示的对象标识符中后续的底层主件。一个主件的编码可以有多
+个字节，每个字节编7位，第8位设为1（除了最后主件编码字节）。字节的最小数量将用于编
+码每个主件（例如，没有字节的0也将被包含进主件编码中）。
+（注意：在许多实现中，元素3-5可以作为字符串常量被存储和引用）
+一个机制定义标识对象跟随在一个标识标志后。没有独立的尺寸标识符影响对象标识符的值以
+表示机制定义的标识对象尺寸。当在机制定义标识使用ASN.1被允许时，机制说明的内部上下
+文标识、内部消息标识、sealeUserData数据元素不是必须用ASN.1的BER/DER编码。
+以下包含的ASN.1句子只用于描述的目的，为了说明标识和标志对象间的结构关系。为了互操
+作的目的，标识和标志编码应该使用这节以前描述的具体的编码过程。
+GSS-API DEFINITIONS ::=
+
+       EGIN
+       MechType ::= OBJECT IDENTIFIER
+       -- data structure definitions
+
+       -- callers must be able to distinguish among
+       -- InitialContextToken, SubsequentContextToken,
+       -- PerMsgToken, and SealedMessage data elements
+       -- based on the usage in which they occur
+
+       InitialContextToken ::=
+       -- option indication (delegation, etc.) indicated within
+       -- mechanism-specific token
+       [APPLICATION 0] IMPLICIT SEQUENCE {
+               thisMech MechType,
+               innerContextToken ANY DEFINED BY thisMech
+                  -- contents mechanism-specific
+                  -- ASN.1 structure not required
+               }
+
+       SubsequentContextToken ::= innerContextToken ANY
+       -- interpretation based on predecessor InitialContextToken
+       -- ASN.1 structure not required
+
+       PerMsgToken ::=
+       -- as emitted by GSS_GetMIC and processed by GSS_VerifyMIC
+       -- ASN.1 structure not required
+               innerMsgToken ANY
+
+       SealedMessage ::=
+       -- as emitted by GSS_Wrap and processed by GSS_Unwrap
+       -- includes internal, mechanism-defined indicator
+       -- of whether or not encrypted
+       -- ASN.1 structure not required
+               sealedUserData ANY
+
+       END
+
+3.2:机制独立的输出名字对象格式
+这节描述经由GSS_Export_name()调用产生的名字输出的机制独立级的封装表示，包含一个代
+表输出机制的对象标识符。经由这种表示封装的名字格式将被定义在单独的机制说明中。这种
+类型的名字对象将被用以下对象标识符标识：
+{1(iso), 3(org), 6(dod), 1(internet), 5(security), 6(nametypes), 
+4(gss-api-exported-name)}
+没有任何名字类型的OID被包含在这个机制独立级的格式定义中，因为（依赖于独立的机制说
+明）封装名字可以被显示的或者隐式的说明——使用OID编码外的一种形式。
+
+长度             名字              描述
+2                TOK_ID            标识标识符，为了输出名字对象，他必须是hex 04 01
+2                MECH_OID_LEN      机制OID的长度
+MECH_OID_LEN     MECH_OID          机制OID，以DER形式
+4                NAME_LEN          名字长度
+NAME_LEN         NAME              输出名字：定义在可用机制草稿中的格式
+
+4.名字类型定义
+这节包含名字类型的定义和相关语句（在GSS-API级定机制独立形式定义的，而不是单独机制
+描述中定义的）
+4.1基于主机的名字服务形式
+以下对象标识符值被提供作为一种手段以表示这些名字形式
+1(iso), 3(org), 6(dod), 1(internet), 5(security), 6(nametypes), 
+2(gss-host-based-services)}
+这种类型推荐标识是“GSS_C_NT_HOSTBASED_SERVICE”
+这个名字类型用于表示主机相关的服务。这个名字格式由以下两个元素组成：service和
+hostname，如下：
+service@hostname
+当一个这种类型名字的引用被解析时，主机名通过使用DNS查询被规范，并且返回一个全限制的
+名，或者查询失败时，返回一个提供的主机名。规范的操作把主机名映射为小写字符。
+主机名元素可以被忽略。如果没有分隔符@被包括，实体名字被解释为服务说明符，本机的名字
+被规范为默认的主机名字。
+服务元素的值注册为IANA。
+4.2:Y:用户名字形式
+这些名字形式可以用以下对象标识符表示：{iso(1)
+   member-body(2) United States(840) mit(113554) infosys(1) gssapi(2)
+   generic(1) user_name(1)}。推荐的这种类型的机制独立符号名字是“GSS_C_NT_USER_NAME”.
+（注意：相同的名字形式和OID在Kerberos V5 GSS-API中定义，但是推荐的符号前缀是
+“GSS_KRB5_NT_”）
+这种名字类型用于标识本地系统上的命名用户。他的解释是操作系统相关的。名字格式组成如
+下：
+username
+4.3:机器UID形式
+这些名字形式可以用以下对象标识符表示：{iso(1) member-body(2) United States(840) 
+mit(113554) infosys(1) gssapi(2) generic(1) machine_uid_name(2)}. 推荐的这种类型的
+机制独立符号名字是“GSS_C_NT_MACHINE_UID_NAME”.( 注意：相同的名字形式和OID在Kerberos 
+V5 GSS-API中定义，但是推荐的符号前缀是“GSS_KRB5_NT_”)
+这种名字类型用于表示用户数字标识——对应于本地系统上的用户。他的解释是操作系统相关
+的。Gss_buffer_desc代表这种类型的一个名字，他包含一个本地的uid_t，以主机字节顺序表
+示。GSS_Import_name操作解析这个uid为用户名，然后他被当作用户名字形式。
+4.4:字符串UID形式
+这些名字形式可以用以下对象标识符表示：{iso(1) member-body(2) United States(840) 
+mit(113554) infosys(1) gssapi(2) generic(1) string_uid_name(3)} 推荐的这种类型的机
+制独立符号名字是" GSS_C_NT_STRING_UID_NAME" ( 注意：相同的名字形式和OID在Kerberos 
+V5 GSS-API中定义，但是推荐的符号前缀是“GSS_KRB5_NT_”)
+这种名字类型用于表示一个数字串——用户数字标识——对应于本地系统上的用户。他的解释
+是操作系统相关的。这个名字类型是和机器的UID形式相似的，除了缓存中含有一个代表uid_t
+的字符串。
+5:机制说明例子情形
+这节说明了各种支持GSS-API的机制使用情况。这些讨论适用于那些熟悉特殊加密技术的读者，
+演示GSS-API功能怎样被使用，怎样被底层机制实现。他们不应被认为是微缩的实现，或者只是
+通过GSS-API功能（使用特定的底层技术实现）的定义，并没有演示所有的GSS-API的特点技术
+5.1:Kerberos V5,单独TGT
+操作系统功能login产生一个本地的Kerberos服务域的TGT：TGT被放在一个客户端的信任结构
+中。客户端调用GSS_Acquire_cred以获得一个信任句柄以引用信任，用于建立安全上下文使用。
+客户端调用GSS_Init_sec_context。如果要求的服务被定位在另一个域中，
+GSS_Init_sec_context得到需要的TGT/Key对从本地到目标域的穿过。这些数据被放在拥有者的
+TGT缓存中。在任何需要的远程域解析后，GSS_Init_sec_context产生一个服务票据以请求对应
+的会话密钥服务；这些数据存储在上下文的联合中。GSS-API编码发送KRB_TGS_REQ请求并且接
+收KRB_TGS_REP或者KEB_ERROR.
+假设成功了，GSS_Init_sec_context建立一条Kerberos格式的KRB_AP_REQ消息，并且在输出标
+识中返回。客户发送输出标志到服务。
+服务传送接收到的标识作为GSS_Accept_sec_context输入标识参数，它验证认证，提供客户端
+验证名字服务，并且返回output_context_handle
+双方都拥有和票据信息相联的会话密钥，并且可以在以后的这些操作中使用：GSS_GetMIC、
+GSS_VerifyMIC、GSS_Wrap、GSS_Unwrap.
+5.2:Kerberos V5,双重TGT
+TGT获得如上
+注意： 
+为了避免不必要的经常调用错误的路径（当在实现GSS-API顶层上的Kerberos V5时），对不同的
+独立的mech_type，使用single-TGT K-V5和double-TGT K-V5来分别表示，这篇文章以这种假设
+为前提。
+基于（特定的或者是默认的）mech_type，GSS_Init_sec_context判定double-TGT协议是否应用
+于指定目标。GSS_Init_sec_context返回GSS_S_CONTINUE_NEEDED major_status，并且返回输
+出标志（output_token）——包含一个服务请求为了一个服务的TGI。（如果一个服务的TGT在一
+个已存在的缓存中有足够长的生命周期，他是可用的，排除这步的需要）。客户端传送
+output_token到服务端。注意：这种情况说明了GSS_S_CONTINUE_NEEDED状态返回的不同使用，
+和相互认证支持相比；在一个单独上下文建立操作中，两种情况可以在连续的操作中共同存在）。
+服务传递接收到的标识作为GSS_Accept_sec_context（）参数input_token，他被作为一个对TGT
+的请求。（注意当前的Kerberos V5没有定义任何内在的协议机制来表示这样的请求。）
+GSS_Accept_sec_context返回GSS_S_CONTINUE_NEEDED major_status并且在他的输出标识
+（output_token）中提供服务TGT。服务发送output_token给客户端。
+客户端传递接收到的标识作为参数input_token给GSS_Init_sec_context。
+GSS_Init_sec_context缓存接到的TGT服务，并且使用他作为服务票据的一部分来请求Kerveros
+认证服务器，存储返回的服务票据和会话密钥在上下文的联合中。GSS_Inir_sec_context 建立
+一个Kerveros格式的认证者。
+并且在output_token中返回，随着GSS_S_COMPLETE返回的major_status。客户端发送
+output_token给服务端。
+服务传递接到的标识作为GSS_Accept_sec_context()的输入参数input_token，
+GSS_Accept_sec_context校验认证者，提供验证客户认证名字的服务，并且返回
+GSS_S_COMPLETE的major_status。
+GSS_GetMIC、GSS_VerifyMIC、GSS_Wrap、GSS_Unwrap同上
+5.3:X.509认证框架
+这个例子说明GSS-API和公钥体制的联合使用，和X509目录认证框架是一致的。
+GSS_Acquire_cred调用建立一个信用结构，使客户的私钥对于客户端程序是可访问的。
+客户端调用GSS_Init_sec_context，他查询目录以获得（或者使有效）公钥证书链，以收集服
+务的公钥。证书的有效性检查操作判定合适的完整性检查被可信任的CA应用，并且这些证书没
+有过期。GSS_Init_sec_context产生一个加密密钥以用于在上下文上对预消息进行保护，并且
+在公钥服务下加密密钥。
+加密后的密钥，随着一个用客户私钥签名的认证，被包含在output_token中（从
+GSS_Init_sec_cntext来）。Output_token中也包含一个证书路径，由证书链组成，一个不同的
+方法将被服务执行一推迟这个路径解析以代替被客户端宣布。客户端应用发送output_token给
+服务。
+服务传递接收到的标识作为GSS_Accept_sec_context的输入标识参数，
+GSS_Accept_sec_context验证证书路径，并且以结果验证证书中绑定的客户端DN名和客户端
+公钥。假如给定公钥，GSS_Accept_sec_context处理输入标识验证并且检验用于输入标识签名
+的客户私钥。在这一点上，客户端是向服务认定的。服务端使用他的私钥解密加密的密钥（在
+上下文中提供用于预消息保护操作）
+客户端对数据消息调用GSS_GetMIC和GSS_Wrap，他导致预消息认定，完整性检查，应用于消
+息上的机密性检查。服务端使用上下文中共享的密钥完成相应的GSS_VerifyMIC和GSS_Unwrap
+调用。
+6:安全考虑
+这篇文章始终都在讨论安全问题
+7:有关内容
+为了在已存在的、正在出现的和将要出现的安全机制上实现GSS_API:
+对象标识符必须被附值为侯选的GSS-API机制和他们支持的名字类型。
+具体的数据元素格式和处理流程必须为后选的机制定义。
+调用应用必须实现格式转换，他将从其他应用协议中的数据中区分出GSS-API标识。
+具体的语言绑定由编程环境要求，用于GSS-API实现使用，RFC1509定义了C语言和GSS-API V1
+
+附录A:机制设计约束
+GSS-API机制设计的以下限制被采用来达到调用者协议的要求，并且在后来的关于GSS-API机
+制的描述（在标准互联网说规范中）中被期望。
+推荐机制提供消息保护服务，也要提供重发检测和顺序服务，因为机制若不提供后者将不能满
+足某些协议的对识别的要求。
+
+附录B:和GSS-V1的兼容性
+                        与 GSS-V1的兼容性
+
+   这篇文档的目的在于定义与GSS_V1调用者和GSS_V2提供者兼容的接口和流程。GSS_V1的调用
+被保留，GSS_V1的调用者能够在提供的GSS_V2实现上进行操作。某些被改变的细节在本章中列
+出的，这些细节改变了GSS_V1中繁琐的地方.
+
+   如下的GSS-V1结构在GSS-V2中支持的同时不建议使用:
+
+      消息处理程序中的名字不建议使用GSS_Seal()，以GSS_Wrap()代替; GSS_Sign()
+      以GSS_GetMIC()代替; GSS_Unseal()以GSS_Unwrap()代替; GSS_Verify()以
+  GSS_VerifyMIC()代替.
+
+      上下文令牌使用的GSS_Delete_sec_context()功能,在GSS_V1中的允许机制发上下文删
+除信号的功能被保留。建议在以后的使用中两个端点分别调用GSS_Delete_sec_context()，传
+送一个空的输出上下文令牌表明不在需要上下文令牌。在GSS_Delete_sec_context()的实现中
+应删除相应的本地存储的上下文信息。
+   	  GSS-V2 定义增加了在GSS-V1基础上实现了如下调用:
+
+      信任状管理调用： GSS_Add_cred(),
+      				   GSS_Inquire_cred_by_mech().
+
+      上下文级调用: GSS_Inquire_context(), GSS_Wrap_size_limit(),
+      GSS_Export_sec_context(), GSS_Import_sec_context().
+
+      消息调用: 未增加新的调用，重新命名已经存在的调用。
+
+      支持调用: GSS_Create_empty_OID_set(),
+      GSS_Add_OID_set_member(), GSS_Test_OID_set_member(),
+      GSS_Release_OID(), GSS_OID_to_str(), GSS_Str_to_OID(),
+      GSS_Inquire_names_for_mech(), GSS_Inquire_mechs_for_name(),
+      GSS_Canonicalize_name(), GSS_Export_name(), GSS_Duplicate_name().
+
+   		GSS-V2 定义介绍了三个应用于安全上下文的此功能。使用了GSS_V1中不存在的上下文
+状态：
+
+      匿名状态, 置为真表明从目标方看发起者是匿名的。1.2.5 中的定义提供了GSS_V2
+匿名功能的简要描述。对它的支持和使用是任选的。
+
+      prot_ready_state, 值为真表明在上下文建立完成之前，上下文可用于消息的保护。
+1.2.7 中的定义提供了对在上下文建立完成之前，上下文可用于消息的保护功能的可选的支持
+的简要描述。对它的支持和使用是任选的。
+
+      trans_state, 值为真表明上下文可通过GSS_Export_sec_context()传送到另一个处理
+过程。
+
+ 这些状态值在GSS_V1不使用的位向量上设置，可被GSS_V1调用者忽略。
+
+与GSS-V1相比, GSS-V2 在GSS_API的实现上在如下方面提供了附加的指导   ：
+实现，信任状管理，在多机制配置下的执行，命名支持，任选的顺序服务的结果，GSS_V2 3.1
+中定义的令牌标示功能直接以八位字节表示，从而简化在没有一般的ASN.1处理码的情况下的实
+现。为了便于描述的相应的ASN.1 语法,与GSS_V1相比没有变化。为了与增加的命名支持功能同
+步使用，增加了一个新的输出名字对象的构造.  增加的名字类型第4部分做了介绍.
+
+    GSS-V2 定义增加可GSS_V1中未定义的主状态码:
+
+     GSS_S_BAD_QOP                 不支持的 QOP 值
+     GSS_S_UNAUTHORIZED            操作未授权
+     GSS_S_UNAVAILABLE             无法获得的操作
+     GSS_S_DUPLICATE_ELEMENT       需要复制的信任状元素
+     GSS_S_NAME_NOT_MN             包含多机制元素的名字
+     GSS_S_GAP_TOKEN               跳过检测到的前任令牌
+
+   在增加的状态码中，只有两个值在已存在的GSS_V1调用中是可返回的: GSS_S_BAD_QOP (由   
+GSS_GetMIC() ， GSS_Wrap() 返回),  GSS_S_GAP_TOKEN (由GSS_VerifyMIC() and 
+GSS_Unwrap())返回.
+
+     GSS-V2 中某些GSS_V1特定调用的描述已被更新为允许返回增加的主状态码。: 
+GSS_Inquire_cred() 增加GSS_S_DEFECTIVE_CREDENTIAL 和 GSS_S_CREDENTIALS_EXPIRED , 
+GSS_Init_sec_context() 增加 GSS_S_OLD_TOKEN, GSS_S_DUPLICATE_TOKEN和 
+GSS_S_BAD_MECH 。GSS_Accept_sec_context() 增加 GSS_S_BAD_MECH.
+
+作者地址：
+
+   John Linn
+   OpenVision Technologies
+   One Main St.
+   Cambridge, MA  02142  USA
+RFC2078 Generic Security Service Application Program Interface, Version 2通用安全服务应用接口（GSS-API） V2
+
+
+1
+

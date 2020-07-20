@@ -1,0 +1,451 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：mailto:ouyang@china-pub.com
+译者：（）
+译文发布时间：2001-11-4
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+Network Working Group                                         R. Gellens
+Request for Comments: 2449                                      Qualcomm
+Updates: 1939                                                  C. Newman
+Category: Standards Track                                       Innosoft
+                                                            L. Lundblade
+                                                                Qualcomm
+November 1998
+
+
+POP3扩展机制
+(RFC2449——POP3 Extension Mechanism)
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化
+程度和状态。本备忘录的发布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (2001).
+IESG声明
+此POP3协议的扩展是供服务器使用，来描述服务器管理员采取的对策的。它不是POP3
+进一步扩展之实现的保证。普通的观点是，出于单纯的从一个邮件服务器下载邮件的目的，
+POP3协议应该保持简单。如果需要更复杂的操作，应该使用IMAP协议。第7节的第一段
+应该仔细阅读。
+目录
+1．介绍	2
+2．这篇文档使用的约定。	2
+3．一般命令和响应语法	3
+4．参数和响应长度	3
+5.CAPA命令	4
+6.功能的初始集合	4
+6.1 TOP功能	5
+6.2.  USER 功能	5
+6.3.  SASL capability	5
+6.4.  RESP-CODES功能	5
+6.5.  LOGIN-DELAY 功能	6
+6.6 PIPELINING功能	6
+6.7 EXPIRE功能	7
+6.8 UIDL功能	8
+6.9 IMPLEMENTATION功能	8
+7.POP3的未来扩展	9
+8.扩展POP3响应码	9
+8．1初始化POP3响应码	9
+9．IANA考虑	10
+10.安全考虑	10
+11.致谢	11
+12.参考文献	11
+13.作者地址	11
+14.完整版权说明	12
+
+1．介绍
+   邮局协议第3版[POP3]使用广泛。但是，当它包含某些可选的命令时（以及某些已经发
+布的协议扩展），它缺乏一种机制，来对这些扩展或动作变化提供公开的支持。
+   目前这些可选特征和扩展只能通过探测的方式检测到，如果可行的话。这种方式至少是
+缺乏效率的，甚至可能更坏。因此，某些客户端有用于人工配置POP3功能的选项。
+因为POP3的一个最重要的特征是它的简单，所以扩展的数目最好比较少。但是，某些
+扩展是必需的（比如提供改善的安全性的扩展[POP-AUTH]），而其它的只在特定情况下是值
+得要的。另外，需要一种发现服务器的方法。
+此备忘录对RFC1939[POP3]进行改进，以提供一种机制用来声明对可选命令，扩展，和
+无条件服务器行为的支持。它包含了已经配置的功能的初始配置，这些配置因服务器而异，
+以及许多新功能（SASL, RESP-CODES, LOGIN-DELAY, PIPELINING, EXPIRE和
+IMPLEMENTATION)。这篇文档也对POP3的错误信息进行了扩展，这样机器的可解析代码就能
+够提供给客户端。还包含响应码的初始设置。另外，还定义了一个POP3命令和响应的[ABNF]
+规格说明。
+公开的评论应该发送到IETF　POP3扩展邮件列表<ietf-pop3ext@imc.org>。想订阅的
+话，可以向<ietf-pop3ext-request@imc.org>发送一条包含SUBSCRIBE的消息。
+2．这篇文档使用的约定。
+　　这篇文档里的"REQUIRED", "MUST", "MUST NOT", "SHOULD", "SHOULD NOT",
+和“MAY”的解释和“Keywords for use in RFCs to Indicate Requirement Levels”[KEYWORDS]
+里描述的一样。
+  在例子中，“C:”和“S:”表是客户端和服务器端分别发送的信息。
+3．一般命令和响应语法
+   POP3命令和响应的一般形式使用[ABNF]进行描述：
+   POP3命令：
+      command      =  keyword *(SP param) CRLF    ;最大255八位组 
+      keyword      =  3*4VCHAR
+      param        =  1*VCHAR
+   POP3响应
+      response     =  greeting / single-line / capa-resp / multi-line
+      capa-resp    =  single-line *capability "." CRLF
+      capa-tag     =  1*cchar
+      capability   =  capa-tag *(SP param) CRLF   ;最大512八位组 
+      cchar        =  %x21-2D / %x2F-7F
+                          ;可打印ASCII码, “.”除外
+      dot-stuffed  =  *CHAR CRLF                  ;必须以圆点填充
+gchar        =  %x21-3B / %x3D-7F
+                          ;可打印的ASCII码，“<"除外
+      greeting     =  "+OK" [resp-code] *gchar [timestamp] *gchar CRLF
+                          ;最大512八位组
+      multi-line   =  single-line *dot-stuffed "." CRLF
+      rchar        =  %x21-2E / %x30-5C / %x5E-7F
+                          ; 可打印的ASCII码，“/”和“]”除外
+      resp-code    =  "[" resp-level *("/" resp-level) "]"
+      resp-level   =  1*rchar
+      schar        =  %x21-5A / %x5C-7F
+                          ; 可打印的ASCII码, “［”除外
+      single-line  =  status [SP text] CRLF       ;最大512八位组
+      status       =  "+OK" / "-ERR"
+      text         =  *schar / resp-code *CHAR
+      timestamp    =  "<" *VCHAR ">"
+                          ;必须符合RFC-822的msg-id规定
+4．参数和响应长度
+     这里的阐述增加了RFC 1939提出的命令和参数长度限制。
+     一个命令的最大长度从47字符（4字符的命令，单空格，40个字符变量，CRLF）增加
+到255八位组，包括有限CRLF。
+    支持CAPA命令的服务器必须支持长达255八位组的命令。服务器也必须支持任何支持
+的功能所指定的最大命令长度。
+    命令响应的第一行的最大长度（包括开始的问候）还是512八位组不变（包括有限CRLF）。
+5.CAPA命令
+  POP3的CAPA命令返回POP3服务器支持的功能列表。它在AUTHORIZATION和TRANSACTION
+状态下均可使用。
+  一个功能描述必须记录在功能通告于何种状态下，以及在哪种状态下命令有效。
+    在AUTHORIZATION状态下可用的功能必须在两种状态下都予以通告。
+    如果某个功能在两种状态下都被通告了，但是在身份验证之后参数可能不同。这种可能
+性必须在功能描述中说明。
+（这些要求允许一个客户端在不使用任何TRANSACTION-only功能，以及任何在身份验证之
+后参数值可能不同的功能时，只发送一个CAPA命令。）
+    如果身份验证这步商定了一个完整性保护层，客户端应该在验证重新发送CAPA命令，
+以阻止活动的down-negotiation攻击。
+每个功能都可能激活额外的协议命令，额外的参数和已存在命令的响应，或者描述服务
+器行为的一个方面。这些细节在相应的功能描述中阐述。
+第3节描述了使用[ABNF]的CAPA响应。当一个功能响应描述了一个可选命令时，
+<capa-tag>应该和命令关键词一样。CAPA响应标记对大小写敏感。
+CAPA
+参数：无
+限制：无
+讨论：-ERR响应表明功能命令没有实现，客户端必须像以前一样对功能进行探测。
+-OK响应后面紧跟着的就是一个功能列表，一行一个功能。每个功能名后面可能都有一
+个空格和由空格分隔的一个参数列表。每个功能行被限制在512八位组以内（包括CRLF在
+内）。功能列表碰到包含一个终止八位组（“.”）和一个CRLF对时结束。
+可能的响应：+OK –ERR
+例子：
+     C: CAPA
+     S: +OK Capability list follows
+     S: TOP
+     S: USER
+     S: SASL CRAM-MD5 KERBEROS_V4
+     S: RESP-CODES
+     S: LOGIN-DELAY 900
+     S: PIPELINING
+     S: EXPIRE 60
+     S: UIDL
+     S: IMPLEMENTATION Shlemazle-Plotz-v302
+     S: .
+6.功能的初始集合
+这节定义了POP3功能的一个初始集合。这些包括可选POP3命令，已经发布的POP3扩
+展，以及POP3服务器之间的行为差异，这种差异能够影响到客户端。
+注意到没有APOP功能，尽管APOP在[POP3]中是可选命令。客户端通过包含在一个尖括
+号（“<>”）里的初始验证的问候语的存在与否来发现服务器对APOP的支持。因此，APOP功
+能为服务器声明同样的事情引进了两种方法。
+  6.1 TOP功能
+     CAPA标记：TOP
+     参数：无
+   附加命令：TOP
+   影响的标准命令：无
+   声明的状态/可能的不同：两者/没有
+   命令有效的状态：TRANSACTION
+   规范参考：[POP3]
+   讨论：TOP 功能表明TOP可选命令可用。
+6.2.  USER 功能
+CAPA tag:USER
+参数：无
+  附加命令:USER PASS
+  受影响的标准命令:无
+  声明的状态/可能的不同：两者/没有
+命令有效的状态：AUTHENTICATION
+  规范参考：[POP3]
+讨论:USER功能表明支持USER和PASS命令，尽管它们可能不是对所有用户都可用。
+6.3.  SASL capability
+  CAPA标记:SASL
+  参数:支持的SASL机制
+  附加命令:AUTH
+  受影响的标准命令：无
+  声明的状态/可能的不同：两者/没有   
+命令有效的状态：AUTHENTICATION
+  规范参考：[POP-AUTH, SASL]
+  讨论:POP3AUTH命令[POP-AUTH]允许使用带POP3的[SASL]的认证机制. SASL功能表明
+AUTH命令可用，并且支持base64编码的另一参数，此参数可选，是为初始的客户端响应而
+设的，如SASL里所述。SASL功能的参数是受支持的SASL机制列表，列表由空格分隔。
+6.4.  RESP-CODES功能
+ CAPA标记: RESP-CODES
+  参数:无
+  附加命令:无
+受影响的标准命令:无
+  声明的状态/可能的不同: 两者/没有
+  命令有效的状态:n/a
+  规范参考:此文档
+讨论: RESP-CODES性能表明任何由此服务器发送的响应文本，只要是由一个左方括号
+（“[”]）开始的，它就是扩展响应编码（参见第8节）。
+6.5.  LOGIN-DELAY 功能
+ CAPA标记:LOGIN-DELAY
+  参数:多个登陆间的最小间隔秒数; AUTHENTICATION状态下可以跟上USER。
+附加命令:无
+  受影响的标准命令:USER PASS APOP AUTH
+  声明的状态/可能的不同：两者/有
+  命令有效的状态:n/a
+  规范参考:此文档
+  讨论：POP3客户经常登陆来检查是否有新邮件。不幸的是，创建一个连接，验证用户，
+以及打开用户的邮箱非常消耗服务器的资源。许多POP3服务器试图通过要求登陆之间有一
+个延迟的方式来降低服务器负载。LOGIN-DELAY功能包括一个整型参数，它表示在一个对
+PASS, APOP, 或 AUTH命令的“+OK”响应之后，接受另一个验证之前，延迟的秒数。允许
+用户配置邮件检查间隔的客户端应该使用这个功能来确定允许的最小间隔。发布LOGIN-       
+DELAY的服务器应该强制此实现。
+如果最小登陆延迟可以因用户而异（就是说，LOGIN-DELAY参数在验证之后可以改变），
+服务器必须在AUTHENTICATION时设置用户能够配置的最大值。这可能是当前所有用户使用
+中的最大值（这样的话每个服务器就只有一个值），或者是服务器允许为任意用户设置的最
+大值。服务器应该在AUTHENTICATION状态下给LOGIN-DELAY参数附加“USER”标记，以通
+知客户端在验证之后可以获取一个更加精确的值。服务器应该在TRANSACTION下宣布那个更
+加精确的值。（“USER”标记允许客户端决定是否需要另一个CAPA命令。）
+服务器通过带或不带LOGIN-DELAY的出错响应来拒绝验证，这样强制LOGIN-DELAY。参
+见第8.1.1节获取更多信息。
+6.6 PIPELINING功能
+CAPA标记：PIPELINING
+参数：无
+附加命令：无
+受影响的标准命令：全部
+声明的状态/可能的不同: 两者/没有
+命令有效的状态:n/a
+规范参考:此文档
+讨论：PIPELINING功能表明服务器能够同时接收多个命令；客户端在发送另一个命令
+之前不需要等待前一个命令的响应。如果一个服务器支持PIPELINING，它必须轮流处理每
+个命令。如果一个客户端使用PIPELINING，它必须跟踪它发送的命令，并将服务器响应按
+顺序和命令进行匹配。如果客户端或服务器使用缓冲写，它就不能超过下面转输层的窗口尺
+寸。
+某些POP3客户端有一个选项来声明服务器支持“重迭POP3命令”。此功能就去除了在
+客户端配置PIPELINING的必要性。
+这和ESMTP PIPELINING大体上是同义的，但是，因为SMTP [SMTP]往往有较短的命令和
+响应，在组合复合命令和将它们作为一个单元发送时很有好处。在POP中有这样的情况（比
+如，USER和PASS能分批处理，复合RETR和/或DELE命令能成组发送），因为POP拥有较短
+的命令和某时过于冗长的响应，所以还有一个好处是，在还在接收早期命令响应时可以发送
+新命令（比如，在处理一个UIDL响应时发送RETR和/或DELE命令）。
+6.7 EXPIRE功能
+CAPA标记：EXPIRE
+参数：服务器保证的最小保存期，或者是NEVER;在AUTHENTICATION状态下可以跟上
+USER。
+附加命令：无
+受影响的标准命令：无
+声明的状态/可能的不同：两者/有
+命令有效的状态：n/a
+规范参考:此文档
+讨论：尽管POP3允许客户端在服务器上遗留消息，RFC1939 [POP3]对这样可能引起的
+问题提出了警告，并且允许服务器在着站点策略的基础上删除消息。
+EXPIRE功能通过允许服务器通知客户端起作用的策略的方式，避免了RFC 1939里提到
+的问题。EXPIRE功能的参数表示服务器上的消息的最小保存期，以天计算。
+EXPIRE 0表明不允许客户端在服务器上遗留邮件；当会话进入UPDATE状态时，服务器
+可以对每个用RETR下载的消息暗地执行一个DELE。
+EXPIRE NEVER声明服务器不会删除消息。
+一个“保存期”的概念被有意弄得模糊。服务器可能设置一个截止期，当一条消息加到
+邮箱时，当客户端通过LIST或UIDL命令察觉到一条消息的存在时，当一条消息遵照某种方
+式动作（比如TOP或者RETR）时，或者当一些其它事件发生时。EXPIRE功能不能提供关于
+任何特定消息何时到期的精确表示。此功能的本意在于使客户端更容易地按一种符合站点策
+略和用户意愿的方式行事。例如，对任何试图配置一个“遗留邮件在服务器上”期限，并且
+此期限大于或等于服务器声明值的某个比例时，客户端就可能会显示一个警告信息。
+如果一个站点使用任何自动删除策略，它就应该使用EXPIRE功能来声明这一点。
+EXPIRE功能，如果参数不是0或NEVER的话，就是用来使客户端知道服务器允许邮件
+遗留在服务器上，并向其展示一个有效的最小值。
+允许用户无限期遗留消息的站点应该用EXPIRE NEVER声明这一点。
+如果超期策略因用户而异的话（就是说，EXPIRE参数可能在验证之后改变），服务器必
+须在AUTHENTICATION时声明能够为任意用户设置的最小值。这个值可能是当前所有用户使
+用中的最小值（这样的话每个服务器就只有一个值），或者甚至是服务器允许为任意用户设
+置的最小值。服务器必须在AUTHENTICATION状态下向EXPIRE的参数附加“USER”标记，以
+通知客户端在验证之后可以获取一个更精确的值。服务器应该在TRANSACTION状态下声明这
+个更精确的值。（“USER”标记允许客户端决定是否需要另外的CAPA命令）。
+一个站点的消息超期策略可能根据已经执行的用户动作或者其它因素对待消息。比如，
+站点可能在60天后删除未见过的消息，在15天后删除完全或者部分见过的消息。
+声明的EXPIRE值是保存期的最小值，当前站点策略下的任何范畴或状态，以及任何用
+户（在AUTHENTICATION状态下）或特定用户都适用此值。也即，EXPIRE告诉客户端消息处
+于所有环境下可以在服务器上停留的最小天数。
+
+例：
+           EXPIRE 5 USER
+           EXPIRE 30
+           EXPIRE NEVER
+           EXPIRE 0
+第一个例子表明服务器在五天后删除消息，但是这个期限因用户而异，并且通过在
+TRANSACTION状态下发送另一个CAPA命令可以获得一个更精确的值。第二个例子表明服务
+器在30天后删除消息。在第三个例子中，服务器声明它将不删除消息。第四个例子说明站
+点不允许消息留在服务器上。
+6.8 UIDL功能
+CAPA标记：UIDL
+参数：无
+附加命令：UIDL
+受影响的标准命令：无
+声明的状态/可能的不同：两者/无
+命令有效的状态：TRANSACTION
+规范参考: [POP3]
+讨论：UIDL功能表明支持可选UIDL命令。
+6.9 IMPLEMENTATION功能
+CAPA标记：IMPLEMENTATION
+参数：字符串，给服务器提供实现信息
+附加命令：无
+受影响的标准命令：无
+声明的状态/可能的不同：两者（或者只有TRANSACTION）/无
+命令有效的状态：n/a
+规范参考:此文档
+讨论：识别出特定服务器的实现（比如，在登陆时）常常是很有用的。通常使用欢迎标
+记，但是必须猜测字符串是不是一个实现ID。
+IMPLEMENTATION功能的参数由一个或更多的标志服务器的标记组成。（注意因为CAPA
+响应标记参数用空格分隔，因此IMPLEMENTATION功能的参数不带参数可能很方便，这样的
+话它就是一个单独的标记了。）
+一般地，服务器在两种状态下声明IMPLEMENTATION。但是，某个服务器可能选择只在
+TRANSACTION状态下声明。
+服务器可能在欢迎标记和IMPLEMENTATION功能中都包括有实现ID。
+客户端禁止更改它们基于服务器实现的行为。相反地，服务器和客户端应该在私有扩展
+上达成一致意见。
+7.POP3的未来扩展
+POP3的未来扩展大体来说是令人气馁的，因为POP3的有效性是建立在它的简洁性基础
+上的。POP3的本意是作为一个download-and-delete协议；邮件存取功能可以在IMAP   
+[IMAP4]中获得。任何为附加邮箱提供支持，或者允许向服务器上传消息，或者偏离了POP
+的download-and-delete模型的扩展，都是非常令人气馁的，因而不大可能被IETF标准批
+准。
+客户端不能对基本的功能要求任何扩展，验证命令(APOP, AUTH [6.3节]和 USER/PASS)
+是个例外。
+第9节说明了附加功能是如何定义的。
+8.扩展POP3响应码
+未扩展的POP3对大部分命令只能够说明是成功或是失败。不幸的是，客户端经常需要
+有关失败原因的更多信息，以便适当地从中恢复。这在响应一个失败的登陆时特别重要(有
+许多客户端配置试图解码一个PASS命令结果的错误文本，以在“不能得到邮箱密码”和“破
+坏性登陆”之间区别)。
+这一规范修定了POP3标准，使它允许一个可选的响应码，此响应码包含在方括号里面，
+位于一个“+OK”或“-ERR”响应中的可读部分的开始。支持这个扩展的客户端能在向用户
+显示可读文本之前删除方括号里面的信息。紧接着左方括号字符的是一个响应码，它由客户
+端用一种大小写不敏感的方式来进行解释。
+响应码是分等级的，一个“／”分隔不同等级的错误细节。客户端必须忽略不知道的关
+于响应码的等级细节。这一点很重要，因为它是在将来为响应码提供更多细节的必要条件。
+第3节用[ABNF]描述了响应码。
+如果一个服务器支持扩展的响应码，它通过在CAPA 响应中包含RESP-CODES的方式来
+声明。
+例：
+C: APOP mrose c4c9334bac560ecc979e58001b3e22fb
+S: -ERR [IN-USE] Do you have another POP session running?
+8．1初始化POP3响应码
+     此规范定义了两个用来确定登陆失败原因的POP3响应码.第9节说明了附加的响应码
+是如何定义的。
+8．1．1  LOGIN-DELAY响应码
+当AUTH, USER （见注意), PASS o或者 APOP响应为一个-ERR时发生，表明用户最近
+登陆过，并且不允许再次登陆直到过了登陆延时期。
+注意：对USER命令返回LOGIN-DELAY响应码避免了验证用户，但是向用户说明那个特
+定的用户已经存在。除非服务器正在工作的环境中，用户名不是秘密的（比如，许多流行的
+email客户端在一个外发邮件头里面公开POP服务器和用户名），或者当服务器存取受到控
+制，又或者当服务器能够确认那个连接是同一个用户的，此外服务器最好别对USER命令发
+送此响应码。服务器也保存打开邮箱的花费，在某些环境中这是最费时的步骤。
+8．1．2  IN-USE响应码
+AUTH, APOP, 或者PASS的响应为-ERR时发生。它表明验证成功，但是用户的邮箱目前
+正在使用中（可能是另一个POP3客户端）。
+9．IANA考虑
+此文档要求IANA维持两个新的注册项：POP3功能和POP3响应码。
+新的POP3功能必须使用标准格式或IESG批准实验性RFC，并且不能以字母“X”开头。
+新的POP3功能必须包含以下信息：
+    CAPA标记
+    参数
+    附加命令
+    受影响的标准命令
+    声明的状态/可能的不同
+    命令有效的状态
+    规范参考
+    讨论
+另外，POP3命令和响应的新的长度限制可能需要包括在内。
+新的POP3响应码必须在一个RFC或者其它的永久的、容易获得的参考中定义，并且细
+节要足够详细，这样相互独立的实现间的相互协作才有可能。（这是在[IANA]里面描述的“规
+范要求”策略）。
+新的POP3响应码说明必须包含以下信息：完整的响应码，对哪个响应（+OK或 -ERR）
+或命令有效，以及它的意义和期望的客户端行为的定义。
+10.安全考虑
+一个功能列表能反映关于服务器验证机制的信息，此机制用来确定某些攻击是否会成
+功。但是，允许客户端自动检测更健壮的机制的可获取性，允许客户端使用它们的同时改变
+它们的配置，这些措施能够全面改善一个站点的安全性。
+8.1节讨论了对USER命令使用的LOGIN-DELAY响应码的安全问题。
+11.致谢
+这篇文档的部分修改有赖于IETF POP3扩展邮件列表上及其之外的评论和讨论。感谢花
+时间评论此文档和提供建议的人们的帮助，特别是Alexey Melnikov, Harald Alvestrand, 
+和 Mike Gahrns。
+12.参考文献
+    [ABNF]       Crocker, D. and P. Overell, "Augmented BNF for Syntax
+                Specifications:  ABNF", RFC 2234, November 1997.
+   [IANA]       Narten, T. and H. Alvestrand, "Guidelines for Writing an
+                IANA Considerations Section in RFCs", BCP 26, RFC 2434,
+                October 1998.
+   [IMAP4]      Crispin, M., "Internet Message Access Protocol --
+                Version 4rev1", RFC 2060, December 1996.
+   [KEYWORDS]   Bradner, S., "Key words for use in RFCs to Indicate
+                Requirement Levels", BCP 14, RFC 2119, March 1997.
+   [PIPELINING] Freed, N., "SMTP Service Extension for Command
+                Pipelining", RFC 2197, September 1997.
+   [POP3]       Myers, J. and M. Rose, "Post Office Protocol -- Version
+                3", STD 53, RFC 1939, May 1996.
+   [POP-AUTH]   Myers, J., "POP3 AUTHentication command", RFC 1734,
+                December 1994.
+   [SASL]       Myers, J., "Simple Authentication and Security Layer
+                (SASL)", RFC 2222, October 1997.
+   [SMTP]       Postel, J., "Simple Mail Transfer Protocol", STD 10, RFC
+                821, August 1982.
+13.作者地址
+    Randall Gellens
+QUALCOMM Incorporated
+   6455 Lusk Blvd.
+   San Diego, CA  92121-2779
+   USA
+   Phone: +1 619 651 5115
+   Fax:   +1 619 845 7268
+   EMail: randy@qualcomm.com
+
+Chris Newman
+   Innosoft International, Inc.
+   1050 Lakes Drive
+   West Covina, CA 91790
+   USA
+   EMail: chris.newman@innosoft.com
+   Laurence Lundblade
+   QUALCOMM Incorporated
+   6455 Lusk Blvd.
+   San Diego, Ca, 92121-2779
+   USA
+   Phone: +1 619 658 3584
+   Fax:   +1 619 845 7268
+   EMail: lgl@qualcomm.com
+14.完整版权说明
+   Copyright (C) The Internet Society (1998).  All Rights Reserved.
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+RFC2449——POP3 Extension Mechanism                                          POP3扩展机制
+
+                                                                                          1

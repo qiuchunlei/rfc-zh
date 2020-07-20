@@ -1,0 +1,494 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：陶志荣（dick_hw  jerrytaowx@263.net）
+译文发布时间：2001-7-14
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留本
+文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                        K. Lahey
+Request for Comments: 2923                            dotRocket, Inc.
+Category: Informational                                September 2000
+
+
+						 TCP的路径MTU发现问题
+（TCP Problems with Path MTU Discovery）
+
+
+本备忘录的状态
+
+本文档为Internet社区提供信息。它并不定义任何Internet标准。本备忘录的发布不受任
+何限制。
+
+版权声明
+
+Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+摘要
+
+本备忘录编制了几个已知和路径最大传输单元发现(PMTUD)相关的传输控制协议（TCP）实
+现问题，包括长期存在的黑洞问题，由于最大段长（MSS）和段长的混淆造成的弹性确认
+（ACKs）问题，以及基于PMTU的MSS通告问题。
+
+目录
+1 介绍	2
+2 已知的实现问题	2
+2.1  问题名字	2
+2.2 问题名字	4
+2.3 问题名字	7
+3 安全考虑	9
+4 致谢	9
+5 参考	9
+6  作者地址：	10
+7 完整的版权说明	10
+1 介绍
+本备忘录编制了几个已知和路径最大传输单元发现(PMTUD)相关的传输控制协议（TCP）实
+现问题，包括长期存在的黑洞问题，由于最大段长（MSS）和段长的混淆造成的弹性确认
+（ACKs）问题，以及基于PMTU的MSS通告问题。这么做的目的是通过改进当前TCP/IP实现
+的质量来改善目前Internet的环境。
+路径MTU发现（PMTUD）可被任何上层协议使用，但通常TCP用得最多。本文档不打算涉及
+其它上层协议遇到的问题。Ipv6的路径MTU发现[RFC1981]只处理与Ipv6相关的情况，不
+是本文档要讨论的情况。
+每个问题按如下定义：
+问题名字
+	与问题相联系的名字。在本备忘录中，名字作为子小节的标题。
+分类
+	该问题的更多分类是：“拥塞控制”，“性能”，“可靠性”，“非互操作――连接
+失败”。
+描述
+	问题定义，简洁但包括了必要的背景材料。
+意义
+	对几个环境的简单总结表明问题的意义。
+含义
+	为什么这个问题被当作一个问题。
+相关RFC
+	和该问题相抵触的定义TCP的RFC。这些RFC通常使用术语如必须，应该，可以及其它
+大写的词语指示该如何动作。这些术语的确切解释见RFC2119。
+阐述问题的输出文件
+	若合适的话，给出一个或多个ASCII输出文件阐述问题
+解释什么是正确处理的输出文件
+	若合适的话，给出一个或多个ASCII输出文件解释正确处理的输出
+参考
+	对问题进一步讨论的参考材料
+如何检测
+	如何对实现测试来检查是否有这个问题。
+如何修改
+	对原因已明的问题，如何改正实现。
+2 已知的实现问题
+2.1  问题名字
+	黑洞检测
+分类
+	非交互操作――连接失败
+描述
+	主机执行路径MTU发现方法是发送尽可能大的包，在IP头置上不要分片位（DF）。若
+包太大无法由路由器转发到特定路径，路由器必须给源地址发送一个目的不可达――需要
+分片的ICMP消息。主机将基于这个ICMP消息调整包大小。
+
+	正如[RFC1435]中指出的，路由器并不总能正确处理这种事件――许多路由器未能发送
+ICMP消息，或是由于核心的bug或是由于配置原因等。若实现遵守相关文档的建议，
+Ipsec[RFC2401]和IP-in-IP[RFC2003]隧道不应引起这种问题。
+
+	如[RFC1191]中指出的，当原始主机未能收到合适的ICMP消息时PMTUD失败。没有
+ICMP消息通知就无法发现需要减小包大小，上层协议则继续尝试发送大包。它发的包在
+PMTUD黑洞中消失。
+意义
+	当由于没有ICMP消息导致PMTUD失败时，TCP在某些条件下也会完全失效。
+含义
+	因为到目的主机的ping和某些交互式TCP连接是正常的，这种故障尤其难查。大流量
+传输在第一个大包即失败而连接最终超时。
+	这种情况几乎总是由于网络的应该被更正的配置错误造成。然而似乎在路径上某些TCP
+实现互操作失败而未影响到其它TCP实现（也就是那些没有PMTUD的），这是不合适的。这
+使得市场不愿将TCP实现配置为PMTUD使能。
+相关RFC
+	RFC1191描述路径MTU发现。RFC1435提供了早期这类问题的描述。
+阐述问题的输出文件
+	用tcpdump[Jacobson89]在一个中间主机上记录的结果：
+
+      20:12:11.951321 A > B: S 1748427200:1748427200(0)
+           win 49152 <mss 1460>
+      20:12:11.951829 B > A: S 1001927984:1001927984(0)
+           ack 1748427201 win 16384 <mss 65240>
+      20:12:11.955230 A > B: . ack 1 win 49152 (DF)
+      20:12:11.959099 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:12:13.139074 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:12:16.188685 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:12:22.290483 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:12:34.491856 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:12:58.896405 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:13:47.703184 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:14:52.780640 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:15:57.856037 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:17:02.932431 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:18:08.009337 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:19:13.090521 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:20:18.168066 A > B: . 1:1461(1460) ack 1 win 49152 (DF)
+      20:21:23.242761 A > B: R 1461:1461(0) ack 1 win 49152 (DF)
+
+	短的SYN包因为包小通过网络没问题。同样，用于诊断连通性问题的ICMP响应包也能
+成功通过。
+	大数据包通过网络时失败。最终连接超时。若应用是从少量数据的写开始，成功，再
+开始大数据量写，失败，这种情形尤其令人迷惑。
+解释什么是正确处理的输出文件
+	用tcpdump[Jacobson89]在一个中间主机上记录的结果：
+
+      16:48:42.659115 A > B: S 271394446:271394446(0)
+           win 8192 <mss 1460> (DF)
+      16:48:42.672279 B > A: S 2837734676:2837734676(0)
+           ack 271394447 win 16384 <mss 65240>
+
+      16:48:42.676890 A > B: . ack 1 win 8760 (DF)
+      16:48:42.870574 A > B: . 1:1461(1460) ack 1 win 8760 (DF)
+      16:48:42.871799 A > B: . 1461:2921(1460) ack 1 win 8760 (DF)
+      16:48:45.786814 A > B: . 1:1461(1460) ack 1 win 8760 (DF)
+      16:48:51.794676 A > B: . 1:1461(1460) ack 1 win 8760 (DF)
+      16:49:03.808912 A > B: . 1:537(536) ack 1 win 8760
+      16:49:04.016476 B > A: . ack 537 win 16384
+      16:49:04.021245 A > B: . 537:1073(536) ack 1 win 8760
+      16:49:04.021697 A > B: . 1073:1609(536) ack 1 win 8760
+      16:49:04.120694 B > A: . ack 1609 win 16384
+      16:49:04.126142 A > B: . 1609:2145(536) ack 1 win 8760
+
+	在这种情况下，发送者发现四个包发送失败（使用两个包的初始发送窗口），停掉了
+PMTUD。所有接着发送的包的DF标志都关闭，包大小设为缺省值536[RFC1122]。
+参考
+	这个问题在tcp实现的邮件列表中被广泛讨论；名字“黑洞”已使用多年。
+如何检测
+	这个问题表现为TCP连接挂起（无法继续）直到超时（这常常表现为连接已建立并开
+始传输，然后在15分钟后最终终止而未发送任何字节）。而象ftp这样的应用尤其令人讨
+厌，开始传输小包的控制信息时非常好，但开始大块数据传输时就失败。
+	一系列的ICMP响应包表明两端主机仍能传送包，一系列MTU大小的ICMP响应包会发现
+有分片现象，而一系列MTU大小的带DF标志的ICMP响应包则失败。对要诊断问题的网络工
+程师来说这令人迷惑。
+	有几个做PMTUD的traceroute的实现能解释这个问题。
+如何修改
+	TCP应该会注意到连接已超时。在几次超时后，TCP应该试图发送小一点的包，也可以
+把每个包的DF标志关闭。若这样成功，就应继续把这个连接的PMTUD关闭一段时间，直到
+它再次检测试图确定路径是否已改变。
+	注意，在Ipv6中没有DF位――它是永远隐含设置的。在路由器中不允许分片，只在
+源主机允许分片。幸运的是，Ipv6支持的最小MTU是1280字节，远远大于Ipv4中的最小
+68字节。当Ipv4实现检测到黑洞问题时可能要关掉DF，与之相比，Ipv6实现后退到1280
+字节的包应是合理的。
+	ICMP黑洞理想的处理应是在发现时处理。
+	若主机开始执行黑洞检测，有可能问题将仍然被人忽视并未得到修复。因为每次检测
+将花费几秒时间且延迟将引起隐藏的性能相当下降，这十分糟糕。实施黑洞检测的主机应
+记录检测的黑洞以便能修复。
+
+
+2.2 问题名字
+	由于PMTUD引起的ACK延迟(stretch ACK)
+分类
+	拥塞控制/性能
+描述
+	当一个实现上未作复杂处理的TCP协议栈和一个有PMTUD功能的TCP协议栈通信时，对
+每隔两个的全尺寸包将试图产生一个ACK。若是基于通告的MSS来决定全尺寸大小，则在面
+临PMUTD时会严重降低性能。
+	PMTU可以减小为只是通告的MSS的一小段；在这种情况下，ACK只是会很少产生。
+意义
+	延迟的ACK有一系列不好的影响，更完整的列在[RFC2525]。由于ACK很少到达，多数
+会产生更突发性的连接。它们能阻止拥塞窗口的增长。
+含义
+	延迟的ACK的完整含义列在[RFC2525]。
+相关RFC
+	RFC1122列出了对ACK频繁产生的需求。[RFC2581]对此进行了扩展并且声明延迟ACK
+是应该而不是必须。
+阐述问题的输出文件
+	在中间主机上使用tcpdump记录。为简明起见，除了头两个包以外，其它包的时间戳
+选项都被删除。	
+
+   18:16:52.976657 A > B: S 3183102292:3183102292(0) win 16384
+        <mss 4312,nop,wscale 0,nop,nop,timestamp 12128 0> (DF)
+   18:16:52.979580 B > A: S 2022212745:2022212745(0) ack 3183102293 win
+        49152 <mss 4312,nop,wscale 1,nop,nop,timestamp 1592957 12128> (DF)
+   18:16:52.979738 A > B: . ack 1 win 17248  (DF)
+   18:16:52.982473 A > B: . 1:4301(4300) ack 1 win 17248  (DF)
+   18:16:52.982557 C > A: icmp: B unreachable -
+        need to frag (mtu 1500)! (DF)
+   18:16:52.985839 B > A: . ack 1 win 32768  (DF)
+   18:16:54.129928 A > B: . 1:1449(1448) ack 1 win 17248  (DF)
+        .
+        .
+        .
+   18:16:58.507078 A > B: . 1463941:1465389(1448) ack 1 win 17248  (DF)
+   18:16:58.507200 A > B: . 1465389:1466837(1448) ack 1 win 17248  (DF)
+   18:16:58.507326 A > B: . 1466837:1468285(1448) ack 1 win 17248  (DF)
+   18:16:58.507439 A > B: . 1468285:1469733(1448) ack 1 win 17248  (DF)
+   18:16:58.524763 B > A: . ack 1452357 win 32768  (DF)
+   18:16:58.524986 B > A: . ack 1461045 win 32768  (DF)
+   18:16:58.525138 A > B: . 1469733:1471181(1448) ack 1 win 17248  (DF)
+   18:16:58.525268 A > B: . 1471181:1472629(1448) ack 1 win 17248  (DF)
+   18:16:58.525393 A > B: . 1472629:1474077(1448) ack 1 win 17248  (DF)
+   18:16:58.525516 A > B: . 1474077:1475525(1448) ack 1 win 17248  (DF)
+   18:16:58.525642 A > B: . 1475525:1476973(1448) ack 1 win 17248  (DF)
+   18:16:58.525766 A > B: . 1476973:1478421(1448) ack 1 win 17248  (DF)
+   18:16:58.526063 A > B: . 1478421:1479869(1448) ack 1 win 17248  (DF)
+   18:16:58.526187 A > B: . 1479869:1481317(1448) ack 1 win 17248  (DF)
+   18:16:58.526310 A > B: . 1481317:1482765(1448) ack 1 win 17248  (DF)
+   18:16:58.526432 A > B: . 1482765:1484213(1448) ack 1 win 17248  (DF)
+   18:16:58.526561 A > B: . 1484213:1485661(1448) ack 1 win 17248  (DF)
+   18:16:58.526671 A > B: . 1485661:1487109(1448) ack 1 win 17248  (DF)
+   18:16:58.537944 B > A: . ack 1478421 win 32768  (DF)
+   18:16:58.538328 A > B: . 1487109:1488557(1448) ack 1 win 17248  (DF)
+注意ACK之间的间隔比两倍段大小还要大；它消耗了几乎两倍于建议的MSS的时间。传输时
+间长得可以验证延迟的ACK不是丢失ACK包的结果。
+
+解释什么是正确处理的输出文件
+在中间主机上使用tcpdump记录。为简明起见，除了头两个包以外，其它包的时间戳选项
+都被删除。
+
+   18:13:32.287965 A > B: S 2972697496:2972697496(0)
+        win 16384 <mss 4312,nop,wscale 0,nop,nop,timestamp 11326 0> (DF)
+   18:13:32.290785 B > A: S 245639054:245639054(0)
+        ack 2972697497 win 34496 <mss 4312> (DF)
+   18:13:32.290941 A > B: . ack 1 win 17248 (DF)
+   18:13:32.293774 A > B: . 1:4313(4312) ack 1 win 17248 (DF)
+   18:13:32.293856 C > A: icmp: B unreachable -
+        need to frag (mtu 1500)! (DF)
+   18:13:33.637338 A > B: . 1:1461(1460) ack 1 win 17248 (DF)
+        .
+        .
+        .
+   18:13:35.561691 A > B: . 1514021:1515481(1460) ack 1 win 17248 (DF)
+   18:13:35.561814 A > B: . 1515481:1516941(1460) ack 1 win 17248 (DF)
+   18:13:35.561938 A > B: . 1516941:1518401(1460) ack 1 win 17248 (DF)
+   18:13:35.562059 A > B: . 1518401:1519861(1460) ack 1 win 17248 (DF)
+   18:13:35.562174 A > B: . 1519861:1521321(1460) ack 1 win 17248 (DF)
+   18:13:35.564008 B > A: . ack 1481901 win 64680 (DF)
+   18:13:35.564383 A > B: . 1521321:1522781(1460) ack 1 win 17248 (DF)
+   18:13:35.564499 A > B: . 1522781:1524241(1460) ack 1 win 17248 (DF)
+   18:13:35.615576 B > A: . ack 1484821 win 64680 (DF)
+   18:13:35.615646 B > A: . ack 1487741 win 64680 (DF)
+   18:13:35.615716 B > A: . ack 1490661 win 64680 (DF)
+   18:13:35.615784 B > A: . ack 1493581 win 64680 (DF)
+   18:13:35.615856 B > A: . ack 1496501 win 64680 (DF)
+   18:13:35.615952 A > B: . 1524241:1525701(1460) ack 1 win 17248 (DF)
+   18:13:35.615966 B > A: . ack 1499421 win 64680 (DF)
+   18:13:35.616088 A > B: . 1525701:1527161(1460) ack 1 win 17248 (DF)
+   18:13:35.616105 B > A: . ack 1502341 win 64680 (DF)
+   18:13:35.616211 A > B: . 1527161:1528621(1460) ack 1 win 17248 (DF)
+   18:13:35.616228 B > A: . ack 1505261 win 64680 (DF)
+   18:13:35.616327 A > B: . 1528621:1530081(1460) ack 1 win 17248 (DF)
+   18:13:35.616349 B > A: . ack 1508181 win 64680 (DF)
+   18:13:35.616448 A > B: . 1530081:1531541(1460) ack 1 win 17248 (DF)
+   18:13:35.616565 A > B: . 1531541:1533001(1460) ack 1 win 17248 (DF)
+   18:13:35.616891 A > B: . 1533001:1534461(1460) ack 1 win 17248 (DF)
+
+	在本例中，每两段到达的数据产生一个ACK。(即使源主机是同一个，由于没有时间戳
+选项，在本例中段长较大)。
+
+如何检测
+	这样的情况可在当通告的MSS比连接的实际PMTU要大得多的跟踪包中可看到。
+如何修改该问题有几个建议：
+	一个简单的办法是回答每个包，而不管其大小。这有一个缺点是在处理大量小包时产
+生大量的ACK；在X窗口系统中就有这样的应用。
+	一个稍微复杂的处理办法是监测进来的段大小并试图决定发送者使用的段大小。这对
+接收者的状态要求多一点，但计算得更精确，能避免糊涂窗口综合症。
+
+2.3 问题名字
+	从PMTU确定MSS
+分类
+	性能
+描述
+	在连接开始阶段的MSS通告应基于系统接口的MTU。（因为效率和其它原因这可能不是
+最大的MSS）。某些系统使用决定的PMTUD值来决定要通告的MSS值。
+	这导致了通告的MSS要小于系统能接收的最大的MTU。
+意义
+	通告的MSS向远程系统指示了可接收的最大TCP段[RFC879]。若该值太小，远程系统
+在发送时被迫使用小的段长，完全是由于本地系统在较早时发现一个特别的PMTU。
+	由于Internet上路由器的不对称属性[Paxson97]，返回的PMTU和发送的PMTU完全可
+能不同。使用这种办法限制段长可能造成性能降低及使PMTUD算法失败。
+	即使路由器是对称的，人为将段长限制降低会使得不可能以后查询来决定PMTU是否改
+变。
+含义
+	整个PMTUD的要点是尽可能发送大的段。若一个持续了很长时间的连接不能检测到更
+大的PMTUD，那么就无法获得潜在的性能。这破坏了PMTUD的要点。
+相关RFC RFC1191。
+	[RFC879]有MSS计算和适当值的讨论。注意本实践并不和这些RFC的定义相冲突。
+阐述问题的输出文件
+	输出文件是在中间主机上用tcpdump记录。主机A初始化两条到主机B的单独的连接
+A1和A2。路由器是在MTU瓶颈位置。TCP选项照常从所有非SYN包中移走。
+
+   22:33:32.305912 A1 > B: S 1523306220:1523306220(0)
+        win 8760 <mss 1460> (DF)
+   22:33:32.306518 B > A1: S 729966260:729966260(0)
+        ack 1523306221 win 16384 <mss 65240>
+   22:33:32.310307 A1 > B: . ack 1 win 8760 (DF)
+   22:33:32.323496 A1 > B: P 1:1461(1460) ack 1 win 8760 (DF)
+   22:33:32.323569 C > A1: icmp: 129.99.238.5 unreachable -
+        need to frag (mtu 1024) (DF) (ttl 255, id 20666)
+   22:33:32.783694 A1 > B: . 1:985(984) ack 1 win 8856 (DF)
+   22:33:32.840817 B > A1: . ack 985 win 16384
+   22:33:32.845651 A1 > B: . 1461:2445(984) ack 1 win 8856 (DF)
+   22:33:32.846094 B > A1: . ack 985 win 16384
+   22:33:33.724392 A1 > B: . 985:1969(984) ack 1 win 8856 (DF)
+   22:33:33.724893 B > A1: . ack 2445 win 14924
+   22:33:33.728591 A1 > B: . 2445:2921(476) ack 1 win 8856 (DF)
+   22:33:33.729161 A1 > B: . ack 1 win 8856 (DF)
+   22:33:33.840758 B > A1: . ack 2921 win 16384
+
+   [...]
+
+   22:33:34.238659 A1 > B: F 7301:8193(892) ack 1 win 8856 (DF)
+   22:33:34.239036 B > A1: . ack 8194 win 15492
+   22:33:34.239303 B > A1: F 1:1(0) ack 8194 win 16384
+
+   22:33:34.242971 A1 > B: . ack 2 win 8856 (DF)
+   22:33:34.454218 A2 > B: S 1523591299:1523591299(0)
+        win 8856 <mss 984> (DF)
+   22:33:34.454617 B > A2: S 732408874:732408874(0)
+        ack 1523591300 win 16384 <mss 65240>
+   22:33:34.457516 A2 > B: . ack 1 win 8856 (DF)
+   22:33:34.470683 A2 > B: P 1:985(984) ack 1 win 8856 (DF)
+   22:33:34.471144 B > A2: . ack 985 win 16384
+   22:33:34.476554 A2 > B: . 985:1969(984) ack 1 win 8856 (DF)
+   22:33:34.477580 A2 > B: P 1969:2953(984) ack 1 win 8856 (DF)
+
+   [...]
+注意会话A2的SYN包定义了MSS为984。
+
+解释什么是正确处理的输出文件
+和前面一样，输出文件是在中间主机上用tcpdump记录。主机A初始化两条到主机B的单独
+的连接A1和A2。路由器是在MTU瓶颈位置。TCP选项照常从所有非SYN包中移走。
+
+   22:36:58.828602 A1 > B: S 3402991286:3402991286(0) win 32768
+        <mss 4312,wscale 0,nop,timestamp 1123370309 0,
+         echo 1123370309> (DF)
+   22:36:58.844040 B > A1: S 946999880:946999880(0)
+        ack 3402991287 win 16384
+        <mss 65240,nop,wscale 0,nop,nop,timestamp 429552 1123370309>
+   22:36:58.848058 A1 > B: . ack 1 win 32768  (DF)
+   22:36:58.851514 A1 > B: P 1:1025(1024) ack 1 win 32768  (DF)
+   22:36:58.851584 C > A1: icmp: 129.99.238.5 unreachable -
+        need to frag (mtu 1024) (DF)
+   22:36:58.855885 A1 > B: . 1:969(968) ack 1 win 32768  (DF)
+   22:36:58.856378 A1 > B: . 969:985(16) ack 1 win 32768  (DF)
+   22:36:59.036309 B > A1: . ack 985 win 16384
+   22:36:59.039255 A1 > B: FP 985:1025(40) ack 1 win 32768  (DF)
+   22:36:59.039623 B > A1: . ack 1026 win 16344
+   22:36:59.039828 B > A1: F 1:1(0) ack 1026 win 16384
+   22:36:59.043037 A1 > B: . ack 2 win 32768  (DF)
+   22:37:01.436032 A2 > B: S 3404812097:3404812097(0) win 32768
+        <mss 4312,wscale 0,nop,timestamp 1123372916 0,
+         echo 1123372916> (DF)
+   22:37:01.436424 B > A2: S 949814769:949814769(0)
+        ack 3404812098 win 16384
+        <mss 65240,nop,wscale 0,nop,nop,timestamp 429562 1123372916>
+   22:37:01.440147 A2 > B: . ack 1 win 32768  (DF)
+   22:37:01.442736 A2 > B: . 1:969(968) ack 1 win 32768  (DF)
+
+   22:37:01.442894 A2 > B: P 969:985(16) ack 1 win 32768  (DF)
+   22:37:01.443283 B > A2: . ack 985 win 16384
+   22:37:01.446068 A2 > B: P 985:1025(40) ack 1 win 32768  (DF)
+   22:37:01.446519 B > A2: . ack 1025 win 16384
+   22:37:01.448465 A2 > B: F 1025:1025(0) ack 1 win 32768  (DF)
+   22:37:01.448837 B > A2: . ack 1026 win 16384
+   22:37:01.449007 B > A2: F 1:1(0) ack 1026 win 16384
+   22:37:01.452201 A2 > B: . ack 2 win 32768  (DF)
+
+注意会话A1和A2使用同样的MSS。
+
+如何检测
+	可以通过追踪两个单独连接的包来检测；第一个应该激活PMTUD；在第一个之后第二个
+应该在PMTU值未超时前尽快启动。
+如何修改
+	如[RFC1122]和[RFC1191]中指出的，MSS应该基于系统接口的MTU来设置。
+3 安全考虑
+本备忘录指出的第一个安全考虑是，ICMP黑洞常常由于过于热心于安全的管理员阻塞所有
+ICMP消息引起。那些设计和配置安全系统的人理解严格过滤上层协议的影响是至关重要
+的。若大多数TCP实现无法从中传输数据的话，世界上最安全的web站点也就没有任何价
+值。修复所有黑洞要比修复所有TCP实现要好得多。
+4 致谢
+	感谢Mark Allman, Vern Paxson,和Jamshid Mahdavi慷慨的帮助审阅了文档，感谢
+Matt Mathis对引起PMTUD黑洞问题的各种机制的提议及评论。描述TCP问题的结构和该结
+构的早期描述是从[RFC2525]中得来。特别感谢Amy Bock帮助进行PMTUD测试以发现这些漏
+洞。
+
+5 参考
+   [RFC2581]    Allman, M., Paxson, V. and W. Stevens, "TCP Congestion
+                Control", RFC 2581, April 1999.
+
+   [RFC1122]    Braden, R., "Requirements for Internet Hosts --
+                Communication Layers", STD 3, RFC 1122, October 1989.
+
+   [RFC813]     Clark, D., "Window and Acknowledgement Strategy in TCP",
+                RFC 813, July 1982.
+
+   [Jacobson89] V. Jacobson, C. Leres, and S. McCanne, tcpdump, June
+                1989, ftp.ee.lbl.gov
+
+   [RFC1435]    Knowles, S., "IESG Advice from Experience with Path MTU
+                Discovery", RFC 1435, March 1993.
+
+   [RFC1191]    Mogul, J. and S. Deering, "Path MTU discovery", RFC
+                1191, November 1990.
+
+   [RFC1981]    McCann, J., Deering, S. and J. Mogul, "Path MTU
+                Discovery for IP version 6", RFC 1981, August 1996.
+
+   [Paxson96]   V. Paxson, "End-to-End Routing Behavior in the
+                Internet", IEEE/ACM Transactions on Networking (5),
+                pp.~601-615, Oct. 1997.
+
+   [RFC2525]    Paxon, V., Allman, M., Dawson, S., Fenner, W., Griner,
+                J., Heavens, I., Lahey, K., Semke, I. and B. Volz,
+                "Known TCP Implementation Problems", RFC 2525, March
+                1999.
+
+   [RFC879]     Postel, J., "The TCP Maximum Segment Size and Related
+                Topics", RFC 879, November 1983.
+
+   [RFC2001]    Stevens, W., "TCP Slow Start, Congestion Avoidance, Fast
+                Retransmit, and Fast Recovery Algorithms", RFC 2001,
+                January 1997.
+
+
+6  作者地址：
+
+   Kevin Lahey
+   dotRocket, Inc.
+   1901 S. Bascom Ave., Suite 300
+   Campbell, CA 95008
+   USA
+
+   Phone:  +1 408-371-8977 x115
+   email:  kml@dotrocket.com
+
+
+7 完整的版权说明
+
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+RFC2923——TCP Problems with Path MTU Discovery                   TCP的路径MTU发现问题
+
+
+1
+RFC文档中文翻译计划

@@ -1,0 +1,357 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：刘伟娜（superwinner，starfield@xanet.edu.cn）
+译文发布时间：2001-4-26
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                        R. Hinden
+Request for Comments: 2374                                       Nokia
+Obsoletes: 2073                                              M. O'Dell
+Category: Standards Track                                        UUNET
+                                                            S. Deering
+                                                                 Cisco
+                                                             July 1998
+
+
+IPv6 可集聚全球单播地址格式
+(RFC 2374  An IPv6 Aggregatable Global Unicast Address Format)
+
+备忘录状态：
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+版权注意：
+
+   Copyright (C) The Internet Society (1998).  All Rights Reserved.
+
+目录
+
+IPv6 可集聚全球单播地址格式	1
+1.	引论	2
+2. IPv6 地址概述	2
+3. IPv6 可集聚全球单播地址格式	2
+3.1 可集聚全球单播地址结构	3
+3.2 顶级集聚标识符	4
+3.3 保留字段	4
+3.4 下一级集聚标识符	4
+3.5 站点级集聚标识符	5
+3.6 接口ID	6
+4. 技术动机	6
+致谢	7
+参考文献	7
+安全性考虑	8
+
+1.	引论
+本文定义了可用于I n t e r n e t 上的I P v 6 可集聚全球单播地址格式。本文定义的地址
+格式与I P v 6 协议【I P v 6】 以及“I P v 6 寻址体系结构”【A R C H】 是一致的。它的设
+计是为了推进规模可伸缩的I n t e r n e t 选路。
+本文件取代了RFC 2073(基于供应商的I P v 6 单播地址格式)。RFC 2073 成为了历史文
+件。可集聚全球单播地址格式是对RFC 2073 某些方面的改进。主要的改变包括删去了对路
+由集聚、E U I - 6 4 接口标识符的支持，对供应商和交换局集聚的支持，公共和站点拓扑的
+分割以及新集聚术语等所不需要的注册位。
+2. IPv6 地址概述
+I P v 6 地址是为接口和接口组指定的1 2 8 位标识符。有三类地址：单播、任意点播和
+组播。本文专门定义单播地址类。
+在本文中，地址内的字段，赋予如“子网”这样的专门名字。当名字与其后的名词“标
+识符”一起使用时(如“子网标识符”)，被称为名字字段的内容。当名字与名词“前缀”一
+起用时(如“子网前缀”)，则表示包括本字段在内的所有左边的寻址位。
+I P v 6 单播地址的设计使I n t e r n e t 选路系统在不需要了解I P v 6 地址内部结构的
+情况下，在任意位边界上，使用一个最长的前缀匹配“算法”，就可作出包的转发决定。I P 
+v 6 地址的结构是为指派和分配用的。唯一的例外就是要在单播和组播地址之间加以区别。
+I P v 6 地址的特定类型由地址的前几位指出。包含这前几位的可变长度字段叫做格式
+前缀( F P )。
+本文为可集聚全球单播地址定义地址格式，其格式前缀为0 0 1 (二进制)。其他格式前
+缀也可以采用同样的地址格式，只要这些格式前缀是标识I P v 6 单播地址的。只是本文只
+定义了这种格式前缀而已。
+3. IPv6 可集聚全球单播地址格式
+本文为I P v 6 可集聚全球地址格式的分配定义一种地址格式。作者相信这地址格式会
+广泛用于连到I n t e r n e t 的I P v 6 节点。设计该地址格式时，考虑到既支持当前基于供应
+商的集聚，也支持新的基于交换局的集聚。其组合既允许直接连接到供应商的站点能高效率
+地选路集聚，也允许连接到交换局的站点能高效率地选路集聚。站点可以选择连接到两者中
+的任一个集聚实体。
+当该地址格式的目的是支持基于交换局的集聚(除了当前基于提供商的集聚外)时，它的
+总体路由集聚特性与交换局无关。只有用基于供应商的集聚，才能提供效率高的路由集聚。
+可集聚地址安排成一个三层次的分级结构：
+· 公用拓扑。
+· 站点拓扑。
+· 接口标识符。
+公用拓扑是提供公用I n t e r n e t 传送服务的供应商和交换局群体。站点拓扑是本地的
+特定站点或组织，它不提供到本站点以外节点的公用传送服务。接口标识符是标识链路上的
+接口。
+        ______________                  ______________
+    --+/              \+--------------+/              \+----------
+      (       P1       )    +----+    (       P3       )  +----+
+      +\______________/     |    |----+\______________/+--|    |--
+      |                  +--| X1 |                       +| X2 |
+      | ______________  /   |    |-+    ______________  / |    |--
+      +/              \+    +-+--+  \  /              \+  +----+
+      (       P2       )     / \     +(      P4        )
+    --+\______________/     /   \      \______________/
+           |               /     \           |      |
+           |              /       |          |      |
+           |             /        |          |      |
+          _|_          _/_       _|_        _|_    _|_
+         /   \        /   \     /   \      /   \  /   \
+        ( S.A )      ( S.B )   ( P5  )    ( P6  )( S.C )
+         \___/        \___/     \___/      \___/  \___/
+                                  |          / \
+                                 _|_       _/_  \   ___
+                                /   \     /   \  +-/   \
+                               ( S.D )   ( S.E )  ( S.F )
+                                \___/     \___/    \___/
+
+正如上面图所表示的可集聚地址格式，其目的是支持长途供应商(如图中P 1 、P 2 、P 
+3 、P 4 )，交换局(如图中X 1 和X 2 )，多级供应商(如图中P 5 和P 6 )和用户(如图中S . x )。
+交换局(不像目前的N A P s 、F I X e s 等)将分配I P v 6 地址。连接到这些交换局的组织，
+也要从一个或多个长途供应商那里预订(直接、间接地通过交换局等)长途服务。这样做可使
+寻址与长途转运供应商无关。这使得在改换长途供应商时，无需给它们的组织重新编号。组
+织也能成为多家的，也就是通过交换局连到一个以上的长途供应商，而不需要从每个长途供
+应商处获得地址前缀。用于此类供应商的选择及移植性的机制不在本文中讨论。
+3.1 可集聚全球单播地址结构
+可集聚全球单播地址格式表示如下：
+
+     | 3|  13 | 8 |   24   |   16   |          64 bits               |
+     +--+-----+---+--------+--------+--------------------------------+
+     |FP| TLA |RES|  NLA   |  SLA   |         Interface ID           |
+     |  | ID  |   |  ID    |  ID    |                                |
+     +--+-----+---+--------+--------+--------------------------------+
+
+     <--Public Topology--->   Site
+                           <-------->
+                            Topology
+                                     <------Interface Identifier----->
+
+其中，F P 为格式前缀( 0 0 1 )；TLA ID 为顶级集聚标识符；R E S 保留为将来用；NLA 
+ID 为下一级集聚标识符；SLA ID 为站点级集聚标识符；I N T E R FACE ID 为接口标识符；
+下面分别给出I P v 6 可集聚全球单播地址格式的每一部分的说明。
+3.2 顶级集聚标识符
+顶级集聚标识符(TLA ID)是选路分级结构中的最高级。非默认路由器必须为每个激活的
+TLA ID 保留一个路由表项，同时也许还有为TLA ID 提供选路信息的附加项。附加项的目
+的是为它们的特定拓扑优先选路，但是所有级的选路拓扑，必须使提供给非默认路由表的附
+加项数量最少。
+这样的寻址格式支持8 1 9 2 ( 21 3)个TLA ID 。要增加TLA ID 的数量可以向右扩展T L 
+A 字段到保留字段，或者在另外的格式前缀上使用此格式。
+关系分配TLA ID 的议题，超出了本文范围，将在正在进行准备的文件中说明。
+3.3 保留字段
+保留字段留作将来用，当前必须置成0 。
+保留字段可留作T L A 和N L A 字段扩展时用。见第4 节的讨论。
+3.4 下一级集聚标识符
+下一级集聚标识符被得到一个TLA ID 的机构用来创建寻址分级结构和标识站点。该机
+构可以指定NLA ID 字段的前n 位，用来创建适合于它的网络的寻址分级结构。该字段的
+其余部分用来标识它愿为之服务的站点。表示如下：
+
+      |  n  |      24-n 位       |   16   |    64 位        |
+      +-----+--------------------+--------+-----------------+
+      |NLA1 |      站点 ID       | SLA ID |    接口 ID      |
+      +-----+--------------------+--------+-----------------+
+
+每个得到一个TLA ID 的机构可以有2 4 位NLA ID 空间。NLA ID 空间使每个机构能
+够为相当于目前IPv4 Internet 能够支持的总网络数几乎一样多的组织提供服务。
+得到TLA ID 的机构，也支持他们自己站点I D 空间中的NLA ID 。这就允许得到TLA 
+ID 的机构，能给提供公用传送服务的机构提供服务，也能给不提供公用传送服务的机构提
+供服务。得到NLA ID 的机构，也可以选择用他们的站点I D 空间去支持其他的NLA ID 。
+这种情况表示如下：
+  |  n  |      24-n 位        |   16   |     64 位       |
+   +-----+--------------------+--------+-----------------+
+   |NLA1 |      站点 ID       | SLA ID |   接口 ID       |
+   +-----+--------------------+--------+-----------------+
+
+         |  m  |    24-n-m    |   16   |      64 位      |
+         +-----+--------------+--------+-----------------+
+         |NLA2 |   站点 ID    | SLA ID |    接口 ID      |
+         +-----+--------------+--------+-----------------+
+
+               |  o  |24-n-m-o|   16   |     64 位       |
+               +-----+--------+--------+-----------------+
+               |NLA3 | 站点 ID| SLA ID |     接口 ID     |
+               +-----+--------+--------+-----------------+
+
+对一个特定的TLA ID ，设计NLA ID 位的安排，留给负责该TLA ID 的机构去做。同
+样，设计下一级NLA ID 位的安排，由前面一级NLA ID 负责。在此建议分配N L A 地址
+空间的机构用类似于[ R F C 2 0 5 0 ]中的“慢启动”分配过程。
+设计NLA ID 分配计划，要在选路集聚效率和灵活性之间进行权衡。创建分级结构允
+许较大集聚数，从而使得路由表较小。平面NLA ID 的分配能使分配容易和连接灵活，但
+使得路由表较大。
+3.5 站点级集聚标识符
+SLA ID 字段被单个机构用来创建他自己的本地寻址分级结构与标识子网。除了每个机
+构有一个数量很大的子网以外，类似于I P v 4 中的子网。1 6 位的SLA ID 字段支持65 535 
+个单个子网。
+机构可以选择他们的SLA ID 为平面路由(如在S L A 标识符之间不创建任何逻辑关系，
+这会使得路由表较大)，或者在SLA ID 字段中，创建一个两级或多级分级结构(使路由表较
+小)。后一种情况表示如下：
+
+   |  n  |   16-n     |               64 位                 |
+   +-----+------------+-------------------------------------+
+   |SLA1 |    子网    |              接口 ID                |
+   +-----+------------+-------------------------------------+
+
+         | m  |16-n-m |               64 位                 |
+         +----+-------+-------------------------------------+
+         |SLA2|  子网 |               接口 ID               |
+         +----+-------+-------------------------------------+
+
+构成SLA ID 字段所选择的方法，由个别机构负责。
+在这种地址格式下支持的子网数，除了最大的机构之外，对其他所有机构应该是足够的。
+对于需要更多子网的组织，可以和它获得I n t e r n e t 服务的机构商量，以获得附加的站点
+标识符，从而用来创建更多的子网。
+3.6 接口ID
+接口标识符用来标识一条链路上的接口。对链路来说，应该是唯一的。也可以在一个更
+宽的范围内是唯一的。许多情况下，一个接口标识符与接口的链路层地址相同，或者根据接
+口的链路层地址而得的。用在可集聚全球单播地址格式中的接口标识符要求6 4 位长，并能
+构成IEEE EUI-64 格式[ E U I - 6 4 ] 。这些标识符，当全球令牌(如IEEE 48 位M A C )可
+用时，具有全球范围意义；当全球令牌不可用时(如串行链路、隧道终点等)，则只具有本地
+范围意义。u 位(在IEEE EUI-64 术语中称为全球/本地位)在E U I - 6 4 标识符中必须根据
+[ A R C H ]的规定，正确地置位以指示是全球还是本地范围。
+创建基于E U I - 6 4 接口标识符的过程定义见[ A R C H ]。形成接口标识符的细节，规
+定在相应的IPv6 over<link>技术规范中，诸如IPv6 over Ethernet【 E T H E R 】 ，IPv6 over FDDI
+【 F D D I 】 等。
+4. 技术动机
+在可集聚的地址格式中，字段长度的设计选择需要满足许多技术需求。这些将在下面段
+落中介绍。
+顶级集聚标识符的长度是1 3 位。可有8 1 9 2 个TLA ID 。选择这样的长度，可使I n 
+t e r n e t 上顶级路由器的非默认路由表，能在当前的选路技术且合理地留有余量的情况下，
+保持有限的范围。
+因为非默认路由器为优化T L A 内部路径和T L A 之间的路径，还要含有大量的长的
+前缀，所以保留余量是重要的。
+重要的议题不仅是非默认选路表的长度问题，还有拓扑的复杂性决定了当计算一个转发
+表时，路由器必须考察非默认路由的拷贝数。当前I P v 4 的实践是通常一个前缀要通过不
+同的路径通告1 5 次。
+I n t e r n e t 拓扑的复杂性将来还可能增加。重要的是I P v 6 非默认选路应支持更大的
+复杂性以及巨大的I n t e r n e t 。
+应该提出的是，在写作本文时( 1 9 9 8 年春)，作者作了一个比较，I P v 4 非默认路由
+表包含大约50 000 个前缀，表示可能支持大于8 1 9 2 个的路由。现在争论的问题是在当前
+的选路技术下，是否I P v 4 目前支持的前缀数已经足够多了。一些需要认真考虑的议题是
+路由稳定性以及供应商不支持所有顶级前缀的情况。技术上要求挑选TLA ID 的长度，在考
+虑合理余量的情况下，低于I P v 4 所具有的。
+选择TLA ID 字段为1 3 位是出于工程的综合考虑。位数太少将不足以支持足够的顶级
+组织，位数太多将会超过合理协调的能力。为了处理前面所提到的议题，用当前的选路技术
+考虑一个合理的余量是合适的。
+如果将来选路技术改进到在非默认路由表中能支持大量的顶级路由，那么如何加大T L 
+A标识符，就有两种选择：第一种是扩大TLA ID 字段占用保留字数，这将使TLA ID 数大
+约增加二百万个；第二种途径是为这样的地址格式分配另一个格式前缀( F P )。或者将这两
+种途径组合，使TLA ID 数量大大地增加。
+保留字段的长度为8 位，是为了使TLA ID 字段和NLA ID 字段有大的增长余地。
+下一级集聚标识符的长度为2 4 位。如果用平面结构的话，可容纳大约1 6 0 0 万个NLA 
+ID 。如果分级使用的话，合成起来大致等效于I P v 4 的地址空间(假定平均网络规模为2 5 
+4 个接口)。如果NLA ID 将来需要更多的空间，那么可以将NLA ID 扩展到保留字段来协
+调。
+站点级集聚标识符字段的长度是1 6 位。每个站点可支持65 535 个子网。本字段长度
+的设计目标，对除了最大组织以外的所有组织是足够的。对于需要更多子网的组织，可以和
+它获得I n t e r n e t 服务的机构商量，以得到附加的站点标识符，从而用来创建更多的子网。
+站点集聚标识符字段是固定长度，这是为了强制标识特定站点的所有前缀，具有同样的
+长度(即4 8 位)。这样会方便站点在拓扑中的移动(如变更I S P 以及接到多个I S P 的多家
+站点)。
+接口标识符字段为6 4 位。选择这个长度是为了满足[ A R C H ]中指定的需求，以支持
+基于E U I - 6 4 接口标识符。
+致谢
+作者对Thomas Narten, Bob Fink, Matt Crawford, Allison Mankin, Jim Bound, 
+ChristianHuitema, Scott Bradner, Brian Carpenter, John Stewart 和Daniel Karrenberg 的评论和
+建设性意见表示衷心的谢意。
+参考文献
+   [ALLOC]   IAB and IESG, "IPv6 Address Allocation Management",
+             RFC 1881, December 1995.
+
+   [ARCH]    Hinden, R., "IP Version 6 Addressing Architecture",
+             RFC 2373, July 1998.
+
+   [AUTH]    Atkinson, R., "IP Authentication Header", RFC 1826, August
+             1995.
+
+   [AUTO]    Thompson, S., and T. Narten., "IPv6 Stateless Address
+             Autoconfiguration", RFC 1971, August 1996.
+
+   [ETHER]   Crawford, M., "Transmission of IPv6 Packets over Ethernet
+             Networks", Work in Progress.
+
+   [EUI64]   IEEE, "Guidelines for 64-bit Global Identifier (EUI-64)
+             Registration Authority",
+             http://standards.ieee.org/db/oui/tutorials/EUI64.html,
+             March 1997.
+
+   [FDDI]    Crawford, M., "Transmission of IPv6 Packets over FDDI
+             Networks", Work in Progress.
+
+   [IPV6]    Deering, S., and R. Hinden, "Internet Protocol, Version 6
+             (IPv6) Specification", RFC 1883, December 1995.
+
+   [RFC2050] Hubbard, K., Kosters, M., Conrad, D., Karrenberg, D.,
+             and J. Postel, "Internet Registry IP Allocation
+             Guidelines", BCP 12, RFC 1466, November 1996.
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+             Requirement Levels", BCP 14, RFC 2119,
+安全性考虑
+I P v 6 寻址文件对I n t e r n e t 基础设施安全性无任何直接影响。I P v 6 包的身份验证
+定义见【A U T H 】。
+
+
+Authors' Addresses
+
+   Robert M. Hinden
+   Nokia
+   232 Java Drive
+   Sunnyvale, CA 94089
+   USA
+
+   Phone: 1 408 990-2004
+   EMail: hinden@iprg.nokia.com
+
+
+   Mike O'Dell
+   UUNET Technologies, Inc.
+   3060 Williams Drive
+   Fairfax, VA 22030
+   USA
+
+   Phone: 1 703 206-5890
+   EMail: mo@uunet.uu.net
+
+
+   Stephen E. Deering
+   Cisco Systems, Inc.
+   170 West Tasman Drive
+   San Jose, CA 95134-1706
+   USA
+
+   Phone: 1 408 527-8213
+   EMail: deering@cisco.com
+
+ Full Copyright Statement
+
+   Copyright (C) The Internet Society (1998).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+RFC 2374  An IPv6 Aggregatable Global Unicast Address Format         IPv6 可集聚全球单播地址格式
+
+
+1
+RFC文档中文翻译计划

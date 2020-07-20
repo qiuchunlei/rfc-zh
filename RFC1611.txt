@@ -1,0 +1,1170 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：毕峰（bifeng   bi_feng@263.net）
+译文发布时间：2001-7-16
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                         R. Austein
+Request for Comments: 1611               Epilogue Technology Corporation
+Category: Standards Track                                     J. Saperia
+                                           Digital Equipment Corporation
+                                                                May 1994
+DNS服务器MIB扩展
+（RFC1611 ——DNS Server MIB Extensions） 
+
+
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化
+程度和状态。本备忘录的发布不受任何限制。
+
+版权声明
+
+Copyright (C) The Internet Society (2001).
+
+
+
+
+目录
+
+1.  介绍	2
+2. SNMPV2网络管理框架	2
+2.1. 对象定义	3
+3. 概述	3
+3.1. 解析器（RESOLVER）	3
+3.2. 命名服务器	4
+3.3. 所选择的对象	4
+3.4. 文本约定	4
+4. 定义	4
+5. 致谢	26
+6. 参考文献	26
+7.  安全考虑	28
+8.  作者地址	28
+
+1.  介绍
+该备忘录定义了在Internet团体中使用网络管理协议的一部分管理信息库（MIB）。特别
+是它描述了一套实现命名服务器功能的扩展。该备忘录由DNS工作组制订。
+随着Internet标准网络管理框架[4、5、6、7]的采用和这些标准在可用的商业产品上的
+大量提供商实现，在基于TCP/IP的Internet中提供一个高效的网络管理已变为可能。随着
+这些标准的使用的增加，已可能考虑管理超出基本TCP/IP协议外的设施中的其他单元。
+TCP/IP体系结构中的一个关键单元就是DNS。
+到目前为止，还没有机制将DNS的管理和基于SNMP的管理者结合在一起。该备忘录
+提供了一种机制，基于IP的管理站可以通过它以一种综合方式有效地管理DNS命名服务器
+软件。
+我们定义了和Internet MIB结合在一起用于允许Internet团体通过SNMP访问和控制
+DNS命名服务器软件的DNS MIB对象。
+
+2. SNMPv2网络管理框架
+SNMPv2网络管理框架包含四个主要的组件。它们是：
+?	RFC 1442，它定义了SMI，用于描述和命名管理对象的机制。
+?	STD 17，RFC1213，它定义了MIB-II，Internet协议组的管理对象的核心集。
+?	RFC 1445，它定义了框架的管理和其他体系结构方面。
+?	RFC 1448，它定义了用于到管理对象的网络访问协议。
+该框架允许为试验和评估目的定义新对象。
+
+2.1. 对象定义
+管理对象通过一个虚拟信息库访问，称为管理信息库或MIB。MIB中的对象用抽象语
+法标记（ASN.1）的子集（定义在SMI中）定义。特别地，每个对象类型命名为一个OBJECT 
+IDENTIFIER（一个管理指配名）。对象类型和对象实例一起唯一地标识一个特定的实例化对
+象。为方便起见，通常使用一个文本字符串，称为描述符，指向对象类型。
+
+3. 概述
+理论上DNS世界非常简单。有两种实体：解析器和命名服务器。解析器提出问题。命
+名服务器回答。然而在现实世界中并不这么简单。实现者对于如何在解析器和服务器之间划
+分DNS功能做出了差别很大的选择，他们也构造了各种奇异的混合。在定义该MIB中的最
+困难的任务是适应各种实体，而不必为每个单体定义一个单独的MIB。
+我们把各种不同的DNS功能划分为两个非重叠的类，称为：“解析器功能”和“命名服
+务器功能”。执行我们定义的解析器功能的DNS实体包含一个解析器，因此必须实现在一个
+单独的MIB模块中定义的所有解析器所需的MIB组。实现命名服务器功能的DNS实体称
+为命名服务器，必须实现该模块中的命名服务器所需的MIB组。如果同一软件既执行解析
+器功能也执行服务器功能，我们想象它既包含一个解析器也包含一个服务器，因此必须实现
+DNS服务器MIB和DNS解析器MIB。
+
+3.1. 解析器（Resolver）
+在我们的模型中，解析器是一个程序（或一部分）它接收来自服务器的资源记录
+（Resource Record）。一般地，它在一个应用程序的命令下执行该操作，但是也可以作为自
+身操作的一部分。解析器发送DNS协议查询并接收DNS协议应答。解析器既不接受查询也
+不发送应答。完全业务解析器是一个知道如何解析查询：它通过访问对所需记录有可靠信息
+的服务器获得所需的资源记录。桩解析器（stub resolver）不知道如何解析查询：它发送所
+有查询给一个本地命名服务器，设置“recursion desired”（需要递归）标志以表示它希望命
+名服务器解析该查询。解析器可以（可选地）有一个缓存，以记住以前获得的资源记录。它
+也可以有一个负缓存，以记住那些不存在的名称或数据。
+
+3.2. 命名服务器
+命名服务器是提供资源记录给解析器的一个程序（或部分）。本文档中提及的所有“命
+名服务器”都指“命名服务器角色”；在某些情况下，命名服务器角色和解析器角色可能组
+合成为一个单一的程序。命名服务器接受DNS协议查询和发送DNS协议应答，命名服务器
+既不发送查询也不接收应答，因此命名服务器没有缓存。通常命名服务器只接收那些它可以
+用可靠信息应答的查询。然而，如果命名服务器接收到一个查询，它不能用完全可靠的消息
+应答，它会选择试图从解析器（是或者不是一个单独的进程）获得必要的附加信息。
+
+3.3. 所选择的对象
+该备忘录中所包括的对象都是由包含在DNS规范[1、2]中的信息创建的，该规范被后
+来的主机需求文档修订和澄清过。其他对象的创建是基于现有的DNS工具的使用经验、期
+望的操作需求、现有的DNS实现产生的统计和现有的DNS实现使用的配置文件。这些对象
+被划分为如下几组：
+?	服务器配置组
+?	服务器计数器组
+?	服务器可选计数器组
+?	服务器区域组
+
+该信息已经被用定义在[9]中的SNMPv2 SMI转换成为一个标准形式。在很多地方，那
+些描述受上面提到的DNS相关RFC的影响。例如，用于各种DNS记录查询的计数器的描
+述受用于各种记录类型的定义[2]的影响。
+
+3.4. 文本约定
+几种概念数据类型已经被引入该DNS MIB文档作为文本约定。这些引入将会促进DNS
+使用的信息的公共理解。SMI和SNMP没有必要改变以支持这些转换。
+熟悉为低层Internet协议组管理实体所设计的MIB的读者可能会对在该MIB中使用非
+枚举类型的整数代表例如DNS RR类别和类型的数值感到吃惊。这一选择的原因很简单：
+DNS本身被设计为一个可扩展协议，允许添加新的资源记录类别和类型到协议中，而不重
+新编码核心DNS软件。使用非枚举整数代表该MIB中的数据类型可以使MIB很好地适应
+这些变化。
+
+4. 定义
+   DNS-SERVER-MIB DEFINITIONS ::= BEGIN
+   IMPORTS
+       mib-2
+           FROM RFC-1213
+       MODULE-IDENTITY, OBJECT-TYPE, OBJECT-IDENTITY,
+       IpAddress, Counter32, Gauge32
+           FROM SNMPv2-SMI
+       TEXTUAL-CONVENTION, RowStatus, DisplayString, TruthValue
+           FROM SNMPv2-TC
+       MODULE-COMPLIANCE, OBJECT-GROUP
+           FROM SNMPv2-CONF;
+
+   dns OBJECT-IDENTITY
+       STATUS  current
+       DESCRIPTION
+               "赋予IANA工作的DNS MIB的OID。"
+       ::= { mib-2 32 }
+
+   dnsServMIB MODULE-IDENTITY
+       LAST-UPDATED "9401282251Z"
+       ORGANIZATION "IETF DNS Working Group"
+       CONTACT-INFO
+               "       Rob Austein
+               Postal: Epilogue Technology Corporation
+                       268 Main Street, Suite 283
+                       North Reading, MA 10864
+                       US
+                  Tel: +1 617 245 0804
+                  Fax: +1 617 245 8122
+               E-Mail: sra@epilogue.com
+
+                       Jon Saperia
+               Postal: Digital Equipment Corporation
+                       110 Spit Brook Road
+                       ZKO1-3/H18
+                       Nashua, NH 03062-2698
+                       US
+                  Tel: +1 603 881 0480
+                  Fax: +1 603 881 0120
+                Email: saperia@zko.dec.com"
+       DESCRIPTION
+               "实现DNS协议的服务器方实体的MIB模块。"
+       ::= { dns 1 }
+
+   dnsServMIBObjects       OBJECT IDENTIFIER ::= { dnsServMIB 1 }
+
+   -- (Old-style) DNS服务器MIB中的组。
+
+   dnsServConfig           OBJECT IDENTIFIER ::= { dnsServMIBObjects 1 }
+   dnsServCounter          OBJECT IDENTIFIER ::= { dnsServMIBObjects 2 }
+   dnsServOptCounter       OBJECT IDENTIFIER ::= { dnsServMIBObjects 3 }
+   dnsServZone            OBJECT IDENTIFIER ::= { dnsServMIBObjects 4 }
+
+
+   -- 文本约定
+
+   DnsName ::= TEXTUAL-CONVENTION
+       -- DISPLAY-HINT很好，但难于表达。
+       STATUS  current
+       DESCRIPTION
+"DNS名是一个标签序列。当显示一个DNS名时，标签之间一般用点分
+隔（例如，‘Acme’和‘COM’是域名‘Acme.COM’的标签）。然而在
+DNS协议中不需要这样的分隔符，因为每一个标签被编码为一个有长度
+的字节流，其前面标明了标签字节的长度。例如，‘Acme.COM’被编码
+为字节序列{ 4,‘A’,‘c’,‘m’,‘e’, 3, ‘C’,‘O’,‘M’，0}（末
+尾的0是根域的名称长度，它出现在任何DNS名的后面）。该MIB与DNS
+协议使用同一个编码。
+
+DnsName必须总是一个全名。把一个相对域名作为DnsName编码而不先
+把它转换为一个全名是错误的。"
+
+       REFERENCE
+               "RFC-1034 3.1.节"
+       SYNTAX  OCTET STRING (SIZE (0..255))
+
+   DnsNameAsIndex ::= TEXTUAL-CONVENTION
+       STATUS  current
+       DESCRIPTION
+"该文本约定与DnsName类似，但用于表中的索引组件。该类型的名称中
+的字母字符必须是大写字母：字符‘a’到‘z’被映射到字符‘A’到‘Z’。
+这一限制是为了 使SNMP强加的词汇顺序在应用到DNS名时有用。
+
+注意一个有效的DNS名在理论上是可以超出SNMP对象标识的允许长
+度，因此不可能出现在由DNS名索引的该MIB的表中。当前在Internet
+上使用的DNS名的取样说明这一限制并没有在实践中带来严重问题。"
+
+       REFERENCE
+               "RFC-1034 3.1节, RFC-1448 4.1. 节"
+       SYNTAX  DnsName
+
+   DnsClass ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "2d"
+       STATUS  current
+       DESCRIPTION
+"该数据类型用于代表出现在DNS资源记录中的类别值。使用16位无符
+号整数以为定义新类别的记录留有空间。DNS规范列有现有的标准类别。
+"
+       REFERENCE
+               "RFC-1035 3.2.4. 节"
+       SYNTAX  INTEGER (0..65535)
+
+   DnsType ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "2d"
+       STATUS  current
+       DESCRIPTION
+"该数据类型用来在DNS中代表在出现在资源记录中的类型值。使用16
+位无符号整数以为定义新类型的记录留有空间。DNS规范列有现有的标
+准类型。"
+       REFERENCE
+               "RFC-1035 3.2.2. 节"
+       SYNTAX  INTEGER (0..65535)
+
+   DnsQClass ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "2d"
+       STATUS  current
+       DESCRIPTION
+"该数据类型用来在DNS中代表在出现在资源记录中的QClass值。使用
+16位无符号整数以为定义新的QClass记录留有空间。DNS规范列有现有
+的标准QClass。"
+       REFERENCE
+               "RFC-1035 3.2.5. 节"
+       SYNTAX  INTEGER (0..65535)
+
+   DnsQType ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "2d"
+       STATUS  current
+       DESCRIPTION
+"该数据类型用来在DNS中代表在出现在资源记录中的QType值。
+使用16位无符号整数以为定义新的QType记录留有空间。DNS规范列
+有现有的标准QType。"
+       REFERENCE
+               "RFC-1035 3.2.3. 节"
+       SYNTAX  INTEGER (0..65535)
+
+   DnsTime ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "4d"
+       STATUS  current
+       DESCRIPTION
+               "DnsTime值是一个以秒钟计算时间的32位无符号整数。"
+       REFERENCE
+               "RFC-1035."
+       SYNTAX  Gauge32
+
+
+   DnsOpCode ::= TEXTUAL-CONVENTION
+       STATUS  current
+       DESCRIPTION
+"该文本约定用来代表用在DNS消息头部的DNS OPCODE值。DNS规范
+中列有现有的OPCODE值。"
+       REFERENCE
+               "RFC-1035 4.1.1. 节"
+       SYNTAX  INTEGER (0..15)
+
+   DnsRespCode ::= TEXTUAL-CONVENTION
+       STATUS  current
+       DESCRIPTION
+"该文本约定用来代表用在DNS应答消息中的DNS RCODE值。DNS规
+范中列有现有的RCODE值。"
+       REFERENCE
+               "RFC-1035 4.1.1. 节"
+       SYNTAX  INTEGER (0..15)
+
+
+
+   -- 服务器配置组
+
+   dnsServConfigImplementIdent OBJECT-TYPE
+       SYNTAX      DisplayString
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+             "系统中正在使用的DNS服务器软件的实现标识字符串，例如‘FNS-2.1’"
+       ::= { dnsServConfig 1 }
+
+   dnsServConfigRecurs  OBJECT-TYPE
+       SYNTAX      INTEGER { available(1),
+                             restricted(2),
+                             unavailable(3) }
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+               "代表该命名服务器提供的递归业务。可以读或写的值有：
+               available(1) – 在客户的请求下执行递归。
+               restricted(2) – 只在特定的客户的请求下执行递归，例如，访问控制
+                            列表中的客户。
+               unavailable(3) – 不可使用递归。"
+        ::= { dnsServConfig 2 }
+
+   dnsServConfigUpTime OBJECT-TYPE
+       SYNTAX      DnsTime
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"如果服务器具有持久状态（例如，一个进程），该值就是自从服务器启动
+到现在的时间。对于没有持久状态的软件，该值为零。"
+       ::= { dnsServConfig 3 }
+
+   dnsServConfigResetTime OBJECT-TYPE
+       SYNTAX      DnsTime
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"如果服务器具有持久状态（例如，一个进程）并支持‘reset’操作（例
+如，可以重读配置文件），该值就是从命名服务器‘reset’到现在的时间。
+如果没有持久状态或不支持‘reset’操作，该值为零。"
+       ::= { dnsServConfig 4 }
+
+   dnsServConfigReset OBJECT-TYPE
+       SYNTAX      INTEGER { other(1),
+                             reset(2),
+                             initializing(3),
+                             running(4) }
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+"重新初始化任何持久命名服务器状态的状态/行为对象。当设置为reset
+（2），任何持久命名服务器状态（例如一个进程）被重新初始化，就象
+是命名服务器重启了一样。对于读操作不会返回该值。当进行读操作时，
+下面的值将会返回：
+                   other(1) – 服务器在某种位置状态；
+                   initializing(3) – 服务器正在（重新）初始化；
+                   running(4) – 服务器正在运行。"
+       ::= { dnsServConfig 5 }
+
+
+   -- 服务器计数器组
+
+   dnsServCounterAuthAns OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器已经给予可靠应答的查询数。"
+       ::= { dnsServCounter 2 }
+
+   dnsServCounterAuthNoNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器给予可靠的‘no such name’应答的查询数。"
+       ::= { dnsServCounter 3 }
+
+   dnsServCounterAuthNoDataResps OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器给予可靠的‘no such data’应答（空应答）的查询数。"
+       ::= { dnsServCounter 4 }
+
+   dnsServCounterNonAuthDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器给予非可靠应答（缓存应答）的查询数。"
+       ::= { dnsServCounter 5 }
+
+   dnsServCounterNonAuthNoDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器给予非可靠的没有值应答（空应答）的查询数。"
+       ::= { dnsServCounter 6 }
+
+   dnsServCounterReferrals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "送交其他服务器的的请求数。"
+       ::= { dnsServCounter 7 }
+
+   dnsServCounterErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器已经处理并报告有错误（RCODE值不是0或3）的请求数。"
+       REFERENCE
+               "RFC-1035 4.1.1.节"
+       ::= { dnsServCounter 8 }
+
+   dnsServCounterRelNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器接收到的请求中只有一个标签长度（文本格式 – 没有中间点）的
+域名的请求数。"
+       ::= { dnsServCounter 9 }
+
+   dnsServCounterReqRefusals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "被DNS服务器拒绝的DNS请求的数目。"
+       ::= { dnsServCounter 10 }
+
+   dnsServCounterReqUnparses OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "接收到但不可解析的请求数。"
+       ::= { dnsServCounter 11 }
+
+   dnsServCounterOtherErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "由于其他（本地）服务器错误而终止的请求数。"
+       ::= { dnsServCounter 12 }
+
+   -- DNS服务器计数器表
+
+   dnsServCounterTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF DnsServCounterEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "由DNS类别和类型划分的计数器信息。"
+       ::= { dnsServCounter 13 }
+
+   dnsServCounterEntry OBJECT-TYPE
+       SYNTAX      DnsServCounterEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+"该表包含服务器已知的各DNS类别和类型值的计数信息。管理软件可以
+创建表的索引以获得所需的特定信息，例如，通过UDP到达该服务器的
+查询具有类型值‘A’的记录的查询数。为了防止该表中的行数的不可控
+制的增长，如果dnsServCounterRequests为0并且dnsServCounterResponses
+为0，那么该行不存在。当查询该代理的这些实例时，返回‘no such’。"
+       INDEX     { dnsServCounterOpCode,
+                   dnsServCounterQClass,
+                   dnsServCounterQType,
+                   dnsServCounterTransport }
+       ::= { dnsServCounterTable 1 }
+
+   DnsServCounterEntry ::=
+       SEQUENCE {
+           dnsServCounterOpCode
+               DnsOpCode,
+           dnsServCounterQClass
+               DnsClass,
+           dnsServCounterQType
+               DnsType,
+           dnsServCounterTransport
+               INTEGER,
+           dnsServCounterRequests
+               Counter32,
+           dnsServCounterResponses
+               Counter32
+           }
+
+   dnsServCounterOpCode OBJECT-TYPE
+       SYNTAX      DnsOpCode
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "表中该行被计数的记录的DNS OPCODE。"
+       ::= { dnsServCounterEntry 1 }
+
+   dnsServCounterQClass OBJECT-TYPE
+       SYNTAX      DnsClass
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "表中该行中的被计数的记录的类别。"
+       ::= { dnsServCounterEntry 2 }
+
+   dnsServCounterQType OBJECT-TYPE
+       SYNTAX      DnsType
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "表中该行中的被计数的记录的类型。"
+       ::= { dnsServCounterEntry 3 }
+
+   dnsServCounterTransport OBJECT-TYPE
+       SYNTAX      INTEGER { udp(1), tcp(2), other(3) }
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "值为udp(1)表明该行所报告的查询是以UDP发送的。
+               值为tcp(2)表明该行所报告的查询是以TCP发送的。
+               值为other(3) 表明该行所报告的查询是用除UDP和TCP以外的其他协议
+               发送的。"
+       ::= { dnsServCounterEntry 4 }
+
+   dnsServCounterRequests OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "表中该行所记录的请求（查询）数。"
+       ::= { dnsServCounterEntry 5 }
+
+   dnsServCounterResponses OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "表中该行所记录的自从这种查询被初始化以来服务器做出的应答数。"
+       ::= { dnsServCounterEntry 6 }
+
+
+
+   -- 服务器可选计数器组
+
+   -- 服务器可选计数器组是为了用于那些系统，它们区分来自不同的DNS查询源的查询。
+   -- 这些查询如下定义。
+   --
+   -- 该组的对象实现于那些区分来自与服务器同一主机的查询、来自该服务器的访问
+   -- 列表中定义的任意组中的某一主机的查询和来自其他主机的查询。
+   --
+   -- 服务器计数器组中的对象是一种总计。因此，例如如果想要确定来自‘远程’主机
+   -- 已获得可靠应答的的查询数，就可以用servCounterAuthAns减去
+   -- ServOptCounterFriendsAuthAns和ServOptCounterSelfAuthAns。
+   --
+   -- 这些区分的目的是为了在该基础上实现组查询和应答。
+   -- 一种服务器用来区分的方法是查看DNS查询的源IP地址。如果查询源是‘自己’
+   -- 那么该查询应该被计为‘自己’（本地主机）。如果查询源与‘访问列表’匹配， 
+   -- 则该查询来自‘朋友’。‘访问列表’的组成是与实现有关的，并且应该尽量简单到
+   -- 与DNS服务器位于同一IP网络中的主机被划分为‘朋友’。
+   --
+   -- 为了避免重复计数，应遵守下面的规则：
+   -- 1. 主机不能在上面定义的三个组中的一个以上组中出现。
+   -- 2. 所有来自本地主机的查询总是被计入‘自己’组，与访问列表（如果有的话）
+   --   无关。
+   -- 3. 访问列表不应该把所有的主机都定义为‘朋友’。也就是说，不是所有的主机
+   -- 都是‘朋友’。
+
+   dnsServOptCounterSelfAuthAns OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求已经被可靠应答。"
+       ::= { dnsServOptCounter 1 }
+
+   dnsServOptCounterSelfAuthNoNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求具有可靠的‘no such name’应答。"
+       ::= { dnsServOptCounter 2 }
+
+   dnsServOptCounterSelfAuthNoDataResps OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求具有可靠的‘no such data’（空应答）应答。"
+       ::= { dnsServOptCounter 3 }
+
+   dnsServOptCounterSelfNonAuthDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求具有不可靠的应答（缓存数据）。"
+       ::= { dnsServOptCounter 4 }
+
+   dnsServOptCounterSelfNonAuthNoDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求具有不可靠的‘no such data’应答（空应答）。"
+       ::= { dnsServOptCounter 5 }
+
+   dnsServOptCounterSelfReferrals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求被指向其他服务器。"
+       ::= { dnsServOptCounter 6 }
+
+   dnsServOptCounterSelfErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的带有错误应答
+（RCODE不是0和3）的请求数。"
+       REFERENCE
+               "RFC-1035 4.1.1.节"
+       ::= { dnsServOptCounter 7 }
+
+   dnsServOptCounterSelfRelNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自与它位于同一主机的解析器的请求数，并且这些
+请求中的域名只有一个标签长度（文本格式 – 标签中间没有点）。"
+       ::= { dnsServOptCounter 8 }
+
+   dnsServOptCounterSelfReqRefusals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器拒绝的来自与它位于同一主机的解析器的请求数。"
+       ::= { dnsServOptCounter 9 }
+
+   dnsServOptCounterSelfReqUnparses OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器接收到来自与它位于同一主机的解析器的不可分析的请求数。"
+       ::= { dnsServOptCounter 10 }
+
+   dnsServOptCounterSelfOtherErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"由于其他（本地）服务器错误，终止的来自与服务器位于同一主机的解
+析器的请求数。"
+       ::= { dnsServOptCounter 11 }
+
+   dnsServOptCounterFriendsAuthAns OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经可靠应答了的来自‘朋友’的请求数。‘朋友’的定义是一个
+本地定义。"
+       ::= { dnsServOptCounter 12 }
+
+   dnsServOptCounterFriendsAuthNoNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求带有‘no such name’
+的可靠应答。"
+       ::= { dnsServOptCounter 13 }
+
+   dnsServOptCounterFriendsAuthNoDataResps OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求带有‘no such data’
+（空应答）的可靠应答。朋友的定义是一个本地定义问题。"
+       ::= { dnsServOptCounter 14 }
+
+   dnsServOptCounterFriendsNonAuthDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求被不可靠应答（缓
+存数据）。朋友的定义是一个本地定义问题。"
+       ::= { dnsServOptCounter 15 }
+
+   dnsServOptCounterFriendsNonAuthNoDatas OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求带有不可靠的‘no 
+such data’应答（空应答）。朋友的定义是一个本地定义问题。"
+       ::= { dnsServOptCounter 16 }
+
+   dnsServOptCounterFriendsReferrals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求被指向其他服务器。
+朋友的定义是一个本地定义问题。"
+       ::= { dnsServOptCounter 17 }
+
+   dnsServOptCounterFriendsErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自‘朋友’的请求数，这些请求带有错误应答
+（RCODE值不是0和3）。朋友的定义是一个本地定义问题。"
+       REFERENCE
+               "RFC-1035 4.1.1.节"
+       ::= { dnsServOptCounter 18 }
+
+   dnsServOptCounterFriendsRelNames OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器已经处理的来自朋友的请求数，并且这些请求中的域名只有一个
+标签长度（文本格式 – 标签中间没有点）。"
+       ::= { dnsServOptCounter 19 }
+
+   dnsServOptCounterFriendsReqRefusals OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"服务器拒绝的来自朋友的请求数，并且这些请求中的域名只有一个标签
+长度（文本格式 – 标签中间没有点）。"
+       ::= { dnsServOptCounter 20 }
+
+   dnsServOptCounterFriendsReqUnparses OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "服务器接收到来自朋友的不可分析的请求数。"
+       ::= { dnsServOptCounter 21 }
+
+   dnsServOptCounterFriendsOtherErrors OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"由于其他（本地）服务器错误，终止的来自与服务器位于同一主机的解
+析器的请求数。"
+       ::= { dnsServOptCounter 22 }
+
+
+   -- 服务器区域组
+
+   -- DNS管理区域配置表
+
+   -- 该表包含区域配置信息。
+
+   dnsServZoneTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF DnsServZoneEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+"命名服务器提供区域信息的区域表，每个区域可以通过特定实现机制从
+稳定存储中加载或者通过区域信息传输从其他命名服务器获得。
+
+如果命名服务器不加载任何区域信息，该表为空。"
+       ::= { dnsServZone 1 }
+
+   dnsServZoneEntry OBJECT-TYPE
+       SYNTAX      DnsServZoneEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+"命名服务器区域表的条目，新行可以通过SNMP或者通过命名服务器自
+身增加。"
+       INDEX     { dnsServZoneName,
+                   dnsServZoneClass }
+       ::= { dnsServZoneTable 1 }
+
+   DnsServZoneEntry ::=
+       SEQUENCE {
+           dnsServZoneName
+               DnsNameAsIndex,
+           dnsServZoneClass
+               DnsClass,
+           dnsServZoneLastReloadSuccess
+               DnsTime,
+           dnsServZoneLastReloadAttempt
+               DnsTime,
+           dnsServZoneLastSourceAttempt
+               IpAddress,
+           dnsServZoneStatus
+               RowStatus,
+           dnsServZoneSerial
+               Counter32,
+           dnsServZoneCurrent
+               TruthValue,
+           dnsServZoneLastSourceSuccess
+               IpAddress
+       }
+
+   dnsServZoneName OBJECT-TYPE
+       SYNTAX      DnsNameAsIndex
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+"表中该行所描述区域的DNS名。它是定义该区域的顶部结点的SOA RR
+的所有者名。该名字是大写的：字符‘a’到‘z’被映射为‘A’到‘Z’，
+以使词汇顺序有效。"
+       ::= { dnsServZoneEntry 1 }
+
+   dnsServZoneClass OBJECT-TYPE
+       SYNTAX      DnsClass
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "该区域中的RR的DNS类别。"
+       ::= { dnsServZoneEntry 2 }
+
+   dnsServZoneLastReloadSuccess OBJECT-TYPE
+       SYNTAX      DnsTime
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "自从上次成功加载该区域到现在的秒数。"
+       ::= { dnsServZoneEntry 3 }
+
+   dnsServZoneLastReloadAttempt OBJECT-TYPE
+       SYNTAX      DnsTime
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+               "自从上次尝试加载该区域到现在的秒数。"
+       ::= { dnsServZoneEntry 4 }
+
+   dnsServZoneLastSourceAttempt OBJECT-TYPE
+       SYNTAX      IpAddress
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"最近一次尝试该区域的区域信息传送的主机的IP地址。如果尝试成功，
+该值应该与dnsServZoneSourceSuccess的值匹配。如果区域信息传送在该
+命名服务器的记忆中没有进行尝试，该值为0.0.0.0."
+       ::= { dnsServZoneEntry 5 }
+
+   dnsServZoneStatus OBJECT-TYPE
+       SYNTAX      RowStatus
+       MAX-ACCESS  read-create
+       STATUS      current
+       DESCRIPTION
+               "表中该行所提供的信息的状态。"
+       ::= { dnsServZoneEntry 6 }
+
+   dnsServZoneSerial OBJECT-TYPE
+       SYNTAX      Counter32
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"表中该行所提供的区域的区域序列号（来自SOA RR）。如果在该命名服
+务器的记忆范围内没有成功加载，该变量的值为零。"
+       ::= { dnsServZoneEntry 7 }
+
+   dnsServZoneCurrent OBJECT-TYPE
+       SYNTAX      TruthValue
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"是否由表中该行所提供区域的服务器拷贝当前有效。如果区域从未成功
+加载或者超过了上次成功加载的有效期，该变量值为false（2），否则该
+变量值为true（1）。"
+       ::= { dnsServZoneEntry 8 }
+
+   dnsServZoneLastSourceSuccess OBJECT-TYPE
+       SYNTAX      IpAddress
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+"最近一次成功进行该区域的区域信息传输的源主机的IP地址。如果未知
+（例如，区域从未成功加载过）或者不相关（例如，区域从稳定存储介
+质加载），该值为0.0.0.0."
+       ::= { dnsServZoneEntry 9 }
+
+   -- DNS区域信息源表
+
+   dnsServZoneSrcTable OBJECT-TYPE
+       SYNTAX      SEQUENCE OF DnsServZoneSrcEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+"该表是一个IP地址列表，从这些地址服务器试图使用DNS区域信息传
+送操作加载区域信息。重载可能会发生在由于在dnsServZoneTable表中
+创建一行的SNMP操作或者作用在对象dnsServZoneReload的SET操作。
+该表只用在通过区域信息传送加载该区域信息时。"
+       ::= { dnsServZone 2 }
+
+   dnsServZoneSrcEntry OBJECT-TYPE
+       SYNTAX      DnsServZoneSrcEntry
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "命名服务器区域信息源表中的条目。"
+       INDEX     { dnsServZoneSrcName,
+                   dnsServZoneSrcClass,
+                   dnsServZoneSrcAddr }
+       ::= { dnsServZoneSrcTable 1 }
+
+   DnsServZoneSrcEntry ::=
+       SEQUENCE {
+           dnsServZoneSrcName
+               DnsNameAsIndex,
+           dnsServZoneSrcClass
+               DnsClass,
+           dnsServZoneSrcAddr
+               IpAddress,
+           dnsServZoneSrcStatus
+               RowStatus
+       }
+
+   dnsServZoneSrcName OBJECT-TYPE
+       SYNTAX      DnsNameAsIndex
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "该行适用的区域的DNS名。"
+       ::= { dnsServZoneSrcEntry 1 }
+
+   dnsServZoneSrcClass OBJECT-TYPE
+       SYNTAX      DnsClass
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "该行适用的区域的DNS类别。"
+       ::= { dnsServZoneSrcEntry 2 }
+
+   dnsServZoneSrcAddr OBJECT-TYPE
+       SYNTAX      IpAddress
+       MAX-ACCESS  not-accessible
+       STATUS      current
+       DESCRIPTION
+               "命名服务器的IP地址，从该服务器上可能获得该区域信息。"
+       ::= { dnsServZoneSrcEntry 3 }
+
+   dnsServZoneSrcStatus OBJECT-TYPE
+       SYNTAX      RowStatus
+       MAX-ACCESS  read-create
+       STATUS      current
+       DESCRIPTION
+               "表中该行所提供的信息的状态。"
+       ::= { dnsServZoneSrcEntry 4 }
+
+
+   -- SNMPv2组
+
+   dnsServMIBGroups        OBJECT IDENTIFIER ::= { dnsServMIB 2 }
+
+   dnsServConfigGroup OBJECT-GROUP
+       OBJECTS   { dnsServConfigImplementIdent,
+                   dnsServConfigRecurs,
+                   dnsServConfigUpTime,
+                   dnsServConfigResetTime,
+                   dnsServConfigReset }
+       STATUS      current
+       DESCRIPTION
+               "提供控制DNS命名服务器基本配置的对象集。"
+       ::= { dnsServMIBGroups 1 }
+
+   dnsServCounterGroup OBJECT-GROUP
+       OBJECTS   { dnsServCounterAuthAns,
+                   dnsServCounterAuthNoNames,
+                   dnsServCounterAuthNoDataResps,
+                   dnsServCounterNonAuthDatas,
+                   dnsServCounterNonAuthNoDatas,
+                   dnsServCounterReferrals,
+                   dnsServCounterErrors,
+                   dnsServCounterRelNames,
+                   dnsServCounterReqRefusals,
+                   dnsServCounterReqUnparses,
+                   dnsServCounterOtherErrors,
+                   dnsServCounterOpCode,
+                   dnsServCounterQClass,
+                   dnsServCounterQType,
+                   dnsServCounterTransport,
+                   dnsServCounterRequests,
+                   dnsServCounterResponses }
+       STATUS      current
+       DESCRIPTION
+               "提供DNS命名服务器的基本检测的对象集。"
+       ::= { dnsServMIBGroups 2 }
+7
+   dnsServOptCounterGroup OBJECT-GROUP
+       OBJECTS   { dnsServOptCounterSelfAuthAns,
+                   dnsServOptCounterSelfAuthNoNames,
+                   dnsServOptCounterSelfAuthNoDataResps,
+                   dnsServOptCounterSelfNonAuthDatas,
+                   dnsServOptCounterSelfNonAuthNoDatas,
+                   dnsServOptCounterSelfReferrals,
+                   dnsServOptCounterSelfErrors,
+                   dnsServOptCounterSelfRelNames,
+                   dnsServOptCounterSelfReqRefusals,
+                   dnsServOptCounterSelfReqUnparses,
+                   dnsServOptCounterSelfOtherErrors,
+                   dnsServOptCounterFriendsAuthAns,
+                   dnsServOptCounterFriendsAuthNoNames,
+                   dnsServOptCounterFriendsAuthNoDataResps,
+                   dnsServOptCounterFriendsNonAuthDatas,
+                   dnsServOptCounterFriendsNonAuthNoDatas,
+                   dnsServOptCounterFriendsReferrals,
+                   dnsServOptCounterFriendsErrors,
+                   dnsServOptCounterFriendsRelNames,
+                   dnsServOptCounterFriendsReqRefusals,
+                   dnsServOptCounterFriendsReqUnparses,
+                   dnsServOptCounterFriendsOtherErrors }
+       STATUS      current
+       DESCRIPTION
+               "提供DNS命名服务器扩展检测的对象集。"
+       ::= { dnsServMIBGroups 3 }
+
+   dnsServZoneGroup OBJECT-GROUP
+       OBJECTS   { dnsServZoneName,
+                   dnsServZoneClass,
+                   dnsServZoneLastReloadSuccess,
+                   dnsServZoneLastReloadAttempt,
+                   dnsServZoneLastSourceAttempt,
+                   dnsServZoneLastSourceSuccess,
+                   dnsServZoneStatus,
+                   dnsServZoneSerial,
+                   dnsServZoneCurrent,
+                   dnsServZoneSrcName,
+                   dnsServZoneSrcClass,
+                   dnsServZoneSrcAddr,
+                   dnsServZoneSrcStatus }
+       STATUS      current
+       DESCRIPTION
+               "提供DNS命名服务器的加载可靠区域的配置控制的对象集。"
+       ::= { dnsServMIBGroups 4 }
+
+   -- 一致性
+
+   dnsServMIBCompliances OBJECT IDENTIFIER ::= { dnsServMIB 3 }
+
+   dnsServMIBCompliance MODULE-COMPLIANCE
+       STATUS      current
+       DESCRIPTION
+               "对于实现DNS命名服务器MIB扩展的代理的一致性表述。"
+       MODULE -- This MIB module
+           MANDATORY-GROUPS { dnsServConfigGroup, dnsServCounterGroup }
+           GROUP   dnsServOptCounterGroup
+           DESCRIPTION
+               "服务器可选计数器组是无条件可选的。"
+           GROUP   dnsServZoneGroup
+           DESCRIPTION
+"服务器区域组对于任何命名服务器，该服务器是任何一个DNS区域的可
+靠服务器，都是必备的。"
+           OBJECT  dnsServConfigRecurs
+           MIN-ACCESS      read-only
+           DESCRIPTION
+               "该对象不需要可写。"
+           OBJECT  dnsServConfigReset
+           MIN-ACCESS      read-only
+           DESCRIPTION
+               "该对象不需要可写。"
+       ::= { dnsServMIBCompliances 1 }
+
+   END
+
+
+5. 致谢
+
+该文档是DNS工作组的工作结果。作者非常感谢下面人士对该文档做出的贡献：Philip 
+Almquist、Frank Kastenholz (FTP Software)、Joe Peck (DEC)、Dave Perkins (SynOptics)、 Win 
+Treese (DEC)和Mimi Zohar (IBM)。
+
+6. 参考文献
+
+   [1] Mockapetris, P., "域名 – 概念和设备", STD13, RFC 1034, USC/Information Sciences 
+Institute, November 1987.
+
+   [2] Mockapetris, P., "域名 – 实现和规范", STD 13, RFC 1035, USC/Information Sciences 
+Institute, November 1987.
+
+   [3] Braden, R., Editor, "Internet 主机需求 – 应用和支持,STD 3, RFC 1123, 
+USC/Information Sciences Institute, October 1989.
+
+   [4] Rose, M., and K. McCloghrie, "基于TCP/IP的internet的管理对信息的结构和标识", 
+STD 16, RFC 1155, Performance Systems International, Hughes LAN Systems, May       
+1990.
+
+   [5] McCloghrie, K., and M. Rose, "基于TCP/IP的internet的网络管理的管理信息库", RFC 
+1156, Hughes LAN Systems, Performance Systems International, May 1990.
+
+   [6] Case, J., Fedor, M., Schoffstall, M., and J. Davin, "简单网络管理协议", STD 15, RFC 
+1157, SNMP Research, Performance Systems International, Performance Systems       
+International, MIT Laboratory for Computer Science, May 1990.
+
+   [7] Rose, M., and K. McCloghrie, Editors, "简明MIB定义",STD 16, RFC 1212, Performance 
+Systems International, Hughes LAN Systems, March 1991.
+
+   [8] McCloghrie, K., and M. Rose, Editors, "基于TCP/IP的internet的网络管理的管理信息
+库：MIB-II",STD 17, RFC 1213, Hughes LAN Systems, Performance Systems       
+International, March 1991.
+
+   [9] Case, J., McCloghrie, K., Rose, M., and S. Waldbusser, "第二版简单网络管理协议
+（SNMPv2）的管理信息结构", RFC 1442, SNMP Research, Inc., Hughes LAN Systems, Dover 
+Beach Consulting, Inc., Carnegie Mellon University, April 1993.
+
+  [10] Case, J., McCloghrie, K., Rose, M., and S. Waldbusser, "第二版简单网络管理协议
+（SNMPv2）的文本约定", RFC 1443, SNMP Research, Inc., Hughes LAN Systems, Dover 
+Beach Consulting, Inc., Carnegie Mellon University, April 1993.
+
+  [11] Case, J., McCloghrie, K., Rose, M., and S. Waldbusser,"第二版简单网络管理协议
+（SNMPv2）的一致性表述", RFC 1444, SNMP Research, Inc., Hughes LAN Systems, Dover 
+Beach Consulting, Inc., Carnegie Mellon University, April 1993.
+
+  [12] Galvin, J., and K. McCloghrie, "第二版简单网络管理协议（SNMPv2）的管理模型", RFC 
+1445,Trusted Information Systems, Hughes LAN Systems, April 1993.
+
+  [13] Case, J., McCloghrie, K., Rose, M., and S. Waldbusser, "第二版简单网络管理协议
+（SNMPv2）的协议操作", RFC 1448, SNMP Research, Inc., Hughes LAN Systems, Dover 
+Beach Consulting, Inc., Carnegie Mellon University, April 1993.
+
+  [14] "信息处理系统 – 开放系统互连 – 抽象语法标记1（ASN.1）规范",International 
+Organization for Standardization, International Standard 8824, December 1987.
+
+7.  安全考虑
+   安全问题没有在此备忘录中讨论。
+
+8.  作者地址
+   Rob Austein
+   Epilogue Technology Corporation
+   268 Main Street, Suite 283
+   North Reading, MA 01864
+   USA
+
+   Phone: +1-617-245-0804
+   Fax:   +1-617-245-8122
+   EMail: sra@epilogue.com
+
+
+   Jon Saperia
+   Digital Equipment Corporation
+   110 Spit Brook Road
+   ZKO1-3/H18
+   Nashua, NH 03062-2698
+   USA
+
+   Phone: +1-603-881-0480
+   Fax:   +1-603-881-0120
+   EMail: saperia@zko.dec.com
+
+RFC1611——DNS Server MIB Extensions                   DNS服务器MIB扩展
+
+
+28
+RFC文档中文翻译计划

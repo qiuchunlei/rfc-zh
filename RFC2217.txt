@@ -1,0 +1,396 @@
+组织：中国互动出版网（http：//www.china-pub.com/）
+RFC文档中文翻译计划（http：//www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者： Leion (magazine2000@126.com)
+译文发布时间：2001-12-09
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+Network Working Group                                           G. Clark
+Request for Comments: 2217                           Cisco Systems, Inc.
+Category: Experimental                                      October 1997
+
+
+RFC 2217  TelnetCom端口控制选项
+(RFC2217——Telnet Com Port Control Option)
+
+本备忘录的状态
+本备忘录讲述了一种为internet社区定义的试验性协议。本备忘录不指定任何种类的
+internet标准。希望大家多给与批评和建议。本备忘录的发布不受任何限制。
+
+摘要
+本备忘录提出一项协议，它容许本地网在往外地的拨号过程中能够更多地使用调制解调
+器。
+目录
+1. com端口控制选项协议	4
+2. com 端口配置命令	4
+4. com 端口和调制解调器线性变化的通知	8
+5. 流量控制	9
+6. 安全性考虑	9
+7．作者联系地址	9
+8．参考文献	10
+
+
+
+讨论
+远程登录协议定义了一个面向字符、交互式的通讯对话。它原来设计在一个客户和一运
+行远程服务的主机之间建立一对话[5]。
+许多新的商业功能要求一个人连接到远程的服务器检索或存放信息。最多的一种方式是
+这些远程服务经由异步拨号连接以实现。这一新的服务功能类别包括:
+-	通过拨号上互联网
+-	连接到电子公告板
+-	连接到内部和外部数据库
+-	收发传真。
+这些新类别的服务功能的一般特性要求通过异步调制解调器而建立的交互式的、面向字
+符的连接。这就是众所周知的向外modem拨号。
+为了有助于减少在安装和维护附加电话线路的费用，许多设备制造商在访问量较大的服
+务器和路由器上补充了端口直接远程登录的功能，我们将其归类为存取服务器。
+然而,  当前远程登录定义无法充分满足越来越多的用途。这项协议需要将三方面的功能
+补充到Telnet协议以有效支持modem外拨。这些是:
+-	客户将com 端口配置信息发送给连接到外拨modem的存取服务器的能力。这需要在字
+节级别上确保传送和接收的正确格式。
+-	存取服务器将诸如信号变化之类的信息通知任一modem线上的客户端的能力例如
+RLSD信号变化 (载波检测)。这信息是重要的,因为许多客户的软件包用这项信息来判定
+是否与远程服务建立了连接。RLSD变化也使用在类I传真做为信号发送 [6]。
+-	客户端和存取服务器之间流量控制的管理能力，它并不涉及到在客户端与远程服务之间
+所建立的会话中流量控制机理的。不幸的是，RFC 1372 "远程登录远程的流控制选项" [2] 
+不能满足这种目的，因为它依赖于发送xon/xoff 字符，字符也许会被传送或接收作为标
+准过程的客户/远程的服务对话。
+尽管这讨论主要是面向于通往外地的拨号作为这项协议的主要用途,但这项协议也能用
+于做为存取服务器附件的任何串行设备使用。这样的设备可以是:
+-	串行的打印机
+-	绘图仪
+-	显示设备例如管道监视器或医用监视器
+-	例如一般图片复印机和收款机的办公室设备
+定义以下术语：
+存取服务器――任何网络设备，它接受telnet对话、通过com 口接受传送数据以及利
+用Telnet会话通过com口将接受到的数据送给客户端。
+波特比率――为这文档的目的,波特率表示每秒传送通信数据的字节数。
+客户端――任何网络设备，向存取服务器发送一个Telnet请求。
+出境――从连接存取服务器的modem到远程服务之间的数据传输。
+入境――从远程服务到连接存取服务器的modem之间的数据传输。
+远程服务――接受拨号连接的任何服务（包括传真）。
+插图
+
+=============
+|                  |
+|     客户端    | \
+|               |  \  < ――― 本地的区域/企业网络
+=============   \      
+                  \
+==================
+|      远程登录接口    |
+|                  |       |
+|                  |       |
+|  存取服务器  |       |
+|                  |       |
+|                  |       |
+|    com端口接口   　|
+==================
+|
+|
+==========
+|              |
+|    modem   |
+|               |
+==========
+远程服务访问                 | 
+最通用公共交换       ------>|
+网络                         |
+================
+可以是internet 服务  |                  |
+供应商,告示板       |     远程服务       |
+或传真机器            |                   |
+================
+
+命令名和代码: 
+com-port-option      44
+
+                  客户端到存取服务器   存取服务器到客户端
+signature             text                      text
+set-baudrate            1                      101
+set-datasize            2                      102
+set-parity               3                      103
+set-stopsize            4                      104
+set-control             5                      105
+notify-linestate        6                      106
+notify-modemstate     7                      107
+flowcontrol-suspend    8                      108
+flowcontrol-resume    9                      109
+set-linestate-mask     10                      110
+set-modemstate-mask 11                      111
+purge-data             12                      112 
+
+讨论：
+正如前面的建议,com 端口配置命令仅从客户发送到存取服务器。存取服务器没有 com 
+端口初始化配置命令, 仅有通知命令。然而,为了允许服务器初始化com端口配置，已经建
+立了不同的命令值。
+1. com端口控制选项协议
+com 的控制选项协议使用标准的远程登录机制：
+iac will com-port-option 
+发送者愿意发送com 端口控制选项命令
+iac wont com-port-option
+发送者不愿意发送com 端口控制选项命令
+iac do com-port-option
+发送者愿意接受com 端口控制选项命令
+iac dont com-port-option
+　　　　发送者不愿意接受com 端口控制选项命令
+典型地，客户使用will 和wont,存取服务器使用do和dont。
+2. com 端口配置命令
+一旦协议达成,客户可以不受时间和次数限制地发送命令。一旦命令被存取服务器处理
+了,从客户传送到存取服务器的每条命令必须被承认。这种确认在命令的处理以后将把在存
+取服务器设定的值通知客户端。这种确认在命令的处理以后将把在存取服务器设定的值通知
+客户端。这与在tcp 协议层处理的收到命令的确认是不同的。它的目的是通知客户正在使用
+的值与客户请求的值的不同。例如,客户可能要求存取服务器提供超过它所能提供的波特率。
+如果客户在一合理的时间内收不到这一回复 (比如两倍延时), 客户可能希望重新发送命令,
+或终止对话。
+虽然可从存取服务器发送任何序列的命令到客户端，然而不同的序列命令可能会产生无
+效的com端口配置。(例如:数据大小在8位以下时偶数校验有效，推荐按下列顺序发送命令:
+1．	set-baudrate
+2．	set-datasize
+3．	set-parity
+4．	set-stopsize
+
+iac sb com-port-option signature <text> iac se
+客户与存取服务器之间互相交换识别标志的命令如果没有 <text>选项，它是发送者要
+求接收端提供识别标志的命令。<text>可以包含任何字符。 <text>选项没有固定的格式。它
+可以包含制造商信息,版本号信息,或任何另外的信息。如果有iac 字符在<text>出现,必须转
+换成iac-iac以避免命令终止。
+iac sb com-port-option set-baud <value(4)> iac se
+是由客户端发送给存取服务器请求设置com口波特率的命令。<value>是4个八位二进
+制数 (4字节)。value是用网络标准格式来表示的。value是请求的波特率，一种特殊情形value
+为0。如果value是零,则客户请求存取服务器com 端口当前的波特率。
+讨论：
+由于当今波特率的使用形成了一个非常广泛的空间，并且在提议的初始版本中使用了基
+于波特率表的索引。经过多次讨论之后，决定采用实际中使用的波特率。有两个主要的原因：
+1) 它限制了最新的波特率的使用,直到value选项更新,2) 它在波特比率的选择方面的灵活性
+是最大的。
+iac sb com-port-option set-datasize <value> iac se
+这是由客户发送到存取服务器设置数据位数的命令。它也可以用来查询当前的数据位大
+小。<value>值是1个八位二进制数 (字节)。以下是value值的一个表格：
+值      数据比特大小
+0	请求当前的数据位大小
+1	可用为未来使用
+2	可用为未来使用
+3	可用为未来使用
+4	可用为未来使用
+5	5
+6	6
+7	7
+8	8
+9-127      可用为未来使用
+讨论:数据位大小仅有8个可能的值,曾经有4个被使用过,只有2个现在常用。命令参数
+的格式推荐保持一致。它也减少了命令在协议中定义的次数,允许将来扩展。
+iac sb com-port-option set-parity <value> iac se
+客户到服务端，设置奇偶校验，也可用于查询。是1位八位二进制数的(字节)。以下是
+value值的一个表格：
+值      奇偶性 [1]
+0	请求当前的数据大小
+1	没有
+2	奇数
+3	偶数
+4	标记
+5	空格校验
+6-127      可用为未来使用
+讨论:
+现在常用的仅有5个值。命令参数的格式推荐同其他命令保持一致。
+iac sb com-port-option set-stopsize <value> iac se
+客户到服务端，设置stop bits,也可用于查询，为1个字节。客户到服务端，设置停止位,
+也可用于查询，为1个字节。以下是value值的一个表格：
+值      停止位大小
+0	请求当前的数据大小
+1	1
+2	2
+3	1.5
+4-127      可用为未来使用
+讨论:
+仅当数据大小设置成5位时,停止位1.5 被大多数com 端口支持。现在已经不常用了。
+3. 特殊的com 口控制命令
+客户可以通过远程登录会话在任何时候、任何次数地往存取服务器发送这一命令。存取
+服务器会对每个命令回复一个确认信息，这个信息包含了命令和实际值集合。客户希望在一
+合理的时间以内得到一响应 (比如两倍延时)。否则，客户可能希望重新发送没被确认的命
+令或终止对话。
+iac sb com-port-option set-control <value> iac se
+这一命令是从客户端发送给存取服务器以设置特殊的com口选项。这一命令也可用来
+查询当前选项值，值为一个字节。以下是value值的一个表格：
+值        控制命令
+0	com口流控制设置请求(outbound/both)
+1	不使用流控制 (outbound/both)
+2	使用xon/xoff 流控制 (outbound/both)
+3	使用硬件流控制 (outbound/both)
+4	请求中断状态
+5	设置中断状态　on
+6	设置中断状态　off
+7	请求dtr 信号状态
+8	设置dtr 信号状态 on
+9	设置dtr 信号状态  off
+10	请求rts 信号状态
+11          设置rts 信号状态 on
+12	设置rts 信号状态  off
+13	com口流控制设置请求(inbound)
+14	不使用流控制 (inbound)
+15	使用xon/xoff 流控制 (inbound)
+16          使用硬件流控制 (inbound)
+13	com口流控制设置请求(inbound)
+14	不使用流控制 (inbound)
+15	使用xon/xoff 流控制 (inbound)
+16          使用硬件流控制 (inbound)
+16	使用dcd 流控制 (outbound/both)
+18          使用dtr 流控制 (inbound)
+19	使用dsr 流控制 (outbound/both)
+20-127      可用为未来使用
+讨论:
+流控制选项划分inbound和outbound, outbound充分利用现有的程序设计界面和存取服
+务器能力。
+讨论:
+outbound值应该将流控制设置为出和入。如果入可以分开设置它应该在出的设置后设
+置。
+讨论:
+如果存取服务器无法区分入与出的流控制，它应忽略入的流控制命令，并且应基于出的
+流控制命令来设置流控制选项。
+iac sb com-port-option set-linestate-mask <value> iac se
+这一命令是从客户端发送给存取服务器，为了发送notify-linestate选项以设置一比特掩
+码 (参阅第4部分)。当 存取服务器的linestate 改变时, 存取服务器会将新的 linestate 和
+linestate-mask进行"与"处理，如果结果非零，存取服务器将发送与结果。如果大于一位满足
+linestate-mask,只有1个notify-linestate,与所有的满足的位,将被送到客户端。set-linestate-mask 
+可以是以下组合。这些值和在notify-linestate 选项中使用的是一样的。set-linestate-mask 值
+基于目前最流行的uart (com 端口控制芯片) [1]。
+比特位          值        含义
+7              128        超时错误
+6              64        传送移位寄存器为空
+5              32        传送保持寄存器为空　
+4              16        中断检测错误
+3                8        帧错误
+2                4        奇偶校验错误
+1                2        超载错误
+0                1        数据就绪
+讨论:
+set-linestate-mask 值置0时阻止存取服务器将notify-linestate 选项送至客户。
+讨论:
+set-linestate-mask 值为255时，允许存取服务器当每次存取服务器的linestate变化时，
+送一notify-linestate 选项到客户。
+讨论:
+存取服务器的linestate-mask初始值是0。
+讨论:
+在收到一notify-linestate 以后,客户不必须发送一新的set-linestate-mask。linestate-mask
+在存取服务器的值将保持直到被客户设置或重建对话时重置。linestate-mask在存取服务器的
+值将保持直到被客户设置或重建对话时重置。
+iac sb com-port-option set-modemstate-mask <value> iac se
+这一命令是从客户端发送给存取服务器，为了发送notify-modemstate选项设置一比特掩
+码。当modemstate 在存取服务器上变化时,存取服务器将原有modemstate-mask和新的
+modemstate进行与运算。如果结果非零,存取服务器将发送与结果到notify-modemstate选项。
+如果多于一个位满足modemstate-mask,仅有1个notify-modemstate,与所有的满足的位,将被送
+到客户。set-modemstate-mask 可为下列任何组合。值和notify-modemstate 选项一样。
+set-modemstate-mask 值基于目前最流行的uart (com 端口控制芯片) [1]。
+比特位         值        含义
+7              128        接收线性信号检测（即载波检测）
+6              64        来访指示（敲门）
+5              32        data-set-ready 信号状态
+4              16        clear-to-send 信号状态
+3                8        delta接收线性信号检测
+2                4        trailing-edge ring 检测器
+1                2        delta data-set-ready
+0                1        delta clear-to-send
+讨论:
+0的set-modemstate-mask 值将阻止存取服务器送notify-modemstate 选项到客户。
+讨论:
+set-modemstate-mask 值为 255时 允许存取服务器当每次存取服务器的modemstate变
+化时，送notify-modemstate 选项到客户。
+讨论:
+存取服务器的modemstate-mask初始值是255。
+讨论:
+在收到一notify-modemstate 以后,客户不必须发送一新的set-modemstate-mask 
+modemstate-mask在存取服务器的值将保持直到被客户设置或重建对话时重置。
+iac sb com-port-option purge-data <value> iac se
+这一命令是从客户端发送给存取服务器，要求存取服务器立即清除所有涉及缓冲的数
+据。值大小位一个字节。
+值      清除数据缓冲区
+0	可用为未来使用
+1          清除存取服务器接收数据缓冲区
+2	清除存取服务器传送数据缓冲区
+3	清除存取服务器接收数据缓冲区和传送数据缓冲区
+4-127    可用为未来使用
+4. com 端口和调制解调器线性变化的通知
+存取服务器的发送不受时间和次数限制。一旦com 端口或调制解调器线性变化,存取服
+务器应该立即发送适当的命令到客户。客户不必对命令发出响应。
+iac sb com-port-option notify-linestate <value> iac se
+值的大小是一个字节。值是从以下值表中的多个比特层构成的。多比特值可以在一次传
+送中设置。值是基于最流行的uart (com 端口控制芯片)[1]。
+比特位         值        含义
+7              128        超时错误
+6              64         传送移位寄存器为空
+5              32         传送保持寄存器为空
+4              16         中断检测错误
+3                8         帧错误
+2                4         奇偶校验错误
+1                2         超载错误
+0                1         数据就绪
+讨论:
+linestate 是在存取服务器上的uart 的线性状态。
+iac sb com-port-option notify-modemstate <value> iac se
+值的大小是一个字节。值是从以下值表中的多个比特层构成的。多比特值可以在一次传
+送中设置。值是基于最流行的uart (com 端口控制芯片)[1]。
+比特位         值        含义
+7              128        接收线性信号检测（即载波检测）
+6              64        来访指示（敲门）
+5              32        data-set-ready 信号状态
+4              16        clear-to-send 信号状态
+3                8        delta接收线性信号检测
+2                4        trailing-edge ring 检测器
+1                2        delta data-set-ready
+0                1        delta clear-to-send
+5. 流量控制
+客户端和（或）存取服务器可以通过远程登录会话在任何时候、任何次数地往存取服务
+器发送这一命令。
+iac sb com-port-option flowcontrol-suspend iac se
+这命令的发送端请求接收器推迟数据及命令的传输直到发送端发flowcontrol-resume 命
+令。
+iac sb com-port-option flowcontrol-resume iac se
+这命令的发送端请求接收器恢复发送数据和命令
+讨论:
+远程登录在客户和存取服务器之间最初被初始化为重用状态。没有需要在初始化期间发
+送resume命令。
+讨论:
+可以同时发送多个并行的暂停命令。第二个暂停命令可以被忽略。当遇到第一个单一个
+的resume命令时传送恢复。
+讨论:
+流控制选项是为了处理客户到存取服务器Telnet对话的流控制而设计的。这选项加在
+RFC 1372中：远程登录的流控制选项[2]。RFC 1372使用一单字符xon/xoff 技术来实现流
+控制。这导致2个问题。首先,流控制字符可能是有效的数据。其次，流控制字符可能被用
+来终端之间的流控制在结束使用 (客户应用程序到远程服务器的拨号)。
+6. 安全性考虑
+有2项安全问题需要讨论：验证和资源的重置。
+认证可以遵循kerberos身份验证协议（见RFC 1411）[3] 或SPX身份验证协议（见RFC 
+1412）[4]。
+对话终止时，存取服务器必须确保断开连接，同时com口设置（波特率，数据大小，
+停止位，奇偶校验和流量控制）恢复到定义值。这确保com 端口在一已知状态,准备建立下
+一客户对话。这将使操作更具有可预测性，同时避免可能从与随机的com 端口配置开始一
+新建的的拨号对话发生的问题。
+7．作者联系地址
+Glen Clark, Software Architect
+Cisco Systems, Inc.
+170 West Tasman Drive
+San Jose, CA  96134
+USA
+
+EMail:      glenc@cisco.com
+WEB:        www.cisco.com
+8．参考文献
+[1]  Joe Campbell. C Programmer's Guide to Serial Communications, Second Edition. 
+Indianapolis: SAMS Publishing, 1993. 213-224.
+[2]  Hedrick, C., and D. Borman, "Telnet Remote Flow Control Option", RFC 1372, Cray 
+Research, Inc., October 1992.
+[3]  Borman, D., "Telnet Authentication: Kerberos Version 4", RFC 1411, Cray Research, 
+Inc., January 1993.
+[4]  Alagappan, K., "Telnet Authentication: SPX", RFC 1412, Digital Equipment 
+Corporation, January 1993.
+[5]  D. E. Comer and David Stevens.  Internetworking with TCP/IP, Volume III.  Prentice 
+Hall, 1993.
+[6]  Andrew Margolis. The FAX Modem Sourcebook. John Wiley & Sons.1995.
+RFC2217——Telnet Com Port Control Option                TelnetCom端口控制选项
+
+
+1
+RFC文档中文翻译计划

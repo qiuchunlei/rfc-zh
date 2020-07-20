@@ -1,0 +1,364 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：郭大刚（guodagang guodagang@tyut.edu.cn）
+译文发布时间：2001-11-24
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                K. McCloghrie，Editor
+Request for Comments: 2012                                  Cisco Systems 
+Updates: 1213                                                November 1996  
+Category: Standards Track
+
+采用了SMIv2的有关TCP的SNMPv2管理信息数据库
+(RFC2012——SNMPv2 Management Information Base for the Transmission Control Protocol using SMIv2)
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet架构委员会正式协议标准”来获得本协议的标准
+化程度和状态。本备忘录的发布不受任何限制。
+IESG Note:
+目前，只支持IPv4的IP、UDP和TCP MIB模块。这3个模块采用IpAddress类型，
+定义了一个4段长的八位字符串来描述IPv4 32位internet地址。(见RFC 1902，SNMPv2
+的SMI。)。不支持新的128位IPv6 Internet地址。
+目录
+1. 介绍	1
+2. 定义	2
+3. 致谢	8
+4. 参考文献	8
+5. 需要考虑的安全问题	9
+6编者地址	9
+
+1. 介绍
+一个管理系统应该包括：几个(也许更多)节点，每个节点都有一个称为代理的处理实体，
+对设备拥有管理的权限；最少一个管理站点；一种管理协议，用来在代理和管理站点之间传
+递管理信息。在定义了认证、授权、访问控制和加密策略的管理框架下实现了协议的业务。
+管理工作站执行检测和控制被管理单元的管理应用程序。被管理单元是可以通过访问他
+们的管理信息来控制和检测的诸如主机、路由器、终端服务器等等设备。
+管理信息是被管理对象的集合，驻留在称为管理信息数据库 (Management Information 
+Base，缩写为MIB) 的虚拟的信息数据库中。在MIB模块中定义了相关对象的集合。这些
+模块采用OSI的抽象语法符号1(Abstract Syntax Notation One ASN.1)[1]的子集写成， 称
+为管理信息结构(Structure of Management Information，缩写为SMI) [2]。
+这个文档是定义了管理传输控制协议(Transmission Control Protocol ，缩写为TCP) [3]
+的应用的被管理对象的MIB模块。
+在这个MIB模块中的被管理对象最初采用SNMPv1框架，定义做MIB-II[4]的一部分。  
+这个文档采用SNMPv1框架，定义了相同的UDP对象。
+2. 定义
+TCP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+ MODULE-IDENTITY，对象类型，整数32，32位标准测量，
+ 32位计算器，IpAddress，mib-2  FROM SNMPv2-SMI
+ MODULE-COMPLIANCE，OBJECT-GROUP FROM SNMPv2-CONF;
+
+tcpMIB MODULE-IDENTITY
+ LAST-UPDATED "9411010000Z"
+ ORGANIZATION "IETF SNMPv2 Working Group"
+ CONTACT-INFO
+"  Keith McCloghrie
+Postal: Cisco Systems，Inc.
+170 West Tasman Drive
+San Jose，CA  95134-1706
+US
+Phone:  +1 408 526 5260
+Email:  kzm@cisco.com"
+描述
+“管理TCP应用的MIB模块。”
+ REVISION"9103310000Z"
+ 描述
+“这个MIB的最初版本是MIB-II的一部分。”
+ ::= { mib-2 49 }
+
+--TCP类
+
+tcp对象标识符 ::= { mib-2 6 }
+
+tcpRtoAlgorithm 对象类型
+ 语法：整数 {
+  other(1)，-- none of the following
+  constant(2)，-- a constant rto
+  rsre(3)， -- MIL-STD-1778，Appendix B
+  vanj(4)-- Van Jacobson's algorithm [5]
+ }
+ 最大权限：只读
+ 状态：现行
+ 描述
+“用监测超时量的算法可以用于重新转发未知字节。”
+ ::= { tcp 1 }
+
+tcpRtoMin 对象类型
+ 语法：整数32
+ 单位：“毫秒”
+ 最大权限：只读
+ 状态：现行
+ 描述
+“TCP应用允许的超时重传的最小值(以毫秒为单位)。这类对象更准确的含义和用来监
+测重传超时的算法有关系。尤其是，当采用作为rsre(3)超时算法时，这种类型的对象具有
+了在RFC793中阐述的LBOUND量的含义了。”
+ ::= { tcp 2 }
+
+tcpRtoMax 对象类型
+ 语法：整数32
+ 单位：”毫秒”
+ 最大权限：只读
+ 状态：现行
+ 描述
+“TCP应用允许的超时重传的最大值(以毫秒为单位)。这类对象更准确的含义和用来监
+测重传超时的算法有关系。尤其是，当采用作为rsre(3)超时算法时，这种类型的对象具有
+了在RFC793中阐述的UBOUND量的含义了。”
+ ::= { tcp 3 }
+
+tcpMaxConn 对象类型
+ 语法：整数32
+ 最大权限：只读
+ 状态：现行
+ 描述
+“实体支持的TCP连接总数的限制。在实体中最大连接数是动态变化的，因此这种对
+象应该包含数值–1。”
+ ::= { tcp 4 }
+
+tcpActiveOpens 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“已经直接从CLOSED状态转换到SYNSENT 状态的TCP连接的次数。”
+::= { tcp 5 }
+
+tcpPassiveOpens 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“已经直接从SYN-RCVD 状态转换到LISTEN 状态的TCP连接的次数。”
+ ::= { tcp 6 }
+
+tcpAttemptFails 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“已经直接从SYN-SENT状态或者SYN-RCVD状态转换到CLOSED 状态的TCP连
+接的次数 ，加上已经直接从SYN-RCVD 状态转换到LISTEN 状态的TCP连接的次数。”
+ ::= { tcp 7 }
+
+tcpEstabResets 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“已经直接从ESTABLISHED状态或CLOSE- WAIT状态转换到 CLOSED状态的
+TCP连接的次数。”
+ ::= { tcp 8 }
+
+tcpCurrEstab 对象类型
+ 语法：32位标准测量
+ 最大权限：只读
+ 状态：现行
+ 描述
+“当前状态是ESTABLISHED或者是CLOSE- WAIT的TCP连接的数量。”
+ ::= { tcp 9 }
+
+tcpInSegs 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“收到的数据段的总量，包括收到的错误。这个数字包括在当前建立的连接上已经收到
+的数据段。”
+ ::= { tcp 10 }
+
+tcpOutSegs 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“发送数据段的总数，包括那些当前连接的，但是不排除那些仅仅是重发的字节。”
+ ::= { tcp 11 }
+
+tcpRetransSegs 对象类型
+ 语法：32位计算器
+ 最大权限：只读
+ 状态：现行
+ 描述
+“重发数据段的总数 – 也就是，包含一个或者更多的以前传过的字节的传输了的TCP
+数据段的数量。”
+ ::= { tcp 12 }
+
+--TCP连接表单
+
+--TCP连接表单包含了有关这个实体现存TCP连接的信息。
+
+tcpConnTable 对象类型
+ 语法：TcpConnEntry的序列
+ 最大权限：不可访问
+ 状态：现行
+ 描述
+“包含了TCP特定连接信息的列表。”
+ ::= { tcp 13 }
+
+tcpConnEntry 对象类型
+ 语法：TcpConnEntry
+ 最大权限：不可访问
+ 状态：现行
+ 描述
+“tcpConnTable的概念中的行包含了当前实际TCP连接的信息。这个表中的各行都是
+临时的，当连接转变为关闭状态时，这个行就终止了。”
+索引{ tcpConnLocalAddress，
+  tcpConnLocalPort，
+  tcpConnRemAddress，
+  tcpConnRemPort }
+ ::= { tcpConnTable 1 }
+
+TcpConnEntry ::= 序列{
+  tcpConnState 整数，
+  tcpConnLocalAddressIpAddress，
+  tcpConnLocalPort整数，
+  tcpConnRemAddress  IpAddress，
+  tcpConnRemPort  整数
+ }
+
+tcpConnState 对象类型
+ 语法：整数 {
+  closed(1)，
+  listen(2)，
+  synSent(3)，
+  synReceived(4)，
+  established(5)，
+  finWait1(6)，
+  finWait2(7)，
+  closeWait(8)，
+  lastAck(9)，
+  closing(10)，
+  timeWait(11)，
+  deleteTCB(12)
+ }
+ 最大权限：读/写
+ 状态：现行
+ 描述
+“TCP连接的状态。
+由管理工作站设置的唯一一个数值是deleteTCB(12)。因此，如果管理工作站试图把这
+个对象设置成任何其他数值的话，对于代理会返回一个‘badValue’响应。
+如果管理工作站把这种对象的值设置为deleteTCB(12)的话，删除在被管理接点上相应
+的连接的TCB就会(正如在RFC 793中定义的那样)导致连接立即中断。
+作为一种特定的应用选项，RST信息数据段可以从管理节点发往其他各个TCP中断(注
+意：不管RST信息数据段是否被可靠的发送)。”
+ ::= { tcpConnEntry 1 }
+
+tcpConnLocalAddress 对象类型
+ 语法：IpAddress
+ 最大权限：只读
+ 状态：现行
+ 描述
+“这个TCP连接的本地IP地址。当连接处于听的状态时，就可以和这个节点相连的任
+何IP接口建立连接，这时这个值是0.0.0.0。”
+ ::= { tcpConnEntry 2 }
+
+tcpConnLocalPort 对象类型
+ 语法：整数 (0..65535)
+ 最大权限：只读
+ 状态：现行
+ 描述
+“该TCP连接的本地端口号。”
+ ::= { tcpConnEntry 3 }
+
+tcpConnRemAddress 对象类型
+ 语法：IpAddress
+ 最大权限：只读
+ 状态：现行
+ 描述
+“该TCP连接的远程IP地址。”
+ ::= { tcpConnEntry 4 }
+
+tcpConnRemPort 对象类型
+ 语法：整数 (0..65535)
+ 最大权限：只读
+ 状态：现行
+ 描述
+“该TCP连接的远程端口号。”
+ ::= { tcpConnEntry 5 }
+
+tcpInErrs 对象类型
+语法：32位计算器
+最大权限：只读
+状态：现行
+描述
+“收到的出错的数据段的总量(就象，TCP校验和错误)。”
+ ::= { tcp 14 }
+
+tcpOutRsts 对象类型
+语法：32位计算器
+最大权限：只读
+状态：现行
+描述
+“发送的包含有RST 标记的TCP数据段的数量。”
+ ::= { tcp 15 }
+
+--一致性信息
+
+tcpMIBConformance 对象标识符 ::= { tcpMIB 2 }
+
+tcpMIBCompliances 对象标识符 ::= { tcpMIBConformance 1 }
+tcpMIBGroups对象标识符 ::= { tcpMIBConformance 2 }
+
+-- 一致性状态
+
+tcpMIBCompliance MODULE-COMPLIANCE
+状态：现行
+描述
+“有关执行TCP的SNMPv2实体的一致性状态。”
+MODULE  -- this module
+强制性类{ tcpGroup}
+ ::= { tcpMIBCompliances 1 }
+
+-- 一致性的单位
+
+tcpGroup对象类
+ 对象{ tcpRtoAlgorithm，tcpRtoMin，tcpRtoMax，
+ tcpMaxConn，tcpActiveOpens，
+ tcpPassiveOpens，tcpAttemptFails，
+ tcpEstabResets，tcpCurrEstab，tcpInSegs，
+ tcpOutSegs，tcpRetransSegs，tcpConnState，
+ tcpConnLocalAddress，tcpConnLocalPort，
+ tcpConnRemAddress，tcpConnRemPort，
+ tcpInErrs，tcpOutRsts }
+ 状态：现行
+ 描述
+“用于提供TCP实体管理的对象的tcp类。”
+ ::= { tcpMIBGroups 1 }
+
+END
+3. 致谢
+本文档包含了对RFC 1213修改后的一个子集。
+4. 参考文献
+[1]Information processing systems - Open Systems Interconnection - Specification of 
+Abstract Syntex Notation One (ASN.1)，International Organization for Standardization.  
+International Standard 8824，(December，1987).
+[2]McCloghrie，K.，Editor，“Structure of Management Information for version 2 of the 
+Simple Network Management Protocol (SNMPv2)”，RFC 1902，Cisco Systems，January 
+1996.
+[3]Postel，J.，“Transmission Control Protocol - DARPA Internet Program Protocol 
+Specification”，STD 7，RFC 793，DARPA，September 1981.
+[4]McCloghrie，K.，and M. Rose，“Management Information Base for Network 
+Management of TCP/IP-based internets: MIB-II”，STD 17，RFC 1213，March 1991.
+[5]Jacobson，V.，“Congestion Avoidance and Control”，SIGCOMM 1988，Stanford，
+California.
+5. 需要考虑的安全问题
+在本备忘录中没有讨论有关安全的问题。
+6编者地址
+Keith McCloghrie
+Cisco Systems，Inc.
+170 West Tasman Drive
+San Jose，CA  95134-1706
+US
+Phone: +1 408 526 5260
+EMail: kzm@cisco.com
+
+
+RFC2012——SNMPv2 Management Information Base for the Transmission Control Protocol using SMIv2
+采用了SMIv2的有关TCP的SNMPv2管理信息数据库
+
+
+2
+RFC文档中文翻译计划

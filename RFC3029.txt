@@ -1,0 +1,1645 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：郭大刚（guodagang guodagang@tyut.edu.cn）
+译文发布时间：2001-11-7
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                           C. Adams
+Request for Comments: 3029                          Entrust Technologies
+Category: Experimental                                      P. Sylvester
+                                     EdelWeb SA - Groupe ON-X Consulting
+                                                            M. Zolotarev
+                                      Baltimore Technologies Pty Limited
+                                                           R. Zuccherato
+                                                    Entrust Technologies
+February 2001
+
+
+Internet X.509 公钥基础结构
+数据有效性和验证服务器协议
+
+（RFC3029——Internet X.509 Public Key Infrastructure
+Data Validation and Certification Server Protocols
+
+这个备忘录的状态
+这个备忘录为Internet团体定义了一个实验协议。它并没有指定某种形式的Internet
+标准。希望提出改进的建议和讨论。本备注的发行使没有限制的。
+版权声明
+Copyright (C) The Internet Society (2001)。版权所有。
+摘要
+这个文档描述了一个通用的数据有效性和验证服务器（Data Validation and 
+Certification Server，DVCS），以及和它通讯时使用的协议。数据有效性和验证服务器是
+一个可信任的第三方，用来作为构造可靠的不可否认服务的一部分。
+PKI中数据有效性和验证服务器的用处在于验证签名文档、公钥证书和数据拥有或存在
+的有效性。协议产生的验证声明称做数据有效性证书(Data Validation Certificates，
+DVC) 。
+我们给出了如何使用数据有效性和验证服务器的例子，它们不仅扩展了签名的使用范
+围，使其不局限于密钥的终止或撤消，而且质询了关于公钥证书地位的数据有效性和验证服
+务器。文档包含一个完整的时间戳事物的例子。
+
+
+
+
+
+
+目录
+1. 介绍	2
+2. DVCS提供的服务	3
+2.1 数据拥有证书Certification of Possession of Data	3
+2.2 数据拥有声明证书Certification of Claim of Possession of Data	4
+2.3数字签名文档有效性Validation of Digitally Signed Documents	4
+2.4公钥证书有效性Validation of Public Key Certificates	4
+3. 数据证书服务器的使用和Scenarii.	4
+4. DVCS功能需求	5
+5. 数据证书服务器事务处理过程Data Certification Server Transactions	5
+6. DVCS的定义	6
+7. 普通数据类型	6
+7.1 version类：	6
+7.2 DigestInfo类：	7
+7.3. 时间值	7
+7.4. PKIStatusInfo	7
+7.5. TargetEtcChain	7
+7.6. DVCSRequestInformation	8
+7.7. GeneralName 和GeneralNames	9
+8. 数据有效性和证书请求	9
+9. DVCS响应	11
+9.1. 数据有效性证书	11
+9.2. DVCS 错误通告	13
+10.  传输	14
+10.1 通过HTTP或HTTPS实现的DVCS协议	14
+10.2 使用电子邮件的DVCS协议	14
+11.  需要考虑的安全问题	14
+12.  专利信息	15
+13.  参考文献	15
+14.  作者地址	16
+附录 A - PKCS #9 属性	17
+附录 B – 签名文档确认	17
+B.1签名文档确认	17
+附录 C – 验证公钥证书的状况	18
+附录 D - MIME 注册	19
+附录 E – 使用1988语法的ASN.1 模块	19
+附录 F –范例	23
+附录 G – 致谢	40
+完整版权说明	40
+致谢	40
+
+1. 介绍
+这个文档是已在IETF PKIX工作组中提议和讨论的工作的结果。作者和组中一些成员认
+为提升这些还相当新的概念为标准过程还为时尚早。这里表述的概念已经稳定了一段时间，
+并且有部分已经实现。大家同意发表在诸如实验性RFC刊物是一个合适的方法，以便为其它
+实现提供稳定的参考文档。
+这个文档中的关键词“MUST”、“MUST NOT”、“REQUIRED”、“SHOULD”、“SHOULD NOT”、
+“RECOMMENDED”、“MAY”和“OPTIONAL”(如所见为大写)按照RFC2119的描述进行解释。
+数据有效性和验证服务器是可信任的第三方，提供诸如数据有效性服务、声明数据签名
+文档的正确性、公钥证书和数据拥有及存在的有效性服务。
+作为有效性的结果，DVCS产生一个数据有效性证书（DVC）。此证书可用来构建有关一
+个声称拥有数据的实体的有效性和正确性、一个实体公钥证书有效性和恢复状态和一个数字
+签名文档的有效性和正确性。
+DVCS提供的服务并不能取代在大型开放环境中检查公钥证书撤消使CRLs和OCSP的使
+用，因为这关系到协议的可量测性。
+它更应该应用于支持关于无纸文档环境的不可否认性或对更多传统服务的补充。DVC中
+通过提供有效的数字签名文档或公钥证书，使数据有效性证书的存在支持不可否认性。
+即使在公钥证书到期，没有或很难得到恢复信息的情况下，使公钥证书有效的DVC仍可
+以使用。例如，确定一个DVC的有效性被认为是一件较为容易的事情，因为拥有DVCS的人
+数远比拥有公钥证书的人少。
+协议的一个重要特性是通过使用同样的协议（不需要使用相同的服务）和有效的签名文
+档使DVCs生效。对于一个特定的DVC，我们可以不验证签名，也就是说，通过和一个文档
+比较来确定其有效性。
+响应签名文档或公钥证书有效性签名请求的数据有效性证书的产品同时也提供证据，表
+明验证数据签名或公钥证书有效性的请求者执行了预期的diligence 。
+这个文档定义了数据签名的使用，以确保文档和DVCs的真实性，还定义了对应的术语；
+还定义了提供验证证据的其他方法，尤其是这可能取代SignedData 安全信封。
+2. DVCS提供的服务
+现有详述定义了四类有效性和证书服务：
+- 数据拥有证书 Certification of Possession of Data (cpd),
+- 数据拥有声明证书  Certification of Claim of Possession of Data (ccpd),
+- 数字签名文档有效性  Validation of Digitally Signed Document (vsd),
+- 公钥证书有效性  Validation of Public Key Certificates (vpkc).
+DVCS必须至少支持这些服务的一个子集。DVCS可以支持有限的vsd服务，以便确认数
+据有效性证书。
+完成每一步后，DVCS产生一个数据有效性证书－一个包含有效性结果和可信任的时间
+信息的签名文档。
+2.1 数据拥有证书Certification of Possession of Data
+数据拥有证书服务提供证据表明，在指定的时间请求者拥有数据以及数据有效性服务器
+上是真实的数据。
+2.2 数据拥有声明证书Certification of Claim of Possession 
+of Data
+此服务除了表明请求者用的不是数据而是用消息摘要外，其他和上明的服务是一样的。
+2.3数字签名文档有效性Validation of Digitally Signed 
+Documents
+此服务用于宣称签名文档的有效性。
+DVCS使用一切合适的状态信息和公钥证书来验证所有包含在签名文档中的签名。DVCS
+验证所有包含在文档中签名，还检验签名实体是否可信，例如验证签名实体的整个证书路径
+有可信的来源（如，DVCS's CA, 或同层的根CA）。
+DVCS可能需要参考相关的CRLs或通过访问CAs更新的状态信息进行补充，例如访问
+OCSP服务，可信任的目录服务或其他DVCS服务。
+DVCS会对所有签名文档中的签名执行验证。一个签名验证的失败不会导致整个有效性
+验证的失败，相反，如果没有足够的签名数量将可能导致全部失败。
+2.4公钥证书有效性Validation of Public Key Certificates
+此服务用来验证和声明在指定时间一个或多个公钥证书的有效性(根据[RFC2459])。
+验证公钥证书时，DVCS验证请求中包含的证书是有效的，并在指定的时间决定它的撤
+销状态。DVS从证书的发布者到一个可信任的地方，检验整个证书的路径。而且DVCS可能
+会依赖于外部信息（CRL,OCSP,DVCS）。
+3. 数据证书服务器的使用和Scenarii.
+完全描述不同的可操作的DVCS scenarii 或用法超过了本文档的讨论范围。
+参见附录B和C，一套基础范例和使用实例。
+确认签名文档服务可用来支持不可否认服务，使签名文档不仅可用在公钥证书恢复或超
+期，还可用在简单地将签名有效性授权给一个可信任地（公司范围）主要服务。
+确认公钥证书服务可用在需要关于证书撤销状态的及时信息（如，传输很高价值资金或
+高度敏感密钥）或用在需要支持不可否认的证据时。
+数据有效性证书可用来简化签名证书超期或随之而来的证书撤销后签名的有效性验证：
+数据有效性证书可用作一个签名中验证属性，包括一个关于在签名时使用的证书可用性的追
+加声明。为了验证这样的签名，只确认数据有效性证书的有效性就足够了。
+DVCS还可能在数据有效性证书中包括附加的密钥交换证书，来确认一个密钥交换证
+书 ，给应用程序提供一套附加授权接受者，其会话密钥也应当被加密。例如，这可被用来
+提供公司范围内恢复计划的中央管理。注意，附加证书不仅依靠请求的证书，还依靠请求者
+的身份。
+数据拥有声明证书服务也可称作时间戳。
+数据拥有证书服务可用来声明合法的文档存放，或实现作为一个可信任第三方服务的文
+档归档服务。 
+数据有效性和证书服务器协议可用在不同的服务范围。例如，全公司内的集中服务（签
+名验证、公司证书确认）、多组织机构间合作服务、或时间戳或数据文档的通用第三方服务。
+DVCS的一个重要应用是在一个所有安全考虑都基于整个公司规范的企业环境中。一个
+公司的DVCS服务可以授权一个重要管理服务机构来作出所有的技术决定（如，有效路径，
+确认的配置）。
+不论何种情况，数据有效性和证书服务器中PKI实体具有的信任信息都会传递到数据有
+效性证书的内容中（就像CA的信任信息会传递到其发布的公钥证书中一样）。
+DVCS服务可以和归档和日志系统结合使用为不可否认服务提供加强的安全保障服务。
+从这点考虑，DVCS可被认为是一个Evidence Recording Authority [ISO-NR]。
+4. DVCS功能需求
+DVCS必须：
+1. 按照策略的定义，为请求者提供一个数据有效性证书形式的签名响应，或者一个错
+误响应。DVCS服务的定义和策略定义了产生响应的DVCS所使用的信息中有多少将包括再数
+据有效性证书中，例如，公钥证书、CRL、其他OCSP服务器响应、DVCS、或其他。
+2. 数据有效性证书显示了签名文档、公钥证书或数据是否有效；如果无效，显示验证
+失败的原因是什么。
+3. 每个数据有效性证书中包括一个严格单调连续增长的数字。
+4. 每个数据有效性证书包括一个时间值或一个时间戳标记。
+5. 用密钥签署数据证书标记，此密钥被授权用作dvcs签名扩展密钥。还包括证书的说
+明，作为签名的签署属性。
+6. 在分发数据有效性证书前，检查其自己签名密钥和证书的有效性。如果检查没有通
+过，绝对不能分发证书。
+在每个数据有效性证书中，DVCS都应当包含一个策略标识符，以确定DVCS签名的可信
+度和使用的有效策略。
+5. 数据证书服务器事务处理过程Data Certification Server 
+Transactions
+DVCS事务处理过程以客户端预备数据有效性和证书请求开始。请求总是包含在需要鉴
+别有效性、正确性和合法性的数据中。
+请求可以用安全信包封装，为请求者和服务器提供证明。请求者的证明可用CMS中描述
+的集中格式归档，尤其是签名数据signedData。
+DVCS客户端选择一个合适传输机制把请求传递到DVCS。还有必要选择一种传输机制，
+提供机密性，尤其是为请求者提供一种DVCS证明，如TLS、CMS或S/MIME 加密法。
+如果请求有效，DVCS执行所有必须的验证步骤，产生数据有效性证书，给请求者发回
+一个包含DVC的响应消息。
+数据有效性证书的形式是一个签名文档(CMS SignedData)。
+和请求一样，也必须选择一种传输机制为承载DVC提供机密性。DVCs不一定以和请求
+同样的方式来传输，比如，它们可以在通过HTTPS接收到一个在线请求后用电子邮件返回。
+如果请求有效，DVCS产生一个包含适当错误通告的响应消息。
+接收到响应后，请求实体应当验证其有效性，也就是说，检验其是否包含一个可接收的
+时间、正确的DVCS名字、正确的请求信息和消息印记、有效签名以及令人满意的状态、服
+务和策略字段。
+当验证DVC有效性时，是由请求者的应有程序来检查一个DVCS签名证书是否有效。根
+据使用环境，可能使用不同的在线或out of band方法，如CRLs、DVCS或OCSP。
+通过所有的检查，数据有效性证书就可用来鉴别相应数据的正确性和合法性。
+针对一个请求，DVCS可能返回多个DVC。在这种情况下，除了一个请求外，其余的请求
+都处于全局“等待”状态。
+6. DVCS的定义
+为了能从dvcs中引入元素，使用以下对象标识符作为ASN.1模块标识符。
+id-mod-dvcs OBJECT IDENTIFIER ::= {iso(1) identified-organization(3) dod(6) 
+internet(1) security(5) mechanisms(5) pkix(7) id-mod(0) 15}
+使用SignedData为DVC提供验证的DVCS 必须用密钥签署所有数据证书消息。密钥对
+应的证书必须包含[RFC2459] 4.2.1.14节中定义的扩展的密钥使用字段扩展名，其中
+KeyPurposeID的值为id-kp-dvcs。这个扩展被标记为关键性的。
+数据有效性证书必须包含一个DVCS用来签名的ESSCertID证书鉴别属性。
+id-kp-dvcs  OBJECT IDENTIFIER ::= {iso(1) identified-organization(3) dod(6) 
+internet(1) security(5) mechanisms(5) pkix(7) kp(3) 10}
+  Consistent KeyUsage bits:
+  digitalSignature, nonRepudiation, keyCertSign, cRLSign
+DVCS的证书可能包含一个授权信息访问扩展（Authority Information Access 
+extension [RFC2459] ），用来传送和DVCS联系的方法。扩展中的accessMethod字段必须
+包含OID id-ad-dvcs:
+id-ad-dvcs  OBJECT IDENTIFIER ::= {iso(1) identified-organization(3) dod(6) 
+internet(1) security(5) mechanisms(5) pkix(7) ad(48) 4}
+'accessLocation'字段的值定义了用来访问DVCS的传输方式（如，URI）。
+7. 普通数据类型
+请求和响应数据结构中有几种普通的数据类型。这些数据类型或在本文档中定义，或来
+自其他地方。本章定义和描述了这些类型，并列举了它们的用法。
+7.1 version类：
+请求和响应包含一个可选的证书字段，指定数据结构的版本。在协议的这个版本中，两
+个字段都为1，或者根本没有这个字段。
+7.2 DigestInfo类：
+这个元素在 [RFC2315]中定义。由于RFC2315是报告文档，所以在这里重复一下其定义：
+DigestInfo ::= SEQUENCE {
+ digestAlgorithmDigestAlgorithmIdentifier,
+ digestDigest }
+Digest ::= OCTET STRING
+DigestInfo类各个字段的意思如下：
+- 字段'digestAlgorithm'标识数据摘要时使用的消息摘要算法（以及相关参数）。
+- 字段'digest'是消息摘要过程的结果。
+DigestInfo在两个地方使用：
+- 作为ccpd服务的数据部分；
+- 在数据有效性证书中保持一个对应请求数据部分的摘要或一个ccpd服务数据字段的
+拷贝。
+7.3. 时间值
+时间指示器可在请求和响应中出现。最简单的形式是，时间用格林威治时间表示，后面
+是秒的分数部分。.
+另一种可替换的形式是TSA时间戳标记，或来自其他第三方服务的DVC（或其他记号）。
+由策略决定DVCS是解释请求中的时间值，还是确认请求中的时间值。
+DVCSTime ::= CHOICE  {
+  genTime GeneralizedTime,
+  timeStampTokenContentInfo }
+协议的未来版本也许包含其他时间格式。
+DVCS产生的时间值是渐增的，但并不是唯一的，DVC的顺序由连续的数字定义。
+7.4. PKIStatusInfo
+这个数据结构在[RFC2510]中定义，作为TargetEtcChain数据结构'chain'字段的组成
+部分使用。PKIStatusInfo的每一次出现都是由响应的DVCS产生，反映了本地验证的结果。
+7.5. TargetEtcChain
+TargetEtcChain数据结构包含证书和其它指示器，或描述需要确认的信息（在cpkc服
+务中的请求），或描述验证的结果，也可能包含策略和策略映射的信息。 
+关于如何填值和解释这个数据结构的细节在后面每个服务的含义中定义。
+'pathProcInput'字段包含在确认时使用的策略和策略映射信息。
+在响应中，'pkistatus'和`certstatus' 选项可能只在'chain'序列中出现。如果出现，
+它们包含的是对最前面元素或目标值的本地验证结果，如果它是'chain'序列里的第一个元
+素。
+如果没有出现'pkistatus'或'certstatus'，DVCS认为'chain'里的所有元素都是可信
+赖的。注意：此时可能由有效的OCSP响应或DVC来指示有效证书。
+TargetEtcChain ::= SEQUENCE {
+  target  CertEtcToken,
+  chainSEQUENCE SIZE (1..MAX) OF
+ CertEtcToken OPTIONAL,
+  pathProcInput [0] PathProcInput OPTIONAL }
+PathProcInput ::= SEQUENCE {
+  acceptablePolicySet SEQUENCE SIZE (1..MAX) OF
+ PolicyInformation,
+  inhibitPolicyMappingBOOLEAN DEFAULT FALSE,
+  explicitPolicyReqd  BOOLEAN DEFAULT FALSE }
+CertEtcToken ::= CHOICE {
+  certificate[0] IMPLICIT Certificate ,
+  esscertid  [1] ESSCertId ,
+  pkistatus  [2] IMPLICIT PKIStatusInfo ,
+  assertion  [3] ContentInfo ,
+  crl  [4] IMPLICIT CertificateList,
+  ocspcertstatus[5] IMPLICIT CertStatus,
+  oscpcertid [6] IMPLICIT CertId ,
+  oscpresponse  [7] IMPLICIT OCSPResponse,
+  capabilities  [8] SMIMECapabilities,
+  extension  Extension }
+证书、策略信息和证书列表在[RFC2459]定义。ESSCertId在 [RFC2634]定义。CertId, 
+OCSPResponse和CertStatus在 [RFC2560]中定义。PKIStatusField 在[RFC2510]定义。
+选项'assertion'包含一个数据有效性证书，和时间戳，和其它声明。
+选项'assertion', 'ocspresponse' 和'crl' 由外部响应DVCS服务提供的。选项
+'certStatus'和'pkistatus'反映了由响应DVCS直接作出的决定。
+如果用证书标识符就足够执行服务，那么作为证书的替代，证书标识符(ESSCertId, 
+CertId)可以用在请求和响应中，例如，在相应的证书正用于其他请求和响应时（作为
+SignedData类型的一部分）。
+证书授权组织的证书和证书标识符可以任何顺序出现，可以表示几条证书链。
+选项'capabilities'可用来指示SMIMECapabilities。它应用于证书，由序列中前面的
+元素识别的。
+7.6. DVCSRequestInformation
+DVCSRequestInformation数据结构包含关于数据有效性和证书请求的通用信息。这个
+数据结构在请求中出现，也包含在相应的数据有效性证书中。
+DVCSRequestInformation ::= SEQUENCE  {
+  version INTEGER DEFAULT 1 ,
+  service ServiceType,
+  nonceINTEGER OPTIONAL,
+  requestTimeDVCSTime OPTIONAL,
+  requester  [0] GeneralNames OPTIONAL,
+  requestPolicy [1] PolicyInformation OPTIONAL,
+  dvcs [2] GeneralNames OPTIONAL,
+  dataLocations [3] GeneralNames OPTIONAL,
+  extensions [4] IMPLICIT Extensions OPTIONAL
+}
+此服务类型列举了一个请求的DVCS服务类型。
+对于此服务的描述参见第二章。
+ServiceType ::= ENUMERATED { cpd(1), vsd(2), cpkc(3), ccpd(4) }
+7.7. GeneralName 和GeneralNames
+有几种GeneralName和GeneralNames 出现的SEQUENCES。这些数据结构从[RFC2459]
+引入。
+8. 数据有效性和证书请求
+数据有效性和证书请求是[RFC2630]中定义的ContentInfo。
+可由具有内容类型id-ct-DVCSRequestData签名的DVCSRequestData的 [RFC2630]内容
+组成，
+ id-ct-DVCSRequestData OBJECT IDENTIFIER ::= {iso(1) member-body(2) us(840) 
+rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) ct(1) 7}
+这些数据有选择的被内容类型contenttypes封装，以提供证明和/或机密性。
+本文档描述了[RFC2630]签名数据结构的使用，其中在encapContentInfo 的
+eContentType中指示的内容类型是id-ct-DVCSRequestData和 id-ct-DVCSRequestData，
+且encapContentInfo中以字节形式承载的eContent包含DVCSRequestData数据结构。
+使用签名数据结构时，数据确认和证书请求可以包含几个SignerInfo数据结构，且签
+名计数器属性要依赖运行的环境。
+当一个终端用户客户端创建请求时，有一个或零个SignerInfo 。后续的DVCS可以增
+加一个额外的签名和一个连署属性，也可以使用RFC2630封装，提供验证和/或机密性。
+请求的内容包含所需服务和其它参数的描述，要确认的数据和请求的可选标识符。
+ DVCSRequest ::= SEQUENCE  {
+ requestInformationDVCSRequestInformation,
+ data  Data,
+ transactionIdentifierGeneralName OPTIONAL
+}
+'DVCSRequest.requestInformation' 元素包含关于请求的通用信息，由以下这些请求
+者填充：
+  - 'version' 字段，在本协议的这个版本中设置为1或没有此字段。
+  - 'service'字段包含请求的服务。
+  - 'nonce'字段可被用来提供额外的保护，以消除重复运行或内容猜测攻击。
+  - 'requestTime' 字段可被用来指示请求的服务应执行的时间。对vsd和cpkc服务，
+特指声明签名文档或证书有效性的时间。对于其它服务，DVCS忽略此字段。如果没有此字
+段，则假定为目前时间。
+  - 'requester' 字段的值指示请求实体。此字段的使用和解释由DVCS策略定义。一
+些使用的范例有：如果此字段存在，且请求被签名，DVCS要求此字段必须和相应签名证书
+的匹配（subjectName 或 subjectAltName扩展）。
+当一个请求被传递到另一个DVCS时，可能已经用另一个DVCS签名过。
+传递时，DVCS可在请求中添加自己的特性传递给另一个服务提供者，且会去掉初始值。
+  - 'requestPolicy' 字段指示请求确认的策略。DVCS必须检查此字段，以验证和它
+自己策略的一致性。没有此字段指示可接收任何策略。.
+  - 'dvcs'字段用来指示一列DVCS，它们可为产生响应提供（额外的）信息和执行额
+外操作 。
+由DVCS策略决定是否兑现此字段，定义接受通用名字的哪个选项（如，是URL，还是
+DN）。
+  - 'dataLocations'字段可用来指示请求的数据字段的拷贝和补充信息从哪里获得。
+DVCS不在自己的操作中使用这个字段，这个字段的准确解释由应用程序定义。
+  - 'requestTime' 字段可用来指示请求服务应执行多长时间。对vsd和cpkc服务来
+说，它指定声明一个签名文档和证书的时间。对于其它服务，DVCS忽略此字段。如果没有
+此字段，则假定为目前时间。DVCS服务关于本地策略中指定的目前时间有一个时间限制和
+一个增量时间限制。
+- 'extensions'字段可用来包含其它额外信息。扩展可标记为是否关键，指示是否假设
+DVCS理解它们。本文档没有定义扩展。
+DVCSRequest.data 包含指定的服务内容，由每一个DVCS提供的特殊服务定义。
+根据请求的服务类型，这个字段可包含一个签名文档，一个证书列表，一个消息摘要或
+任意数据。
+使用下列的类型：
+Data ::= CHOICE {
+message  OCTET STRING ,
+messageImprint DigestInfo,
+certs SEQUENCE SIZE (1..MAX) OF
+ TargetEtcChain
+}
+填充数据元素的请求信息如下：
+- 对vsd服务请求来说，请求者在“消息”选项的字节值中封装一个CMS SignedData
+对象。
+由请求者决定是否以及如何提供验证signedData 对象中签名所需的证书。请求者可以
+往封装的signedData 对象中添加证书或在请求中添加证书列表。
+- 对cpkc服务请求来说，使用'certs'选项。
+每个要验证的证书必须包含在单独的TargetEtcChain实例中。TargetEtcChain.chain
+字段标识一个或多个可用来确认证书的信任链条。DVCS可有选择的挑选证书的子集作为证
+书路径，或忽略这个字段。
+'TargetEtcChain.pathProcInput'字段表示X.509公钥证书路径确认使用的精确策略
+指示器和抑制策略映射指示器可接受的策略集和初始设置（参见RFC2459）。
+请求中，只有TargetEtcChain的证书、ESSCertId、CertId或扩展选项可使用。
+请求者负责提供足够的信息给DVCS，来标识相应的证书。
+  - 对ccpd服务来说，使用'messageImprint'选项。
+hashAlgorithm 字段中指明的哈希算法应该是“强壮”的哈希算法（也就是说，应该是
+单向和避免冲突的）。由数据证书服务器来决定是否给定的哈希算法足够“强壮”（例如，基
+于目前对密码分析学的知识了解和计算资源技术的状态）。
+-  对cpd服务来说，使用'message' 选项。
+这个字段包含请求者指定的任何类型内容数据。DVCS不检查、修改或基于“消息”字
+段特殊内容而采取特殊行动。
+'DVCSRequest.transactionIdentifier'字段用来把包含错误消息的DVCS响应和请求
+关联起来。例如，在基于邮件的环境中，参数可能是messageid的一个拷贝。注意：把请求
+和有效的数据有效性证书关联起来时，transactionIdentifier 不是必须的。
+9. DVCS响应
+本章描述了由DVCS创建，用来指示证书请求和有效性结果的数据结构。
+DVCS响应结构由DVCS产生，作为数据有效性和证书请求处理的结果。
+数据有效性响应包含一个id-ct-DVCSResponseData类RFC2630ContentInfo，这个类用
+信号表示一个DVCSResponse 结构。
+id-ct-DVCSResponseData OBJECT IDENTIFIER ::= { iso(1) member-body(2)
+ us(840) rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) ct(1) 8 }
+数据可用RFC2630结构封装，以便提供DVCS的验证和请求的一致性和机密性。本文档
+指定RFC2630中SignedData结构使用方法。
+encapContentInfo 的eContentType 中指示的contenttype属于
+id-ct-DVCSResponseData类，这个类用信号表示一个DVCSResponse作为encapContentInfo
+的eContent（载波形式是字节）。DVCS使用一个在extendedKeyUsage中用来验证DVCS签名
+的相应证书的密钥。
+在DVCS不能生成有效签名（假如DVCS的签名密钥被损坏）的关键环境中，产生的包含
+错误提示的DVCSResponse必须是没有附上signerInfo的signedData。客户端把接收到的
+未签名的DVCSResponse作为一个重要的和致命的错误，并且消息的内容是完全不可信的。  
+有效响应可以包含以下内容之一：
+1. 数据有效性证书（DVC）,传递由DVCS执行的数据有效性操作所产生的结果。
+2. 错误提示。当由于解析错误、请求者验证失败或其它导致DVCS不执行请求的而使请
+求失败时，就产生错误提示。
+使用下面的类：
+DVCSResponse ::= CHOICE {
+ dvCertInfoDVCSCertInfo ,
+ dvErrorNote  [0] DVCSErrorNotice }
+9.1. 数据有效性证书
+数据有效性证书是包含带有'dvCertInfo'选项的DVCSResponse的signedData 对象类
+型。
+DVCSCertInfo::= SEQUENCE  {
+version Integer DEFAULT 1 ,
+dvReqInfo  DVCSRequestInformation,
+messageImprintDigestInfo,
+serialNumber  Integer,
+responseTime  DVCSTime,
+dvStatus[0] PKIStatusInfo OPTIONAL,
+policy  [1] PolicyInformation OPTIONAL,
+reqSignature  [2] SignerInfos  OPTIONAL,
+certs[3] SEQUENCE SIZE (1..MAX) OF
+TargetEtcChain OPTIONAL,
+extensions Extensions OPTIONAL }
+DVCSCertInfo结构的返回值是成功执行数据有效性服务的结果。它包含数据有效性的
+结果，原始请求的参考和其它参数。请注意“成功执行”不一定意味着它本身的有效性——
+DVCSCertInfo可以包含“有效”或“无效”结果。
+DVCS建立如下的DVCSCertInfo：
+  - 'version' 字段在协议的这个版本中从不出现。
+'dvReqInfo'本质上是相应请求的'requestInformation'字段的一个拷贝。DVCS可以修
+改ReqInfo结构的'dvcs'、'requester'、'dataLocations'和'nonce' 字段，举例来说，如
+果请求由一系列DVCS处理，如果请求需要指示DVCS或指示从哪里找到'vpd'请求数据的一
+个拷贝。对'nonce' 唯一的修改是需要包含一个以前不存在的新字段，或连接其它数据至以
+存在值的末尾（右边）。
+- 'DVCSCertInfo.messageImprint'字段从相应请求的'data'字段计算得来，如下：
+  对于'certs'选项（'vpkc'服务）来说，摘要是基于DER编码数据值计算得来。对于
+'message'选项（'vsd'和'vpd'服务）来说，摘要是基于OCTET STRING 字节值（不包括标
+志和长度字节）计算得来。
+  由DVCS决定选择合适的摘要算法。
+  对于'messageImprint'选项（'vcpd'服务）来说，拷贝DVCSRequest 的
+'messageImprint'作为此字段值。
+- 'DVCSCertInfo.serialNumber'字段包含一个唯一的请求标识符。
+- 'responseTime'字段指示一个和响应有关的时间值。这个值可以是本地产生的，或者
+签名的TimeStampToken (TST) ，或者从外部服务获得的DVC。
+ 在使用从外部服务获得的值之前，DVCS必须根据外部服务规则使之有效。 
+- 'DVCSCertInfo.dvStatus'字段反映了收集到的有效性结果。
+  如果字段不存在，等同于成功状态。
+  对于vkpc，如果状态字段存在且置为成功（SUCCESS），表明所有的证书成功确认。
+如果它存在且置为失败（FAILED），表明所有和一部分证书有效性验证失败，而且应该调查
+'certs'的特殊状态，'certs'的TargetEtcChain 结构中至少有一个元素具有失败状态。
+  如果'dvStatus'字段表明没有成功（'granted'或'granted with mods'），那么
+'failInfo'元素可能指示了失败的原因。注意：'certs'字段可能包含其它关于确认失败的
+信息。
+  签名之一确认的失败不一定是确认一个签名文档失败的必然结果。例如，只要成功确
+认足够数量的签名，就会产生带有状态'grantedWithMods'的 DVC。带有'granted'状态的
+DVC只有在所有签名都被成功确认后才会产生。
+  如果不能立刻获得最后的响应，那么此字段必须存在，且状态值要设置为WAITING，
+我们假定DVCS会在之后提供其它的最终状态。
+  必要程序的细节是DVCS策略的一部分。
+  失败时，请求者可以通过查看TargetEtcChain字段进一步调查失败的原因。
+  'CertEtctoken.pkistatus'字段会指示哪一个条目确认失败或成功以及是什么原因。
+- 'DVCSCertInfo.policy'字段指示DVCS操作的策略
+-如果'DVCSCertInfo.reqSignature'存在，那么必然和相应请求的signerInfos字段有
+相同的值，由策略决定它是否包含此字段。
+- 'DVCSCertInfo.certs' 字段包含由DVCS进行确认后的结果。对于cpkc服务来说，
+每个元素包含targetAndChain 子字段中带有可选子集的请求的相应字段的一个拷贝和确
+认的结果，以及其它来自证书授权组织或附录C.3中描述的证书或证书参考。对于vsd服务
+来说，每个元素包含一个需确认签名文档的签名的确认结果。
+  当全程WAITING时，DVCS可以选择是在某些'certs'字段中返回一个唯一的等待状态，
+或根本不返回这样的一个TargetEtcChain。
+  'acceptablePolicySet'序列表明在X.509公钥证书路径有效期间处理的策略和映
+射 。PolicyMappingsSyntax 在RF2459中定义。
+- 'extensions'字段可用来向客户端返回其它信息。扩展可标记为是否重要，以便指示
+客户端是否必须理解它们。本文档不定义扩展。
+9.2. DVCS 错误通告
+DVCS错误通告是一个包含'dvErrorNote'选项的DVCSResponse的CMS签名数据对象。 
+DVCSErrorNotice ::= SEQUENCE {
+ transactionStatus  PKIStatusInfo ,
+ transactionIdentifier GeneralName OPTIONAL }
+PKIStatusInfo在[RFC2511]中定义。为了和DVCSErrorNotice通讯，使用以下的
+PKIFailureInfo值的子集：
+PKIFailureInfo ::= BITSTRING  {
+  badRequest (2),
+  -- 禁止和不支持的事务
+  badTime (3),
+  -- 时间消息不很接近由本地策略定义系统时间
+  badDataFormat (5),
+  -- 提交的数据格式不正确
+  wrongAuthority(6),
+  -- 请求中显示的DVCS和响应令牌创建的不同
+  incorrectData (7)
+  --请求的数据（也就是签名）是不正确的)
+在DVCSErrorNotice中, PKIStatusInfo的PKIStatus字段必须设置为REJECTED。
+PKIStatusInfo 的'statusString'字段可用来提供额外的正文，诸如失败原因，就像“未
+能获得服务”。DVCS用对应请求的'DVCSRequest.transactionIdentifier'字段的一个拷贝
+来初始化'DVCSErrorNotice. Transaction Identifier'
+在特定的环境中，DVCS可能无法对请求产生一个有效响应（例如，在一段时间内不能
+计算出签名）。在这种情况下，DVCS会产生一个没有签名的DVCSErrorNotice 响应。
+DVCS客户端不信任未签名的响应。DVCS客户端只有在通讯通道提供服务器验证的情况
+下，才会信任未签名的响应（例如，RFC2246 TLS定义的服务可提供这样的验证）。
+10.  传输
+本文档中没有强制性的传输机制，所有的机制都是可选的。给出的两个传输协议示例允
+许联机交换请求和响应，以及客户端和DVCS之间的异步通讯。
+DVCS可使用协议的组合，产生多个DVCs。
+10.1 通过HTTP或HTTPS实现的DVCS协议
+这一段说明了把通过超文本传输协议交换的DVCS协议转换成ASN.1编码消息一种方法。
+DER编码的DVCS请求和响应使用一个简单的具有Content-Type应用/dvcs（且具有缺
+省二进制编码）的MIME对象封装。
+这个MIME对象可使用普通的基于WWW连接的HTTP或HTTPS处理引擎进行发送和接收，
+还可为DVCS消息提供简单的客户端/服务器传输。
+10.2 使用电子邮件的DVCS协议
+本节说明把第8节中描述的通过Internet邮件来交换的协议转换成ASN.1编码消息的
+一种方法。
+ DER编码的DVCS请求和响应使用一个简单的具有适当Content-Transfer-Encoding 的
+Content-Type应用/dvcs的MIME对象封装。
+这个MIME对象可使用MIME处理引擎来接收和发送，并且为DVCS消息提供简单的
+Internet 邮件传输。
+为了把可能的错误响应和请求关联起来，请求者应使用'transactionIdentifier'字段。
+请求者不应使用响应服务来假设消息头字段的使用，尤其是在使用象Subject, 
+Message-ID或References等字段时。
+11.  需要考虑的安全问题
+这一章讨论安全问题。当设计数据有效性和证书服务时，已经考虑了以下这些影响数据
+有效性证书的有效性或“可信度”的事项。
+采取适当的安全和控制措施来保护用于签名DVCs的密钥，这是强制性的，以便将可能
+的损害减少到最低程度。然而，如果私钥被损坏，则对DVCS产生的所有DVC都应进行审计
+追踪，这是帮助区分真和假DVCs的一种方法。DVCS可以为vsd服务提供对由这个或另一个
+单独地基于审核验证DCVS产生的DVCs进行地确认。
+当要求机密性和服务器验证时，请求和响应可用适当地机制进行保护（例如RFC2630CMS
+封装或RFC2246TLS）.
+对于vsd和cpd服务来说，我们强烈推荐服务器验证。
+客户端标识和验证可使用RFC2246TLS定义地服务，而不是使用CMS格式提供验证。
+12.  专利信息
+以下是作者所知现存的按年代排列的和数据有效性和证书服务有关的美国专利。这个列
+表并不完备，随时都将补充存在的其它的专利。
+使用此协议的DVCS协议和应用的实现应进行它们各自的专利查询和决定在实现过程中
+是否存在障碍。
+# 4,309,569  Method of Providing Digital Signatures(issued) January 5, 
+1982(inventor) Ralph C.  Merkle(assignee) The Board of Trustees of the Leland 
+Stanford JuniorUniversity
+# 5,001,752  Public/Key Date-Time Notary Facility(issued) March 19, 
+1991(inventor) Addison M.  Fischer
+# 5,022,080  Electronic Notary(issued) June 4, 1991(inventors) Robert T.  
+Durst, Kevin D.  Hunter
+# 5,136,643  Public/Key Date-Time Notary Facility(issued) August 4, 
+1992(inventor) Addison M.  Fischer(Note: This is a continuation of patent # 
+5,001,752.)
+# 5,136,646  Digital Document Time-Stamping with Catenate Certificate(issued) 
+August 4, 1992(inventors) Stuart A.  Haber, Wakefield S.  Stornetta Jr.(assignee) 
+Bell Communications Research, Inc.,
+# 5,136,647  Method for Secure Time-Stamping of Digital Documents(issued) 
+August 4, 1992(inventors) Stuart A.  Haber, Wakefield S.  Stornetta Jr.(assignee) 
+Bell Communications Research, Inc.,
+# 5,373,561  Method of Extending the Validity of a 
+CryptographicCertificate(issued) December 13, 1994(inventors) Stuart A.  Haber, 
+Wakefield S.  Stornetta Jr.(assignee) Bell Communications Research, Inc.,
+# 5,422,95 Personal Date/Time Notary Device(issued) June 6, 1995(inventor) 
+Addison M.  Fischer
+# 5,781,629  Digital Document Authentication System(issued) July 14, 
+1998(inventor) Stuart A. Haber, Wakefield S. Stornetta Jr.(assignee) Surety 
+Technologies, Inc.,
+13.  参考文献
+[RFC2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", 
+BCP 14, RFC 2119, March 1997.
+[RFC2510]Adams, C. and S. Farrell, "Internet X.509 Public Key Infrastructure, 
+Certificate Management Protocols", RFC 2510, March 1999.
+[RFC2459]Housley, R., Ford, W., Polk, W. and D. Solo, "Internet X.509 Public 
+Key Infrastructure, Certificate and CRL Profile", RFC 2459, January 1999.
+[RFC2630]Housley, R., "Cryptographic Message Syntax", RFC 2630, June 1999.
+[ISONR]ISO/IEC 10181-5:  Security Frameworks in Open Systems.Non-Repudiation 
+Framework.
+[RFC2119]Bradner, S., "Key works for use in RFCs to Indicate Requirement Levels", 
+BCP 14, RFC 2119, March 1997.
+[RFC2511]Myers, M., Adams, C., Solo, D. and D. Kemp, "Internet X.509 Certificate 
+Request Message Format", RFC 2511, March 1999.
+[RFC2246]Dierks, T. and C. Allen, "The TLS Protocol, Version 1.0", RFC 2246, 
+January 1999.
+[RFC2634]Hoffman P., "Enhanced Security Services for S/MIME", RFC 2634, June 
+1999.
+[RFC2560]Myers, M., Ankney, R., Malpani, A., Galperin, S. and C. Adams, "X.509 
+Internet Public Key Infrastructure Online Certificate Status Protocol", RFC 2560, 
+June 1999.
+14.  作者地址
+Carlisle Adams
+Entrust Technologies
+1000 Innovation Drive
+Ottawa, Ontario
+K2K 3E7
+CANADA
+EMail: cadams@entrust.com
+
+Michael Zolotarev
+Baltimore Technologies Pty Limited
+5th Floor, 1 James Place
+North Sydney, NSW 2060
+AUSTRALIA
+EMail: mzolotarev@baltimore.com
+
+Peter Sylvester
+EdelWeb SA - Groupe ON-X Consulting
+15, Quai de Dion Bouton
+F-92816 Puteaux Cedex
+FRANCE
+EMail: peter.sylvester@edelweb.fr
+
+Robert Zuccherato
+Entrust Technologies
+1000 Innovation Drive
+Ottawa, Ontario
+K2K 3E7
+CANADA
+EMail: robert.zuccherato@entrust.com
+附录 A - PKCS #9 属性
+定义了一个PKCS #9属性类。这个属性类具有ASN.1类的SignedData，且包含一个数
+据有效性证书。对象标识符id-aa-dvcs-dvc标识数据有效性证书的属性类。
+id-aa-dvcs-dvc OBJECT IDENTIFIER ::= {iso(1) member-body(2) us(840) 
+rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) aa(2) 29}
+这个属性可用在CMS SignedData 中，作为验证和未验证属性。
+附录 B – 签名文档确认
+我们列举了几个在签名文档确认环境中，DVCS的使用。
+B.1签名文档确认
+所示范例说明签名者使用的DVCS可用来证明包括一个和多个附属签名文档结构，在签
+名后仍是正确的。DVC可由签名者信任的DVCS产生，也可由文档预计的验证者所信任的DVCS
+产生。
+签名者使用获得的DVC作为表明其目的是好的一个证据，使用已知正确的环境（如密钥、
+算法）来产生签名文档。
+产生的单机文档可用来扩展签名的生命期。此范例假设我们完全信任数据有效性和证书
+服务器。
+签名算法和密钥的生命期是有限的。因此，签名的生命期也是有限的。数据证书服务器
+可要来延长签名的生命期。
+为了用这种方法延长签名的生命期，要使用以下的技术：
+1) 需被验证的签名:
+签名的消息要出现在数据有效性和证书服务器的vsd服务请求中。
+当检查终结日期、状态信息或DVCs时，DVCS验证签名和证书是有效的，并且返回一个
+DVC。
+2) 需被验证的DVC
+数据证书标记中数据有效性和证书服务器的签名用数据证书服务器的有效验证密钥来
+验证。
+签名者的签名密钥（以及因此产生的签名）在某个指定时间T1是唯一有效的。DVCS的
+签名密钥（以及因此产生的签名）在某个指定时间T2是有效的，T2通常在T1之后。如果
+没有证书，签名者的签名就只在T1时间有效。如果有证书，签名者的签名在T2时间仍然有
+效，不管随后是撤销或在T1时间就终结。
+如果DVCS的签名有效，那么对DVCS的信任会使我们认为数据原始签名在包含到DVC
+中时是有效的。
+DVCS签名密钥必须足够长，以便有足够长的生命期。即使这样，密钥的生命期依然是
+有限的。因为数据有效性证书仅是另一种形式的签名文档，所以它们可使用（其它）DVCS
+进行确认。
+附录 C – 验证公钥证书的状况
+现在举三个例子说明如何产生一个数据有效性证书，此证书可用来声明公钥证书是有效
+的、可信的，以及这个证书的特殊使用目的。
+客户端希望使用一个给定的公钥证书或者验证文档的签名或者用来加密文档。
+DVCS必须能够访问关于公共证书状态目前的信息，因为那样才能使它在此时可用来验
+证证书的撤销状态。 
+可以使用以下方法：
+A)需要确认公钥证书。
+证书出现在是使用'vpkc' 服务的数据证书服务器中。
+数据有效性和证书服务器验证公钥证书是有效的，没有被撤销，然后返回一个数据有效
+性证书。
+B) 必须验证数据有效性证书。
+数据证书标记中的数据证书服务器的签名应当用数据有效性和证书服务器的有效证书
+进行验证。
+C) 公钥证书用来：
+C.1) 客户端自己的公钥证书（也就是对应的公钥）可用来给文档增加签名。签名证书
+和数据有效性证书可作为签名的签名属性。
+数据有效性证书可在使用公钥证书中包含的密钥签名的有效期内使用。这个由DVCS提
+供的服务可被认为是检查撤销状态的通常方法的补充。
+换句话说，最近一次的签名有效性并不一定需要访问用户签名证书的撤销状态，也不一
+定需要访问DVCS服务，DVC的有效性就足够用来验证签名。注意：DVC不区分签名的创建时
+间，它仅指示出什么时候签名证书是有效的。
+C.2) 用于密钥交换的公钥证书在获得数据有效性证书对加密数据的证明后使用。DVC
+可和数据一起存储，也可/或由加密文档的创建者存储。
+如果预计的接收者宣称创建者没有使用合适的加密密钥，那么（接收者的DVCS获得的）
+DVC可用来证明接收者的DVCS已经授权使用此公钥。
+C.3) 上一段描述的过程可通过几种方式加强用来提供域加密。一般的机构会要求加密
+的文档是可重获的。一个简单的方法是在加密文档时，始终带上作为“域加密中心”或“恢
+复中心”的额外接收者信息。这在技术上并不是个困难问题，但是要求和终端用户之间有复
+杂和较困难的交互，尤其是当文档的接收者位于几个不同的机构中时。
+ 一种可能的解决方法是增加其它证书到dvc中，确认用来加密的特殊公钥证书的使用。
+在有几个机构的环境中，一个可能的过程是：
+ 客户端要求本地dvcs确认公钥证书，Dvcs把请求转发到一个远程机构。远程机构的
+dvcs验证这个证书，并提供对此证书有效性的一个dvc声明。在certEtcChain结构中增加
+一些用于密钥交换的证书，指示其余必要的接收者。本地dvc创建一个包含远程dvcs的这
+个dvc的dvc。还可以往dvc中增加其它的证书和参考。客户端使用所有有效的证书用于密
+钥交换，以扩展接收者列表。
+ 在本地，dvcs也可使用本地关于远程机构需要的其它接收者的信息。
+附录 D - MIME 注册
+至: ietf-types@iana.org 
+主题：MIME介质类型应用/时间戳的注册
+MIME介质类型名称：应用
+MIME子类名称: dvcs
+所需参数：没有
+可选参数：没有
+编码：二进制或Base64 
+安全：带有一个数据有效性和证书服务的请求以及响应。请求是用加密算法签名的。响
+应也将是用加密算法签名的。
+互操作性：没有
+发布说明：
+RFC 3029 关于数据有效性和证书服务器协议
+使用此介质类型的应用：数据有效性和证书服务器和客户端
+其它信息：
+  Magic number(s): None
+  文件扩展名：.dvc
+  Macintosh文件类型编码：没有
+  了解更多信息需联系的人和邮件地址：Peter Sylvester  
+<peter.sylvester@edelweb.fr>
+  预计的用法：普通
+  作者/有权改变的人：Peter Sylvester<peter.sylvester@edelweb.fr>
+附录 E – 使用1988语法的ASN.1 模块
+PKIXDVCS {iso(1) identified-organization(3) dod(6) internet(1) security(5) 
+mechanisms(5) pkix(7) id-mod(0) id-mod-dvcs(15)}
+DEFINITIONS IMPLICIT TAGS ::=
+BEGIN
+-- EXPORTS ALL --
+IMPORTS
+  Extensions, AlgorithmIdentifier
+  FROM PKIX1Explicit88 {iso(1) identified-organization(3) dod(6) internet(1) 
+security(5) mechanisms(5) pkix(7)  id-mod(0) id-pkix1-explicit-88(1)}
+
+  GeneralName, PolicyInformation
+  FROM PKIX1Implicit88 {iso(1) identified-organization(3) dod(6) internet(1) 
+security(5) mechanisms(5) pkix(7) id-mod(0) id-pkix1-implicit-88(2)}
+
+  PKIStatusInfo, PKIStatusField FROM PKIXCMP {iso(1) 
+identified-organization(3) dod(6) internet(1) security(5) mechanisms(5) pkix(7) 
+id-mod(0) id-mod-cmp(9)}
+
+  ContentInfo FROM CryptographicMessageSyntax {iso(1) member-body(2) us(840) 
+rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) modules(0) cms(1)}
+
+  ESSCertID FROM ExtendedSecurityServices
+  { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-9(9) smime(16) 
+modules(0) ess(2) }
+
+  CertId, OCSPResponse, CertStatus  FROM OCSP
+  {iso(1) identified-organization(3) dod(6) internet(1) security(5) 
+mechanisms(5) pkix(7) id-mod(0)  id-mod-ocsp(14)}
+
+  SMIMECapabilities FROM SecureMimeMessageV3
+  { iso(1) member-body(2) us(840) rsadsi(113549)  pkcs(1) pkcs-9(9) smime(16) 
+modules(0) smime(4) }
+  ;
+
+-- 访问 DVCS的授权信息
+
+id-ad-dvcs  OBJECT IDENTIFIER ::= {id-pkix id-ad(48) 4}
+
+-- DVCS的主要功能 
+
+id-kp-dvcs  OBJECT IDENTIFIER ::= {id-pkix id-kp(3) 10}
+
+-- dvcs 请求和回应的eContentType 
+
+id-ct-DVCSRequestData  OBJECT IDENTIFIER ::= { id-smime ct(1) 7 }
+id-ct-DVCSResponseData OBJECT IDENTIFIER ::= { id-smime ct(1) 8 }
+
+-- 数据有效性证明属性
+
+id-aa-dvcs-dvc OBJECT IDENTIFIER ::= { id-smime aa(2) 29 }
+
+-- 使用以下库：
+
+id-pkix  OBJECT IDENTIFIER ::= {iso(1) identified-organization(3) dod(6) 
+internet(1) security(5) mechanisms(5) pkix(7)}
+
+id-smime OBJECT IDENTIFIER ::= { iso(1) member-body(2) us(840) rsadsi(113549) 
+pkcs(1) pkcs-9(9) 16 }
+
+Version ::= Integer
+
+DigestInfo ::= SEQUENCE {
+ digestAlgorithmDigestAlgorithmIdentifier,
+ digestDigest
+}
+
+Digest ::= OCTET STRING
+
+Nonce ::= Integer
+
+DVCSTime ::= CHOICE  {
+  genTime GeneralizedTime,
+  timeStampTokenContentInfo
+}
+TargetEtcChain ::= SEQUENCE {
+  target  CertEtcToken,
+  chainSEQUENCE SIZE (1..MAX) OF
+ CertEtcToken OPTIONAL,
+  pathProcInput [0] PathProcInput OPTIONAL
+}
+
+PathProcInput ::= SEQUENCE {
+  acceptablePolicySet 策略信息序列大小 (1..MAX)，
+  inhibitPolicyMapping布尔值，缺省为假，
+  explicitPolicyReqd  布尔值，缺省为假，
+}
+
+CertEtcToken ::= CHOICE {
+  certificate[0] IMPLICIT Certificate ,
+  esscertid  [1] ESSCertId ,
+  pkistatus  [2] IMPLICIT PKIStatusInfo ,
+  assertion  [3] ContentInfo ,
+  crl  [4] IMPLICIT CertificateList,
+  ocspcertstatus[5] IMPLICIT CertStatus,
+  oscpcertid [6] IMPLICIT CertId ,
+  oscpresponse  [7] IMPLICIT OCSPResponse,
+  capabilities  [8] SMIMECapabilities,
+  extension  Extension
+}
+
+DVCSRequestInformation ::= SEQUENCE  {
+  version INTEGER DEFAULT 1 ,
+  service ServiceType,
+  nonceNonce OPTIONAL,
+  requestTimeDVCSTime OPTIONAL,
+  requester  [0] GeneralNames OPTIONAL,
+  requestPolicy [1] PolicyInformation OPTIONAL,
+  dvcs [2] GeneralNames OPTIONAL,
+  dataLocations [3] GeneralNames OPTIONAL,
+  extensions [4] IMPLICIT Extensions OPTIONAL
+}
+
+ServiceType ::= ENUMERATED { cpd(1), vsd(2), cpkc(3), ccpd(4) }
+
+DVCSRequest ::= SEQUENCE  {
+ requestInformationDVCSRequestInformation,
+ data  Data,
+ transactionIdentifierGeneralName OPTIONAL
+}
+
+Data ::= CHOICE {
+message  OCTET STRING ,
+messageImprint DigestInfo,
+certs SEQUENCE SIZE (1..MAX) OF
+ TargetEtcChain
+}
+
+DVCSResponse ::= CHOICE
+{
+ dvCertInfoDVCSCertInfo ,
+ dvErrorNote  [0] DVCSErrorNotice
+}
+
+DVCSCertInfo::= SEQUENCE  {
+version Integer DEFAULT 1 ,
+dvReqInfo  DVCSRequestInformation,
+messageImprintDigestInfo,
+serialNumber  Integer,
+responseTime  DVCSTime,
+dvStatus[0] PKIStatusInfo OPTIONAL,
+policy  [1] PolicyInformation OPTIONAL,
+reqSignature  [2] SignerInfos  OPTIONAL,
+certs[3] SEQUENCE SIZE (1..MAX) OF
+TargetEtcChain OPTIONAL,
+extensions Extensions OPTIONAL
+}
+
+DVCSErrorNotice ::= SEQUENCE {
+ transactionStatus  PKIStatusInfo ,
+ transactionIdentifier GeneralName OPTIONAL
+}
+
+END
+附录 F –范例
+本章包含一个Clepsydre Demonstration Project 的“验证数据拥有声明”项目的请
+求和响应的实例，此项目由法国La Poste 资助。
+信息使用了Peter Gutmann's dumpasn1计划的略微修改后版本的格式。
+数据有效性证书响应包含签名的证书。
+带有时间戳的数据是用来提交请求的客户端程序二进制形式。
+请求：
+0 30  582: SEQUENCE {
+4 06 9:  OBJECT IDENTIFIER signedData (1 2 840 113549 1 7 2)
+: . (PKCS #7)
+  15 A0  567:  [0] {
+  19 30  563: . SEQUENCE {
+  23 02 1: .  INTEGER 3
+  26 3111: .  SET {
+  28 30 9: . . SEQUENCE {
+  30 06 5: . .  OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+  37 05 0: . .  NULL
+: . .  }
+: . . }
+  39 30  153: .  SEQUENCE {
+  42 0611: . . OBJECT IDENTIFIER
+: . .  id-ct-DVCSRequestData (1 2 840 113549 1 9 16 1 7)
+: . .  (S/MIME Content Types (1 2 840 113549 1 9 16 1))
+  55 A0  137: . . [0] {
+  58 04  134: . .  OCTET STRING, encapsulates {
+  61 30  131: . . .  SEQUENCE {
+  64 3096: . . . . SEQUENCE {
+  66 0A 1: . . . .  ENUMERATED CCPD (4)
+  69 A077: . . . .  [0] {
+  71 A475: . . . . . [4] {
+  73 3073: . . . . .  SEQUENCE {
+  75 3111: . . . . . . SET {
+  77 30 9: . . . . . .  SEQUENCE {
+  79 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  countryName (2 5 4 6)
+: . . . . . . .  (X.520 id-at (2 5 4))
+  84 13 2: . . . . . . . PrintableString 'FR'
+: . . . . . . . }
+: . . . . . .  }
+  88 3114: . . . . . . SET {
+  90 3012: . . . . . .  SEQUENCE {
+  92 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  localityName (2 5 4 7)
+: . . . . . . .  (X.520 id-at (2 5 4))
+  97 13 5: . . . . . . . PrintableString 'Paris'
+: . . . . . . . }
+: . . . . . .  }
+ 104 3116: . . . . . . SET {
+ 106 3014: . . . . . .  SEQUENCE {
+ 108 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  organizationName (2 5 4 10)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 113 13 7: . . . . . . . PrintableString 'EdelWeb'
+: . . . . . . . }
+: . . . . . .  }
+ 122 3124: . . . . . . SET {
+ 124 3022: . . . . . .  SEQUENCE {
+ 126 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  commonName (2 5 4 3)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 131 1315: . . . . . . . PrintableString 'Peter Sylvester'
+: . . . . . . . }
+: . . . . . .  }
+: . . . . . . }
+: . . . . .  }
+: . . . . . }
+ 148 A112: . . . .  [1] {
+ 150 0610: . . . . . OBJECT IDENTIFIER '1 3 6 1 4 1 5309 1 2 1'
+: . . . . . }
+: . . . .  }
+ 162 3031: . . . . SEQUENCE {
+ 164 30 7: . . . .  SEQUENCE {
+ 166 06 5: . . . . . OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+: . . . . .  (OIW)
+: . . . . . }
+ 173 0420: . . . .  OCTET STRING
+: . . . .  75 B6 85 AF 6F 89 46 7D E8 07 15 25 1E 45 97 8F
+: . . . .  CD 1F A5 66
+: . . . .  }
+: . . . . }
+: . . .  }
+: . .  }
+: . . }
+ 195 31  387: .  SET {
+ 199 30  383: . . SEQUENCE {
+ 203 02 1: . .  INTEGER 1
+ 206 30  124: . .  SEQUENCE {
+ 208 30  112: . . . SEQUENCE {
+ 210 3111: . . .  SET {
+ 212 30 9: . . . . SEQUENCE {
+ 214 06 3: . . . .  OBJECT IDENTIFIER countryName (2 5 4 6)
+: . . . . . (X.520 id-at (2 5 4))
+ 219 13 2: . . . .  PrintableString 'FR'
+: . . . .  }
+: . . . . }
+ 223 3121: . . .  SET {
+ 225 3019: . . . . SEQUENCE {
+ 227 06 3: . . . .  OBJECT IDENTIFIER organizationName (2 5 4 10)
+: . . . . . (X.520 id-at (2 5 4))
+ 232 1312: . . . .  PrintableString 'EdelWeb S.A.'
+: . . . .  }
+: . . . . }
+ 246 3140: . . .  SET {
+ 248 3038: . . . . SEQUENCE {
+ 250 06 3: . . . .  OBJECT IDENTIFIER
+: . . . . . organizationalUnitName (2 5 4 11)
+: . . . . . (X.520 id-at (2 5 4))
+ 255 13 31: . . . .  PrintableString 'Clepsydre Demonstration Service'
+: . . . .  }
+: . . . . }
+ 288 3132: . . .  SET {
+ 290 3030: . . . . SEQUENCE {
+ 292 06 3: . . . .  OBJECT IDENTIFIER commonName (2 5 4 3)
+: . . . . . (X.520 id-at (2 5 4))
+ 297 1323: . . . .  PrintableString 'Time Stamping Authority'
+: . . . .  }
+: . . . . }
+: . . .  }
+ 322 02 8: . . . INTEGER
+: . . .  00 94 88 17 21 34 37 76
+: . . . }
+ 332 30 9: . .  SEQUENCE {
+ 334 06 5: . . . OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+: . . .  (OIW)
+ 341 05 0: . . . NULL
+: . . . }
+ 343 A095: . .  [0] {
+ 345 3026: . . . SEQUENCE {
+ 347 06 9: . . .  OBJECT IDENTIFIER
+: . . . . contentType (1 2 840 113549 1 9 3)
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+ 358 3113: . . .  SET {
+ 360 0611: . . . . OBJECT IDENTIFIER
+: . . . .  id-ct-dvcsrequest (1 2 840 113549 1 9 16 1 7)
+: . . . .  (S/MIME Content Types (1 2 840 113549 1 9 16 1))
+: . . . . }
+: . . .  }
+ 373 3028: . . . SEQUENCE {
+ 375 06 9: . . .  OBJECT IDENTIFIER
+: . . . . signingTime (1 2 840 113549 1 9 5)
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+ 386 3115: . . .  SET {
+ 388 1713: . . . . UTCTime '000417171457Z'
+
+: . . . . }
+: . . .  }
+ 403 3035: . . . SEQUENCE {
+ 405 06 9: . . .  OBJECT IDENTIFIER
+: . . . . messageDigest (1 2 840 113549 1 9 4)
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+ 416 3122: . . .  SET {
+ 418 0420: . . . . OCTET STRING
+: . . . .  4D A8 C2 D2 CE 7C 0D 04 41 2F 44 13 33 75 DB 2F
+: . . . .  5B 2D F9 DC
+: . . . . }
+: . . .  }
+: . . . }
+ 440 3013: . .  SEQUENCE {
+ 442 06 9: . . . OBJECT IDENTIFIER
+: . . .  rsaEncryption (1 2 840 113549 1 1 1)
+: . . .  (PKCS #1)
+ 453 05 0: . . . NULL
+: . . . }
+ 455 04  128: . .  OCTET STRING
+: . . . 6E 7B 0E 36 F5 08 5F 16 3C 31 7B 28 BB 0B C2 C6
+: . . . 17 67 A6 B5 54 F1 98 E2 6F 89 96 0E 0C 99 E6 CB
+: . . . 40 C1 9B 8D D8 D7 8E D3 2B 41 F7 16 26 5B B7 08
+: . . . BF E6 95 B2 D9 01 6C FE B1 2C 52 C1 5A D2 31 F3
+: . . . 8E CA DD 11 A1 72 05 29 41 6A DD 28 40 AA 5C 77
+: . . . C6 9D 1D 80 53 DB 6F 9C 4C A5 A3 8F 92 8B 18 3F
+: . . . D5 3A AD 01 87 69 C3 FD D3 D8 C3 D0 CA 6B E6 0D
+: . . . 4E 53 6E 50 20 99 7C 94 C2 44 25 1B 06 C0 99 96
+: . .  }
+: . . }
+: .  }
+: . }
+:  }
+
+对应的PEM格式数据为：
+
+----- PKCS7开始-----
+MIICRgYJKoZIhvcNAQcCoIICNzCCAjMCAQMxCzAJBgUrDgMCGgUAMIGZBgsqhkiG9w0BCRABB6C
+BiQSBhjCBgzBgCgEEoE2kSzBJMQswCQYDVQQGEwJGUjEOMAwGA1UEBxMFUGFyaXMxEDAOBgNVBAoTB0
+VkZWxXZWIxGDAWBgNVBAMTD1BldGVyIFN5bHZlc3RlcqEMBgorBgEEAak9AQIBMB8wBwYFKw4DAhoEF
+HW2ha9viUZ96AcVJR5Fl4/NH6VmMYIBgzCCAX8CAQEwfDBwMQswCQYDVQQGEwJGUjEVMBMGA1UEChMM
+RWRlbFdlYiBTLkEuMSgwJgYDVQQLEx9DbGVwc3lkcmUgRGVtb25zdHJhdGlvbiBTZXJ2aWNlMSAwHgY
+DVQQDExdUaW1lIFN0YW1waW5nIEF1dGhvcml0eQIIAJSIFyE0N3YwCQYFKw4DAhoFAKBfMBoGCSqGSI
+b3DQEJAzENBgsqhkiG9w0BCRABBzAcBgkqhkiG9w0BCQUxDxcNMDAwNDE3MTcxNDU3WjAjBgkqhkiG9
+w0BCQQxFgQUTajC0s58DQRBL0QTM3XbL1st+dwwDQYJKoZIhvcNAQEBBQAEgYBuew429QhfFjwxeyi7
+C8LGF2emtVTxmOJviZYODJnmy0DBm43Y147TK0H3FiZbtwi/5pWy2QFs/rEsUsFa0jHzjsrdEaFy
+BSlBat0oQKpcd8adHYBT22+cTKWjj5KLGD/VOq0Bh2nD/dPYw9DKa+YNTlNuUCCZfJTCRCUbBsC
+Zlg==
+----- PKCS7结束-----
+响应：
+0 30 2039: SEQUENCE {
+4 06 9:  OBJECT IDENTIFIER signedData (1 2 840 113549 1 7 2)
+: . (PKCS #7)
+  15 A0 2024:  [0] {
+  19 30 2020: . SEQUENCE {
+  23 02 1: .  INTEGER 3
+  26 3111: .  SET {
+  28 30 9: . . SEQUENCE {
+  30 06 5: . .  OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+: . . . (OIW)
+  37 05 0: . .  NULL
+: . .  }
+: . . }
+  39 30  301: .  SEQUENCE {
+  43 0611: . . OBJECT IDENTIFIER
+: . .  id-ct-DVCSResponseData (1 2 840 113549 1 9 16 1 8)
+: . .  (S/MIME Content Types (1 2 840 113549 1 9 16 1))
+  56 A0  284: . . [0] {
+  60 04  280: . .  OCTET STRING, encapsulates {
+  64 30  276: . . .  SEQUENCE {
+  68 30  214: . . . . SEQUENCE {
+  71 0A 1: . . . .  ENUMERATED CCPD (4)
+  74 A077: . . . .  [0] {
+  76 A475: . . . . . [4] {
+  78 3073: . . . . .  SEQUENCE {
+  80 3111: . . . . . . SET {
+  82 30 9: . . . . . .  SEQUENCE {
+  84 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  countryName (2 5 4 6)
+: . . . . . . .  (X.520 id-at (2 5 4))
+  89 13 2: . . . . . . . PrintableString 'FR'
+: . . . . . . . }
+: . . . . . .  }
+  93 3114: . . . . . . SET {
+  95 3012: . . . . . .  SEQUENCE {
+  97 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  localityName (2 5 4 7)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 102 13 5: . . . . . . . PrintableString 'Paris'
+: . . . . . . . }
+: . . . . . .  }
+ 109 3116: . . . . . . SET {
+
+ 111 3014: . . . . . .  SEQUENCE {
+ 113 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  organizationName (2 5 4 10)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 118 13 7: . . . . . . . PrintableString 'EdelWeb'
+: . . . . . . . }
+: . . . . . .  }
+ 127 3124: . . . . . . SET {
+ 129 3022: . . . . . .  SEQUENCE {
+ 131 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  commonName (2 5 4 3)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 136 1315: . . . . . . . PrintableString 'Peter Sylvester'
+: . . . . . . . }
+: . . . . . .  }
+: . . . . . . }
+: . . . . .  }
+: . . . . . }
+ 153 A112: . . . .  [1] {
+ 155 0610: . . . . . OBJECT IDENTIFIER '1 3 6 1 4 1 5309 1 2 1'
+: . . . . . }
+ 167 A2  116: . . . .  [2] {
+ 169 A4  114: . . . . . [4] {
+ 171 30  112: . . . . .  SEQUENCE {
+ 173 3111: . . . . . . SET {
+ 175 30 9: . . . . . .  SEQUENCE {
+ 177 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  countryName (2 5 4 6)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 182 13 2: . . . . . . . PrintableString 'FR'
+: . . . . . . . }
+: . . . . . .  }
+ 186 3121: . . . . . . SET {
+ 188 3019: . . . . . .  SEQUENCE {
+ 190 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  organizationName (2 5 4 10)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 195 1312: . . . . . . . PrintableString 'EdelWeb S.A.'
+: . . . . . . . }
+: . . . . . .  }
+ 209 3140: . . . . . . SET {
+ 211 3038: . . . . . .  SEQUENCE {
+ 213 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  organizationalUnitName (2 5 4 11)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 218 13 31: . . . . . PrintableString 'Clepsydre Demonstration Service'
+: . . . . . . . }
+: . . . . . .  }
+
+ 251 3132: . . . . . . SET {
+ 253 3030: . . . . . .  SEQUENCE {
+ 255 06 3: . . . . . . . OBJECT IDENTIFIER
+: . . . . . . .  commonName (2 5 4 3)
+: . . . . . . .  (X.520 id-at (2 5 4))
+ 260 1323: . . . . . . . PrintableString 'Time Stamping Authority'
+: . . . . . . . }
+: . . . . . .  }
+: . . . . . . }
+: . . . . .  }
+: . . . . . }
+: . . . .  }
+ 285 3031: . . . . SEQUENCE {
+ 287 30 7: . . . .  SEQUENCE {
+ 289 06 5: . . . . . OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+: . . . . . }
+ 296 0420: . . . .  OCTET STRING
+: . . . .  75 B6 85 AF 6F 89 46 7D E8 07 15 25 1E 45 97 8F
+: . . . .  CD 1F A5 66
+: . . . .  }
+ 318 02 7: . . . . INTEGER
+: . . . .  01 78 0A 1E CA 88 23
+ 327 1815: . . . . GeneralizedTime '20000417171617Z'
+: . . . . }
+: . . .  }
+: . .  }
+: . . }
+ 344 A0  992: .  [0] {
+ 348 30  988: . . SEQUENCE {
+ 352 30  708: . .  SEQUENCE {
+ 356 A0 3: . . . [0] {
+ 358 02 1: . . .  INTEGER 2
+: . . .  }
+ 361 02 8: . . . INTEGER
+: . . .  00 94 88 17 17 64 37 32
+ 371 3013: . . . SEQUENCE {
+ 373 06 9: . . .  OBJECT IDENTIFIER
+: . . . . md5withRSAEncryption (1 2 840 113549 1 1 4)
+: . . . . (PKCS #1)
+ 384 05 0: . . .  NULL
+: . . .  }
+ 386 30  112: . . . SEQUENCE {
+ 388 3111: . . .  SET {
+ 390 30 9: . . . . SEQUENCE {
+ 392 06 3: . . . .  OBJECT IDENTIFIER countryName (2 5 4 6)
+: . . . . . (X.520 id-at (2 5 4))
+ 397 13 2: . . . .  PrintableString 'FR'
+: . . . .  }
+
+: . . . . }
+ 401 3121: . . .  SET {
+ 403 3019: . . . . SEQUENCE {
+ 405 06 3: . . . .  OBJECT IDENTIFIER organizationName (2 5 4 10)
+: . . . . . (X.520 id-at (2 5 4))
+ 410 1312: . . . .  PrintableString 'EdelWeb S.A.'
+: . . . .  }
+: . . . . }
+ 424 3140: . . .  SET {
+ 426 3038: . . . . SEQUENCE {
+ 428 06 3: . . . .  OBJECT IDENTIFIER
+: . . . . . organizationalUnitName (2 5 4 11)
+: . . . . . (X.520 id-at (2 5 4))
+ 433 13 31: . . . .  PrintableString 'Clepsydre Demonstration Service'
+: . . . .  }
+: . . . . }
+ 466 3132: . . .  SET {
+ 468 3030: . . . . SEQUENCE {
+ 470 06 3: . . . .  OBJECT IDENTIFIER commonName (2 5 4 3)
+: . . . . . (X.520 id-at (2 5 4))
+ 475 1323: . . . .  PrintableString 'Time Stamping Authority'
+: . . . .  }
+: . . . . }
+: . . .  }
+ 500 3030: . . . SEQUENCE {
+ 502 1713: . . .  UTCTime '000125161938Z'
+ 517 1713: . . .  UTCTime '200120161938Z'
+: . . .  }
+ 532 30  112: . . . SEQUENCE {
+ 534 3111: . . .  SET {
+ 536 30 9: . . . . SEQUENCE {
+ 538 06 3: . . . .  OBJECT IDENTIFIER countryName (2 5 4 6)
+: . . . . . (X.520 id-at (2 5 4))
+ 543 13 2: . . . .  PrintableString 'FR'
+: . . . .  }
+: . . . . }
+ 547 3121: . . .  SET {
+ 549 3019: . . . . SEQUENCE {
+ 551 06 3: . . . .  OBJECT IDENTIFIER organizationName (2 5 4 10)
+: . . . . . (X.520 id-at (2 5 4))
+ 556 1312: . . . .  PrintableString 'EdelWeb S.A.'
+: . . . .  }
+: . . . . }
+ 570 3140: . . .  SET {
+ 572 3038: . . . . SEQUENCE {
+ 574 06 3: . . . .  OBJECT IDENTIFIER
+: . . . . . organizationalUnitName (2 5 4 11)
+: . . . . . (X.520 id-at (2 5 4))
+
+ 579 13 31: . . . .  PrintableString 'Clepsydre Demonstration Service'
+: . . . .  }
+: . . . . }
+ 612 3132: . . .  SET {
+ 614 3030: . . . . SEQUENCE {
+ 616 06 3: . . . .  OBJECT IDENTIFIER commonName (2 5 4 3)
+: . . . . . (X.520 id-at (2 5 4))
+ 621 1323: . . . .  PrintableString 'Time Stamping Authority'
+: . . . .  }
+: . . . . }
+: . . .  }
+ 646 30  290: . . . SEQUENCE {
+ 650 3013: . . .  SEQUENCE {
+ 652 06 9: . . . . OBJECT IDENTIFIER
+: . . . .  rsaEncryption (1 2 840 113549 1 1 1)
+: . . . .  (PKCS #1)
+ 663 05 0: . . . . NULL
+: . . . . }
+ 665 03  271: . . .  BIT STRING 0 unused bits
+: . . . . 30 82 01 0A 02 82 01 01 00 FA C3 17 AE EB B7 9D
+: . . . . EB AB BD 05 7E 39 43 6D 04 45 58 74 05 A5 CC F3
+: . . . . 6C 2F 8C 8E 77 7E C2 9F 12 11 5C 7D DB BE 23 28
+: . . . . 9A 90 D2 AB C6 A2 BA BD A3 7E 99 A6 99 21 A5 D8
+: . . . . 90 B9 CF A7 23 4E A0 56 A0 C1 0A 46 89 8E 3C 91
+: . . . . 67 37 FD 9B AB 49 17 FC 4A A5 F2 E4 4C 6E E3 6A
+: . . . . 1C 92 97 04 6F 7F 0C 5C FB 74 CB 95 7E 4C C3 58
+: . . . . 12 E8 A9 D6 F0 DD 12 44 15 E7 8B 2E AF 51 C0 0C
+: . . . . . . [ Another 142 bytes skipped ]
+: . . .  }
+ 940 A3  122: . . . [3] {
+ 942 30  120: . . .  SEQUENCE {
+ 944 3015: . . . . SEQUENCE {
+ 946 06 3: . . . .  OBJECT IDENTIFIER basicConstraints (2 5 29 19)
+: . . . . . (X.509 id-ce (2 5 29))
+ 951 04 8: . . . .  OCTET STRING, encapsulates {
+ 953 30 6: . . . . .  SEQUENCE {
+ 955 01 1: . . . . . . BOOLEAN TRUE
+ 958 02 1: . . . . . . INTEGER 0
+: . . . . . . }
+: . . . . .  }
+: . . . .  }
+ 961 3022: . . . . SEQUENCE {
+ 963 06 3: . . . .  OBJECT IDENTIFIER extKeyUsage (2 5 29 37)
+: . . . . . (X.509 id-ce (2 5 29))
+ 968 01 1: . . . .  BOOLEAN TRUE
+ 971 0412: . . . .  OCTET STRING, encapsulates {
+ 973 3010: . . . . .  SEQUENCE {
+ 975 06 8: . . . . . . OBJECT IDENTIFIER '1 3 6 1 5 5 7 3 10'
+
+: . . . . . . }
+: . . . . .  }
+: . . . .  }
+ 985 3077: . . . . SEQUENCE {
+ 987 06 8: . . . .  OBJECT IDENTIFIER
+: . . . . . authorityInfoAccess (1 3 6 1 5 5 7 1 1)
+: . . . . . (PKIX private extension)
+ 997 01 1: . . . .  BOOLEAN TRUE
+1000 0462: . . . .  OCTET STRING, encapsulates {
+1002 3060: . . . . .  SEQUENCE {
+1004 3058: . . . . . . SEQUENCE {
+1006 06 8: . . . . . .  OBJECT IDENTIFIER '1 3 6 1 5 5 7 48 4'
+1016 8646: . . . . . .  [6]
+: . . . .  'https://clepsydre.edelweb.fr/dvcs/service-ccpd'
+: . . . . . .  }
+: . . . . . . }
+: . . . . .  }
+: . . . .  }
+: . . . . }
+: . . .  }
+: . . . }
+1064 3013: . .  SEQUENCE {
+1066 06 9: . . . OBJECT IDENTIFIER
+: . . .  md5withRSAEncryption (1 2 840 113549 1 1 4)
+: . . .  (PKCS #1)
+1077 05 0: . . . NULL
+: . . . }
+1079 03  257: . .  BIT STRING 0 unused bits
+: . . . 08 DA AF 5B 09 39 66 D3 BE 80 1D D7 72 B5 2C A3
+: . . . 04 FB 46 F8 05 F5 BF 83 F3 6D 6D 32 28 1C 46 EE
+: . . . 0F EA 30 61 8A 1E 8A 03 4E 98 81 60 1F 97 17 53
+: . . . D1 54 73 3F 72 98 45 D3 10 9A D3 77 B8 74 0E 9A
+: . . . 90 29 8E AC A4 EB D2 24 6D F6 21 1D 3F 52 8B 2C
+: . . . E6 92 E7 52 C6 54 93 91 BC 57 74 21 38 39 75 CD
+: . . . 30 49 54 13 94 6C FE F1 64 38 1F 5F 7D BB E0 3E
+: . . . A8 F1 28 1C F1 D9 28 FA 32 1E 3B 48 BF 5C 70 21
+: . . . . . [ Another 128 bytes skipped ]
+: . .  }
+: . . }
+1340 31  699: .  SET {
+1344 30  695: . . SEQUENCE {
+1348 02 1: . .  INTEGER 1
+1351 30  124: . .  SEQUENCE {
+1353 30  112: . . . SEQUENCE {
+1355 3111: . . .  SET {
+1357 30 9: . . . . SEQUENCE {
+1359 06 3: . . . .  OBJECT IDENTIFIER countryName (2 5 4 6)
+: . . . . . (X.520 id-at (2 5 4))
+
+1364 13 2: . . . .  PrintableString 'FR'
+: . . . .  }
+: . . . . }
+1368 3121: . . .  SET {
+1370 3019: . . . . SEQUENCE {
+1372 06 3: . . . .  OBJECT IDENTIFIER organizationName (2 5 4 10)
+: . . . . . (X.520 id-at (2 5 4))
+1377 1312: . . . .  PrintableString 'EdelWeb S.A.'
+: . . . .  }
+: . . . . }
+1391 3140: . . .  SET {
+1393 3038: . . . . SEQUENCE {
+1395 06 3: . . . .  OBJECT IDENTIFIER
+: . . . . . organizationalUnitName (2 5 4 11)
+: . . . . . (X.520 id-at (2 5 4))
+1400 13 31: . . . .  PrintableString 'Clepsydre Demonstration Service'
+: . . . .  }
+: . . . . }
+1433 3132: . . .  SET {
+1435 3030: . . . . SEQUENCE {
+1437 06 3: . . . .  OBJECT IDENTIFIER commonName (2 5 4 3)
+: . . . . . (X.520 id-at (2 5 4))
+1442 1323: . . . .  PrintableString 'Time Stamping Authority'
+: . . . .  }
+: . . . . }
+: . . .  }
+1467 02 8: . . . INTEGER
+: . . .  00 94 88 25 72 35 27 50
+: . . . }
+1477 30 9: . .  SEQUENCE {
+1479 06 5: . . . OBJECT IDENTIFIER sha1 (1 3 14 3 2 26)
+: . . .  (OIW)
+1486 05 0: . . . NULL
+: . . . }
+1488 A0  276: . .  [0] {
+1492 3026: . . . SEQUENCE {
+1494 06 9: . . .  OBJECT IDENTIFIER
+: . . . . contentType (1 2 840 113549 1 9 3)
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+1505 3113: . . .  SET {
+1507 0611: . . . . OBJECT IDENTIFIER
+: . . . .  id-ct-dvcsresponse (1 2 840 113549 1 9 16 1 8)
+: . . . .  (S/MIME Content Types (1 2 840 113549 1 9 16 1))
+: . . . . }
+: . . .  }
+1520 3028: . . . SEQUENCE {
+1522 06 9: . . .  OBJECT IDENTIFIER
+: . . . . signingTime (1 2 840 113549 1 9 5)
+
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+1533 3115: . . .  SET {
+1535 1713: . . . . UTCTime '000417171619Z'
+: . . . . }
+: . . .  }
+1550 3035: . . . SEQUENCE {
+1552 06 9: . . .  OBJECT IDENTIFIER
+: . . . . messageDigest (1 2 840 113549 1 9 4)
+: . . . . (PKCS #9 (1 2 840 113549 1 9))
+1563 3122: . . .  SET {
+1565 0420: . . . . OCTET STRING
+: . . . .  68 50 DC 90 20 2E C2 F0 55 15 7F 77 A9 A6 0C 34
+: . . . .  CC 13 06 FA
+: . . . . }
+: . . .  }
+1587 30  178: . . . SEQUENCE {
+1590 0611: . . .  OBJECT IDENTIFIER
+ : . . . id-aa-signingCertificate (1 2 840 113549 1 9 16 2 12)
+: . . (S/MIME Authenticated Attributes (1 2 840 113549 1 9 16 2))
+1603 31  162: . . .  SET {
+1606 30  159: . . . . SEQUENCE {
+1609 30  156: . . . .  SEQUENCE {
+1612 30  153: . . . . . SEQUENCE {
+1615 0420: . . . . .  OCTET STRING
+: . . . .  5C F1 18 F3 4A CA B4 67 D6 D8 E7 F8 3B 4A D9 7A
+: . . . .  32 A5 43 A5
+1637 30  128: . . . . .  SEQUENCE {
+1640 30  116: . . . . . . SEQUENCE {
+1642 A4  114: . . . . . .  [4] {
+1644 30  112: . . . . . . . SEQUENCE {
+1646 3111: . . . . . . .  SET {
+1648 30 9: . . . . . . . . SEQUENCE {
+1650 06 3: . . . . . . . .  OBJECT IDENTIFIER
+: . . . . . . . . . countryName (2 5 4 6)
+: . . . . . . . . . (X.520 id-at (2 5 4))
+1655 13 2: . . . . . . . .  PrintableString 'FR'
+: . . . . . . . .  }
+: . . . . . . . . }
+1659 3121: . . . . . . .  SET {
+1661 3019: . . . . . . . . SEQUENCE {
+1663 06 3: . . . . . . . .  OBJECT IDENTIFIER
+: . . . . . . . . . organizationName (2 5 4 10)
+: . . . . . . . . . (X.520 id-at (2 5 4))
+1668 1312: . . . . . . . .  PrintableString 'EdelWeb S.A.'
+: . . . . . . . .  }
+: . . . . . . . . }
+1682 3140: . . . . . . .  SET {
+1684 3038: . . . . . . . . SEQUENCE {
+
+1686 06 3: . . . . . . . .  OBJECT IDENTIFIER
+: . . . . . . . . . organizationalUnitName (2 5 4 11)
+: . . . . . . . . . (X.520 id-at (2 5 4))
+1691 13 31: . . . . .PrintableString 'Clepsydre Demonstration Service'
+: . . . . . . . .  }
+: . . . . . . . . }
+1724 3132: . . . . . . .  SET {
+1726 3030: . . . . . . . . SEQUENCE {
+1728 06 3: . . . . . . . .  OBJECT IDENTIFIER
+: . . . . . . . . . commonName (2 5 4 3)
+: . . . . . . . . . (X.520 id-at (2 5 4))
+1733 13 23: . . . . . . . .  PrintableString 'Time Stamping Authority'
+: . . . . . . . .  }
+: . . . . . . . . }
+: . . . . . . .  }
+: . . . . . . . }
+: . . . . . .  }
+1758 02 8: . . . . . . INTEGER
+: . . . .  00 94 88 25 72 35 27 50
+: . . . . . . }
+: . . . . .  }
+: . . . . . }
+: . . . .  }
+: . . . . }
+: . . .  }
+: . . . }
+1768 3013: . .  SEQUENCE {
+1770 06 9: . . . OBJECT IDENTIFIER
+: . . .  rsaEncryption (1 2 840 113549 1 1 1)
+: . . .  (PKCS #1)
+1781 05 0: . . . NULL
+: . . . }
+1783 04  256: . .  OCTET STRING
+: . . . 2E 70 9F 56 5E 01 56 A9 E1 47 81 12 35 21 29 09
+: . . . 16 7A ED 45 F9 5A A2 ED E4 FE 9D 2C E4 DA 12 66
+: . . . 62 14 59 61 8B 50 7B 01 82 3D BD 7E E6 38 D0 A8
+: . . . A0 37 98 79 13 26 39 29 C6 72 20 A9 95 71 E7 53
+: . . . 7F 79 77 98 EF 23 02 4E B9 BD 90 9B AC 05 A2 70
+: . . . 8F 3A 42 36 9C 2C B0 94 B1 2B 0B 36 94 0E 78 0E
+: . . . B0 D1 09 20 63 BC FF CD 32 F1 5A D3 AB 9F 93 9C
+: . . . 5A A3 58 99 A0 28 11 E0 80 4D 4D 1E 77 04 F4 50
+: . . . . . [ Another 128 bytes skipped ]
+: . .  }
+: . . }
+: .  }
+: . }
+:  }
+
+对应的PEM格式数据（包括技术原文描述）：
+数据有效性证明：
+ 请求信息：
+服务： Certify Claim of Possession of Data - ccpd(4)
+策略： EdelWeb Customer Policy Clepsydre
+请求者:
+  DirName:/C=FR/L=Paris/O=EdelWeb/CN=Peter Sylvester
+DVCS:
+  DirName:/C=FR/O=EdelWeb S.A./
+  O序列号: 01780a1eca8823
+ 消息摘要:
+算法: sha1
+数据: 75B685AF6F89467DE80715251E45978FCD1FA566
+ 宣称的时间:
+通用时间: 17-Apr-2000 19:16:17 (Apr 17 17:16:17 2000 GMT)
+证书:
+ 数据:
+  版本: 3 (0x2)
+  序列号:
+94:88:17:17:64:37:32
+  签名算法: md5WithRSAEncryption
+  发行人: C=FR, O=EdelWeb S.A.,
+ OU=Clepsydre Demonstration Service, CN=Time Stamping Authority
+  有效期
+之后: Jan 25 16:19:38 2000 GMT
+之前 : Jan 20 16:19:38 2020 GMT
+  主题: C=FR, O=EdelWeb S.A.,
+ OU=Clepsydre Demonstration Service, CN=Time Stamping Authority
+  主题公钥信息:
+公钥算法: rsaEncryption
+RSA 公钥: (2048 bit)
+ 模数 (2048 bit):
+  00:fa:c3:17:ae:eb:b7:9d:eb:ab:bd:05:7e:39:43:
+  6d:04:45:58:74:05:a5:cc:f3:6c:2f:8c:8e:77:7e:
+  c2:9f:12:11:5c:7d:db:be:23:28:9a:90:d2:ab:c6:
+  a2:ba:bd:a3:7e:99:a6:99:21:a5:d8:90:b9:cf:a7:
+  23:4e:a0:56:a0:c1:0a:46:89:8e:3c:91:67:37:fd:
+  9b:ab:49:17:fc:4a:a5:f2:e4:4c:6e:e3:6a:1c:92:
+  97:04:6f:7f:0c:5c:fb:74:cb:95:7e:4c:c3:58:12:
+  e8:a9:d6:f0:dd:12:44:15:e7:8b:2e:af:51:c0:0c:
+  5f:a8:65:fc:47:a1:c9:98:1f:d4:e1:ea:bc:1c:1a:
+  27:bb:8b:56:f1:12:55:10:f4:8e:d8:9f:19:9c:1e:
+  81:f7:db:63:dd:88:37:3f:71:79:5b:96:e2:5f:82:
+  d5:12:19:05:0d:e1:3d:a5:6d:66:e4:2c:1e:ed:c7:
+  4c:b8:df:aa:38:c8:15:6a:ae:25:7d:46:2a:07:f9:
+  83:77:c4:51:ee:90:dc:05:d0:c3:f0:f1:5f:e8:d4:
+  ed:5d:34:70:91:9d:9f:08:55:7d:5b:e5:8d:5f:35:
+  59:83:4e:72:19:bb:9c:88:d1:7a:fc:23:a5:84:99:
+  b4:17:8a:4d:6c:9d:d0:a6:35:80:5f:ca:fb:24:8b:
+  54:1d
+ 指数: 65537 (0x10001)
+  X509v3 扩展:
+X509v3 Basic Constraints:
+ CA:TRUE, pathlen:0
+X509v3 扩展密钥用法: critical
+ DVCS Signing
+权威信息声明: critical
+DVCS - URI:https://clepsydre.edelweb.fr/dvcs/service-ccpd
+签名算法： md5WithRSAEncryption
+08:da:af:5b:09:39:66:d3:be:80:1d:d7:72:b5:2c:a3:04:fb:
+46:f8:05:f5:bf:83:f3:6d:6d:32:28:1c:46:ee:0f:ea:30:61:
+8a:1e:8a:03:4e:98:81:60:1f:97:17:53:d1:54:73:3f:72:98:
+45:d3:10:9a:d3:77:b8:74:0e:9a:90:29:8e:ac:a4:eb:d2:24:
+6d:f6:21:1d:3f:52:8b:2c:e6:92:e7:52:c6:54:93:91:bc:57:
+74:21:38:39:75:cd:30:49:54:13:94:6c:fe:f1:64:38:1f:5f:
+7d:bb:e0:3e:a8:f1:28:1c:f1:d9:28:fa:32:1e:3b:48:bf:5c:
+70:21:29:ef:be:72:24:da:0d:f9:51:7a:fe:d7:f5:ff:e8:c2:
+ea:c6:4c:45:14:51:53:fd:00:d5:5b:cc:67:2a:23:94:31:9e:
+c2:90:38:9b:b0:df:f9:de:67:0c:57:5c:d7:b0:fc:f2:72:96:
+c4:d1:7a:9d:a0:e6:51:24:99:9e:89:c6:39:f9:72:7a:44:fd:
+2d:3f:bc:df:c7:25:27:94:a1:b5:7d:ba:06:75:67:1c:95:6c:
+bd:2c:74:41:3e:cd:cd:39:5c:2e:9c:c3:c3:09:e3:79:d5:eb:
+85:e8:f1:72:29:80:f6:c6:6e:61:1b:58:fc:87:3e:d9:e1:53:
+10:e0:b1:05
+
+----- PKCS7开始-----
+MIIH9wYJKoZIhvcNAQcCoIIH6DCCB+QCAQMxCzAJBgUrDgMCGgUAMIIBLQYLKoZIhvcNAQkQAQi
+gggEcBIIBGDCCARQwgdYKAQSgTaRLMEkxCzAJBgNVBAYTAkZSMQ4wDAYDVQQHEwVQYXJpczEQMA4GA1
+UEChMHRWRlbFdlYjEYMBYGA1UEAxMPUGV0ZXIgU3lsdmVzdGVyoQwGCisGAQQBqT0BAgGidKRyMHAxC
+zAJBgNVBAYTAkZSMRUwEwYDVQQKEwxFZGVsV2ViIFMuQS4xKDAmBgNVBAsTH0NsZXBzeWRyZSBEZW1v
+bnN0cmF0aW9uIFNlcnZpY2UxIDAeBgNVBAMTF1RpbWUgU3RhbXBpbmcgQXV0aG9yaXR5MB8wBwYFKw4
+DAhoEFHW2ha9viUZ96AcVJR5Fl4/NH6VmAgcBeAoeyogjGA8yMDAwMDQxNzE3MTYxN1qgggPgMIID3D
+CCAsSgAwIBAgIIAJSIFxdkNzIwDQYJKoZIhvcNAQEEBQAwcDELMAkGA1UEBhMCRlIxFTATBgNVBAoTD
+EVkZWxXZWIgUy5BLjEoMCYGA1UECxMfQ2xlcHN5ZHJlIERlbW9uc3RyYXRpb24gU2VydmljZTEgMB4G
+A1UEAxMXVGltZSBTdGFtcGluZyBBdXRob3JpdHkwHhcNMDAwMTI1MTYxOTM4WhcNMjAwMTIwMTYxOTM
+4WjBwMQswCQYDVQQGEwJGUjEVMBMGA1UEChMMRWRlbFdlYiBTLkEuMSgwJgYDVQQLEx9DbGVwc3lkcm
+UgRGVtb25zdHJhdGlvbiBTZXJ2aWNlMSAwHgYDVQQDExdUaW1lIFN0YW1waW5nIEF1dGhvcml0eTCCA
+SIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAPrDF67rt53rq70FfjlDbQRFWHQFpczzbC+Mjnd+
+wp8SEVx9274jKJqQ0qvGorq9o36ZppkhpdiQuc+nI06gVqDBCkaJjjyRZzf9m6tJF/xKpfLkTG7jahy
+SlwRvfwxc+3TLlX5Mw1gS6KnW8N0SRBXniy6vUcAMX6hl/EehyZgf1OHqvBwaJ7uLVvESVRD0jtifGZ
+wegffbY92INz9xeVuW4l+C1RIZBQ3hPaVtZuQsHu3HTLjfqjjIFWquJX1GKgf5g3fEUe6Q3AXQw/DxX
++jU7V00cJGdnwhVfVvljV81WYNOchm7nIjRevwjpYSZtBeKTWyd0KY1gF/K+ySLVB0CAwEAAaN6MHgw
+DwYDVR0TBAgwBgEB/wIBADAWBgNVHSUBAf8EDDAKBggrBgEFBQcDCjBNBggrBgEFBQcBAQEB/wQ+MDw
+wOgYIKwYBBQUHMASGLmh0dHBzOi8vY2xlcHN5ZHJlLmVkZWx3ZWIuZnIvZHZjcy9zZXJ2aWNlLWNjcG
+QwDQYJKoZIhvcNAQEEBQADggEBAAjar1sJOWbTvoAd13K1LKME+0b4BfW/g/NtbTIoHEbuD+owYYoei
+gNOmIFgH5cXU9FUcz9ymEXTEJrTd7h0DpqQKY6spOvSJG32IR0/Uoss5pLnUsZUk5G8V3QhODl1zTBJ
+VBOUbP7xZDgfX3274D6o8Sgc8dko+jIeO0i/XHAhKe++ciTaDflRev7X9f/owurGTEUUUVP9ANVbzGc
+qI5QxnsKQOJuw3/neZwxXXNew/PJylsTRep2g5lEkmZ6Jxjn5cnpE/S0/vN/HJSeUobV9ugZ1ZxyVbL
+0sdEE+zc05XC6cw8MJ43nV64Xo8XIpgPbGbmEbWPyHPtnhUxDgsQUxggK7MIICtwIBATB8MHAxCzAJB
+gNVBAYTAkZSMRUwEwYDVQQKEwxFZGVsV2ViIFMuQS4xKDAmBgNVBAsTH0NsZXBzeWRyZSBEZW1vbnN0
+cmF0aW9uIFNlcnZpY2UxIDAeBgNVBAMTF1RpbWUgU3RhbXBpbmcgQXV0aG9yaXR5AggAlIglcjUnUDA
+JBgUrDgMCGgUAoIIBFDAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQgwHAYJKoZIhvcNAQkFMQ8XDT
+AwMDQxNzE3MTYxOVowIwYJKoZIhvcNAQkEMRYEFGhQ3JAgLsLwVRV/d6mmDDTMEwb6MIGyBgsqhkiG9
+w0BCRACDDGBojCBnzCBnDCBmQQUXPEY80rKtGfW2Of4O0rZejKlQ6UwgYAwdKRyMHAxCzAJBgNVBAYT
+AkZSMRUwEwYDVQQKEwxFZGVsV2ViIFMuQS4xKDAmBgNVBAsTH0NsZXBzeWRyZSBEZW1vbnN0cmF0aW9
+uIFNlcnZpY2UxIDAeBgNVBAMTF1RpbWUgU3RhbXBpbmcgQXV0aG9yaXR5AggAlIglcjUnUDANBgkqhk
+iG9w0BAQEFAASCAQAucJ9WXgFWqeFHgRI1ISkJFnrtRflaou3k/p0s5NoSZmIUWWGLUHsBgj29fuY40
+KigN5h5EyY5KcZyIKmVcedTf3l3mO8jAk65vZCbrAWicI86QjacLLCUsSsLNpQOeA6w0QkgY7z/zTLx
+WtOrn5OcWqNYmaAoEeCATU0edwT0UAfVi1SgIzL/ppziurjbVUfJyLoH75AUSKi2xXzVqSB0HFbvjxu
+z/IdtgfHUbxqHMJJHaeB54LwQmc9NNkw2A1Fy0VumHi2G8R8K6L/rOPnOGuywj1GuKjtGhL9NjJ/uH+
+/FNaNjvjjAA3w6XrjPOxgQiNu7T3j2++QcjdT4++tQ
+----- PKCS7结束-----
+附录 G – 致谢
+本文档基于两篇关于时间戳和公正人与数据证书服务的著作，作者是来自Entrust 
+Technologies 公司Robert Zuccherato和Carlisle Adams。
+感谢Denis Pinkas, Bull和Bruno Salgueiro, SIBS提供有价值的建议。
+完整版权说明
+Copyright (C) The Internet Society (2000)。版权所有。
+本文档及其译文可以拷贝和提供给他人，且其衍生物，如评论、解释或帮助实施的作品
+可以全部或部分地定制、拷贝、出版和发布，对此我们不加任何限制，前提是上述版权声明，
+及本段内容包含在所有的拷贝和派生作品中。然而，本文档本身不允许以任何方式修改，例
+如删除Internet社团或其他Internet组织的版权声明或参考，除非是为了开发Internet标准
+的需要。即便在这种情况下，也需要添加Internet标准中定义的版权声明，或者根据需要把
+他翻译成英语以外的其他语言。
+上述准许的有限许可是永久性的， 无论是Internet社团以及其继承者或代理者都将不
+会废止这些许可。
+本文档及其中包含的信息基于“AS IS”提供，而且INTERNET社团和IETF拒绝所有
+授权、表达或影射，包括但不限于任何这里使用的消息的授权将不会违背任何版权或者隐含
+的商业性授权或对特定的合理目的。
+致谢
+目前，RFC编者活动的基金由Internet社团提供。
+
+
+
+RFC3029——Internet X.509 Public Key Infrastructure  Data Validation and Certification Server Protocols
+Internet X.509 公钥基础结构数据有效性和验证服务器协议
+
+
+2
+RFC文档中文翻译计划

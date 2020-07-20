@@ -1,0 +1,1019 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：吴晓波（why_wxb    why_wxb@sina.com）
+译文发布时间：2001-6-15
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留本文档
+的翻译及版权信息。
+
+
+Network Working Group                                            M. Rose
+Request for Comments: 2629                        Invisible Worlds, Inc.
+Category: Informational                                        June 1999
+
+
+
+用XML 写I-Ds 和 RFC文档
+（RFC2629 Writing I-Ds and RFCs using XML）
+
+关于本文档资料
+
+本文档资料提供了一些关于网络通信的信息，没有详尽的描述某一种特定的标准。本文档资料的
+可扩展性是无限的。
+
+版权声明
+   Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+概述
+
+本文档资料描述了使用可扩展标志语言（XML）为格式来描述I-Ds 以及RFC系列文档。
+
+内容一览
+   1.      简介 . . . . . . . . . . . . . . . . . . . . . . .  2
+   2.      使用DTD描写I-Ds和RFCs . . . . . . . . . . . . .   2
+   2.1     XML 基础. . . . . . . . . . . . . . . . . . . . . .  2
+   2.2     开头(Front matter) . . . . . . . . . . . . . . . ..  4
+   2.2.1   title元素  . . . . . . . . . . . . . . . . . .. . .  5
+   2.2.2   author元素 . . . . . . . . . . . . . . . . . . . . . 5
+   2.2.3   gate元素 . . . . . . . . . . . . . . . . . . . . . . 5
+   2.2.4   Meta Data 元素 . . . . . . . . . . . . .  . . . . . . 5
+   2.2.5   abstract元素 . . . . . . . . . . . . . . . . . . . . 6
+   2.2.6   note 元素 . . . . . . . . . . . . . . . . . . . . . . 6
+   2.2.7   状态, 版权声明, 内容列表  . . . . . . . . . . . . . . 6
+   2.2.7.1 顺应 RFC 2026  . . . . . . . . . . . . . . . . . . .  6
+   2.2.8   初始. .  . . . . . . . . . . . . . . . . . . . . . . .7
+   2.3     中间层 . . . . . . . . . . . . . . . . . . . . . . . 8
+   2.3.1   section元素  . . . . . . . . . . . . . . . . . . . . 8
+   2.3.1.1 t 元素  . . . . . . . . . . . . . . . . . . . . . . .8
+   2.3.1.2 list 元素 . . . . . . . . . . . . . . . . . . . . . .9
+   2.3.1.3 figure 元素 . . . . . . . . . . . . . . . . . . . . .9
+   2.3.1.4 xref 元素 . . . . . . . . . . . . . . . . . . . . . 10
+   2.3.1.5 eref 元素 . . . . . . . . . . . . . . . . . . . . . 11
+   2.3.1.6 iref 元素 . . . . . . . . . . . . . . . . . . . . . 11
+   2.3.1.7 vspace 元素 . . . . . . . . . . . . . . . . . . . . 11
+   2.4     附属资料  . . . . . . . . . . . . . . . . . . . .  . 12
+   2.4.1   参考元素 . . . . . . . . . . . . . . . . . . . . . . 12
+   2.4.2   附录 . . . . . . . . . . . . . . . . . . . . . . . . 13
+   2.4.3   版权情况 . . . . . . . . . . . . . . . . . . . . . .13
+   3.      处理XML源文件 . . . . . . . . . . . . . . . . . .. 13
+   3.1     编辑  . . . . . . . . . . . . . . . . . . . . . . .  13
+   3.1.1   检查 . . . . . . . . . . . . . . . . . . . . . . . . 14
+   3.2     转换成文本格式  . . . . . . . . . . . . . . .. . . . 14
+   3.3     转换成HTML 格式 . . . . . . . . . . . . . . . . . .  14
+   3.4     视图 . . . . . . . . . . . . . . . . . . . . . . . . 14
+   3.5     查找  . . . . . . . . . . . . . . . . . . . . . . . .14
+   4.      安全问题  . . . . . . . . . . . . . . . . . . . . . . 4
+           参考 . . . . . . . . . . . . . . . . . . . . . . . . 15
+           作者地址 . . . . . . . . . . . . . . . . . . . . . . 15
+   A.      rfc 元素  . . . . . . . . . . . . . . . . . . . . . .15
+   B.      RFC DTD  . . . . . . . . . . . . . . . . . . . . . . 16
+   C.      其他 . . . . . . . . . . . . . . . . . . . . . . . . 19
+   索引  . . . . . . . . . . . . . . . . . . . . . . . . . . .   20
+  全部版权声明 . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+1. 简介
+
+本文档资料描述如何用可扩展标志语言[1] (XML)写I-D 和RFC文挡。本文档有三个目标：
+
+1.	对于类似RFC的结构简单的文档,使用简单的XML DTD(文档类型定义)就能满足处理要求,同时
+也允许有复杂的描述性特征.
+
+2.	描述可处理XML源文件的软件,包括一些工具,可以产生符合RFC 2223 [2], HTML格式等的文档.
+
+   3.  对前两个目标进行一些概念上的验证(本文档用上述DTD描述且使用上述软件).
+
+   讨论使用XML作为RFC-like 文档的源格式的政治上的分支超出了本规章的范围.   我们宁愿说XML
+只是在纯文本的基础上加上最少的变化:
+ 
+   o  允许使用所熟悉的编辑器编辑传统的类似 RFC 文档文本;
+
+   o  在已有的软件环境中需要加入一些东西,虽然很少;
+
+   o  允许使用有组织的或无组织的机制进行信息的组织,查询和抽取.
+
+2. 使用 DTD 写I-Ds 和 RFC
+
+   本章节没有提供对XML的正式的或全面的描述.而只是讨论了使用文档类型申明(DTD)写类似RFC 文
+档所需要的内容.
+
+   如果你已经对XML很熟悉,那就跳到附录B直接去看DTD.
+
+2.1 XML基础
+
+   写XML时得规则很少,语法也很简单.有以下五点需要注意:
+
+1.	一个 "元素"通常指一个开始标签, 一个结束标签, 及之间的所有字段,例: 
+"<example>文本  与/或 嵌套元素</example>"
+
+   2.  一个"empty 元素" 包含了开始标签和结束标签,如"<empty/>". 在 HTML中没有这种用法.
+
+   3.  "attribute"是元素的一部分. 如果有,它们出现在开始标签中,如 "<example name='值'>".当
+然,它们也可以出现在空元素中,如 "<empty name='值'/>".
+
+   4.  "entity"是一段以"&"开始的宏文本,不要感到麻烦,只有需要在文本中要有 "&"或 "<"符号时
+才会用到它.
+
+   5.  "token" 是字符型字段.以字母或下划线("_")开头. 后面的字符只能是字母,数字, 下划线或者
+句点(".").
+
+首先,你的XML源程序应从XML申明开始,接着是DTD引用,然后是"rfc" 元素.
+
+       <?xml version="1.0"?>
+       <!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+       <rfc>
+           ...
+       </rfc>
+
+不用去管前两行—申明和引用—只要把它们看成是透明的就行了. "</rfc>"标签之后不能再出现
+其他任何东西.
+
+其次,保证所有的元素是完全匹配且是正确嵌套的.
+
+一个完全匹配的元素是以"<example>"开始,最终以"</example>"结束.(空元素总是匹配的)
+元素应正确嵌套以免出现交叉重复.
+   例如,
+
+       <outer>
+           ...
+           <inner>
+               ...
+           </inner>
+           ...
+       </outer>
+
+   是正确嵌套的.
+
+   但是,
+
+       <outer>
+           ...
+           <inner>
+               ...
+           </outer>
+           ...
+       </inner>
+
+ 元素出现交叉, 所以元素没有正确嵌套.
+
+第三,永远不要在文档里使用 "<" 或 "&" 等. 而应该分别使用 "&lt;" 或 "&amp;".
+
+第四, XML中有两种引用特征符号, '单引号' 和 "引号". 要保证所有的属性值都是被引用的.例:
+   "<example name='value'>", 如果属性值包含其中一种引用特征符号,那就使用另一种引用特征符号
+把属性值引用进来,如, "<example name='"'>", 如果属性值里两种引用特征符号都含有的话, 那就使
+用其中的一种来引用属性值,并将属性值中的这种符号用'&apos;'(单引号)  或 "&quot;" (引号)来代
+替,如:
+ "<example name='"&apos;"'>".
+
+如果你想在源文件中加入注释,其语法如下:
+           <!-- 如果你愿意,
+            注释可以为多行-->
+
+最后请注意, XML 是区分大小写的.
+
+2.2 开头部分
+
+紧跟在"<rfc>"标签后的是 "front" 元素:
+       <?xml version="1.0"?>
+       <!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+       <rfc>
+           <front>
+               <title ...>
+               <author ...>
+               <author ...>
+               <date ...>
+               <area ...>
+               <workgroup ...>
+               <keyword ...>
+               <keyword ...>
+               <abstract ...>
+               <note ...>
+           </front>
+           ...
+       </rfc>
+
+   (请注意在所有的例子中的文字缩进只是为了解释得更清楚.)
+
+   "front" 元素包含有一个 "title" 元素, 一个或多个 "author" 元素, 一个 "date" 元素, 一个或
+多个可选的 "area" 元素, , 一个或多个可选的"workgroup" 元素, 一个或多个可选的 "keyword" 元
+素, 一个可选的"abstract" 元素. 还有, 一个或多个可选的"note" 元素.
+
+2.2.1 title 元素
+   "title" 元素标识了文档的标题. 因为标题是在文档的开头部分(符合[2]的格式), 如果标题长度超
+过 42 个字符, 就需要提供一个简称,如,
+
+       <title abbrev="Much Ado about Nothing">
+       The IETF's Discussion on "Source Format of RFC documents"
+       </title>
+
+2.2.2 author 元素
+   每一个 "author" 元素标识了一个文档的作者.因为一篇文档可能不只一个作者,所以可以出现一个
+以上的"author" 元素. 如果作者是人名,则"<author>" 标签内必须要有三个属性: "initials", 
+"surname",和 "fullname", 如,
+       <author initials="M.T." surname="Rose"
+               fullname="Marshall T. Rose">
+
+   "author" 元素本身包含了一个"organization" 元素和一个可选的 "address" 元素.
+
+   "organization" 元素类似与 "title" 元素, 表示一串很长的组织名,其中用"abbrev" 属性表示它
+的简称,如,
+       <organization abbrev="ISI">
+           USC/Information Sciences Institute
+       </organization>
+
+"address" 元素包含一个可选的"postal" 元素, 一个可选的 "phone" 元素, 一个可选的
+"facsimile" 元素, 一个可选的 "email" 元素, 和一个可选的 "uri" 元素.
+    "postal" 元素包括一个或多个"street" 元素,后面跟着以下元素的组合: "city", "region" (国
+家或省份), "code"(缩略号或邮政编码), 和"country" 元素,如:
+
+       <postal>
+           <street>660 York Street</street>
+           <street>M/S 40</street>
+           <city>San Francisco</city> <region>CA</region>
+           <code>94110</code>
+           <country>US</country>
+       </postal>
+这里的弹性机制兼容了不同国家不同格式的邮政地址.但要注意,这里虽然没有提及 "city", 
+"region", "code", 和 "country" 元素的顺序, 大多数情况下每一个都会出现. 然而这些元素在XML
+应用程序处理过程中不能重复出现. (如, 显示程序应能保持包含在这些元素的信息的顺序). 
+
+最后, "country" 元素的内容应该是符合ISO 3166的双字节码.
+   "phone", "facsimile", "email", 及"uri" 元素都只能出现一次,如:
+
+       <phone>+1 415 695 3975</phone>
+       <email>mrose@not.invisible.net</email>
+       <uri>http://invisible.net/</uri>
+
+2.2.3 date 元素
+   "date" 元素标识了文档的出版时间,它包括一个"month" 和一个"year", 如:
+       <date month="February" year="1999" />
+   "date" 元素也有一个可选的属性.
+2.2.4 Meta Data 元素s
+       "front" 元素也可能包含 meta data – 此元素间的内容不会在印刷版的文档中显示出来.
+   一篇文档有一个或多个可选的 "area", "workgroup" 和 "keyword" 元素,如:
+       <area>General</area>
+       <workgroup>RFC Beautification Working Group</workgroup>
+       <keyword>RFC</keyword>
+       <keyword>Request for Comments</keyword>
+       <keyword>I-D</keyword>
+       <keyword>Internet-Draft</keyword>
+       <keyword>XML</keyword>
+       <keyword>Extensible Markup Language</keyword>
+
+"area" 元素标识了文档的大致范畴, (如, "Applications", "General", "Internet", 
+"Management", "Operations", "Routing", "Security", "Transport", 或 "User"中的一个), 而
+"workgroup" 元素标识了制订本文档的IETF工作组,"keyword" 元素标识了一些有用的搜索条件.
+
+2.2.5 abstract 元素
+
+一篇文档可能有一个 "abstract" 元素,它包含了一个或多个 "t" 元素(见2.3.1.1).一般地说,只
+有一个"t" 元素会出现,如,
+       <abstract>
+           <t>This memo presents a technique for using XML
+           (Extensible Markup Language) as a source format
+           for documents in the Internet-Drafts (I-Ds) and
+           Request for Comments (RFC) series.</t>
+       </abstract>
+
+2.2.6 note 元素
+
+    一篇文档可以有一个或多个 "note" 元素, 其中每一个元素可以包含一个或多个"t" 元素 (见 
+2.3.1.1). 其中有一个必须的"title"属性.一般地说, "note" 元素包含从IESG来的文本, 例:
+
+       <note title="IESG Note">
+           <t>The IESG has something to say.</t>
+       </note>
+
+2.2.7 状态, 版权申明,目录
+
+   注意到有关文档状态, 版权申明,或目录等内容并没有包含在文档中 –当XML应用程序创建文本文
+档或HTML文档时,它会被自动插入到XML应用程序中.
+
+2.2.7.1 与 RFC 2026相一致
+
+如果提出了Internet草案,则 "ipr"必须在文件开始处加入到"<rfc>" 标签中.该属性的值必须为
+以下之一:
+   full2026: 说明此文档是完全顺应 RFC 2026第10章规定的;
+
+   noDerivativeWorks2026: 说明此文档是完全顺应 RFC 2026第10章规定,但没有经过授权不能有相
+关派生工作.
+      或:
+
+   none: 说明此文档不是顺应 RFC 2026第10章规定的,除了作为Internet草案出版之外,作者不提供
+予其它任何权利.
+   后面这种情况, XML应用程序在创建过程中不会自动插入版权申明.
+
+   更多详细情况请参阅 [3].
+
+    最后,如果该Internet草案是被提交到自动处理过程中, 则 " docName "必须在文件开始处加入到
+"<rfc>" 标签中. 该属性的值包含与Internet草案关联文档 (不是文件)的名称.如,
+
+       <rfc ipr="full" docName="draft-mrose-writing-rfcs-01">
+           ...
+       </rfc>
+
+2.2.8 开始中的一切
+   现在, 把它们连在一起,我们有下例,
+
+       <front>
+           <title>Writing I-Ds and RFCs using XML</title>
+
+           <author initials="M.T." surname="Rose"
+                   fullname="Marshall T. Rose">
+               <organization>Invisible Worlds, Inc.</organization>
+
+               <address>
+                   <postal>
+                       <street>660 York Street</street>
+                       <street>M/S 40</street>
+                       <city>San Francisco</city> <region>CA</region>
+                       <code>94110</code>
+                       <country>US</country>
+                   </postal>
+
+                   <phone>+1 415 695 3975</phone>
+                   <email>mrose@not.invisible.net</email>
+                   <uri>http://invisible.net/</uri>
+               </address>
+           </author>
+
+           <date month="February" year="1999" />
+
+           <area>General</area>
+           <workgroup>RFC Beautification Working Group</workgroup>
+           <keyword>RFC</keyword>
+           <keyword>Request for Comments</keyword>
+           <keyword>I-D</keyword>
+
+           <keyword>Internet-Draft</keyword>
+           <keyword>XML</keyword>
+           <keyword>Extensible Markup Language</keyword>
+           <abstract>
+               <t>This memo presents a technique for using XML
+               (Extensible Markup Language) as a source format
+               for documents in the Internet-Drafts (I-Ds) and
+               Request for Comments (RFC) series.</t>
+           </abstract>
+       </front>
+
+2.3 Middle
+
+   "middle" 元素包含文档的除参考书目和附录之外的所有章节:
+
+       ...
+       </front>
+       <middle>
+           <section ...>
+           <section ...>
+           <section ...>
+       </middle>
+       <back>
+       ...
+
+   "middle" 元素包含一个或多个"section" 元素s.
+
+2.3.1 section 元素
+
+每一个"section" 元素包含了文档的一个章节. 有一个必须的属性,就是 "title",标识了该章节的
+标题.还有一个可选的属性"anchor", 它和 "xref" 元素一起使用,以能进行联结. (见 2.3.1.4),
+   例:
+
+       <section anchor="intro" title="Introduction">
+           ...
+       </section>
+
+   "section" 元素是可以递归的 – 每一个元素可以包含以下 "t", "figure", 和 "section" 元素的
+任意组合,如,
+
+       <section title="The Middle">
+           ...
+           <section title="section 元素">
+               ...
+               <section title="t 元素">...</section>
+               <section title=" list 元素">...</section>
+               <section title=" figure 元素">...</section>
+               <section title="xref 元素">...</section>
+               <section title=" eref 元素">...</section>
+               <section title=" iref 元素">...</section>
+           </section>
+       </section>
+
+2.3.1.1 t 元素
+
+"t" 元素可包含任意段落,列表和图片的组合. 如果在章节,图片或者参考中需要有交叉联结
+(cross-reference),则可以使用 "xref" 元素 (见2.3.1.4) ;同样,如果有外部联结,则使用"eref" 元
+素(见 2.3.1.5). "iref" 元素可以提供文本的索引 (见 2.3.1.6).
+
+2.3.1.2 list 元素
+
+   "list" 元素包含一个或多个条目.每一个条目是一个 "t" 元素, 允许递归, 如,
+
+       <list style="numbers">
+           <t>The pfirst item.</t>
+           <t>The second item, which contains two bulleted sub-items:
+               <list style="symbols">
+                   <t>The first sub-item.</t>
+                   <t>The second sub-item.</t>
+               </list>
+           </t>
+       </list>
+
+    "list" 元素有一个可选的属性"style",其值可以为"numbers" (数值型列表), "symbols" ( 子弹
+型列表),   "hanging" (悬挂型列表), 或, "empty" (锯齿型列表). 如果 "list" 元素是嵌套的,它的
+缺省值来自于它最近的父元素,否则它的缺省值是 "empty".
+
+    嵌套了"hanging list" 元素时, "t" 元素有一个可选属性 "hangText",它标识了被插入的文本, 
+如:
+
+       <list style="hanging">
+           <t hangText="full2026:">indicating that the document is in
+           full conformance with all the provisions of Section 10 of RFC
+           2026;</t>
+
+           <t hangText="noDerivativeWorks2026:">indicating that the
+           文档 is in full conformance with all the provisions of
+           Section 10 of RFC 2026 except that the right to produce
+           derivative works is not granted; or,</t>
+
+           <t hangText="none:">indicating that the document is NOT
+           offered in accordance with Section 10 of RFC 2026, and the
+           author does not provide the IETF with any rights other than
+           to publish as an Internet-Draft.</t>
+       </list>
+
+2.3.1.3  figure 元素
+
+    "figure" 元素组合了一个可选的"preamble" 元素, 一个"artwork" 元素, 及一个可选的
+"postamble" 元素."figure" 元素还有一个可选的属性 "anchor" ,它和 "xref" 元素一起使用用来进
+行交叉联结 (见 2.3.1.4).它还有一个可选属性,用来标识图片的标题.
+
+   "preamble和 "postamble" 元素如果出现,只是简单的文本. 如果在章节,图片或者参考中需要有交
+叉联结(cross-reference),则可以使用 "xref" 元素 (见2.3.1.4) ;同样,如果有外部联结,则使用
+"eref" 元素(见 2.3.1.5). "iref" 元素可以提供文本的索引 (见 2.3.1.6).
+
+   "artwork" 元素是必需的,它包含 "ASCII artwork". 它不象在"t", "preamble",或 "postamble" 元
+素中包含文本, "artwork" 元素中水平和垂直的whitespace 都是有意义的.
+
+   现在, 把它们连在一起,我们有下例,
+       <figure anchor="figure_example">
+           <preamble>So,
+           putting it all together, we have, e.g.,</preamble>
+           <artwork>
+               ascii artwork goes here...
+
+               be sure to use "&lt;" or "&amp;" instead of "<" and "&",
+               respectively!
+           </artwork>
+           <postamble>which is a very simple example.</postamble>
+       </figure>
+这只是一个很简单的例子.
+
+    如果你的作品中有很多 "<"符号,有一种XML技巧可以使用:
+       <figure>
+           <preamble>If you have artwork with a lot of "&lt;"
+           characters, then there's an XML trick you can
+           use:</preamble>
+           <artwork><![CDATA[
+               ascii artwork goes here...
+
+               just don't use "]]" in your artwork!
+           ]]></artwork>
+           <postamble>The "&lt;![CDATA[ ... ]]>" construct is called
+           a CDATA block -- everything between the innermost brackets
+           is left alone by the XML application.</postamble>
+       </figure>
+
+    这里 "<![CDATA[ ... ]]>" 构造了一种 CDATA 节 –最里面的括号之间的所有内容,XML应用程序
+都将进行单独处理.
+    因为"figure" 元素描述了文本或者作品的逻辑组合, XML应用程序生成的文本中在同一页必须保
+持这些相同的元素.
+    因为 RFC 2223 [2] 只允许一页不超过49行,一行不超过69字符. 为了页面的美观,XML应用程序
+应该应能适当做好断页工作.
+    最后,"artwork" 元素有两个可选属性: "name"和 "type". 前者用来表示"artwork" 元素间内容的
+名称,而后者用来表示其内容的数据类型.
+
+2.3.1.4 xref 元素
+
+     "xref" 元素用来在章节,图片和参考间进行交叉联结.其必须属性 "target"用来联结到
+"section", "figure", 或"reference"元素中的"anchor"属性. "anchor"的值和"target"属性必须符合 
+2.1节的语法规定.
+
+    如果作为一个空元素使用,如:
+
+根据标志语法 <xref target="xml_basics" />.
+
+    则XML应用程序在处理中插入适当短语,比如"Section 2.1" 或 "<a href="#xml_basics">XML
+   Basics</a>".
+
+    如果有内容,如,
+
+       顺应 <xref target="refs.RFC2223">RFC 2223</xref>.
+
+   则XML应用程序在处理中插入适当名称, 比如 "RFC 2223 [2]" 或 "<a href="#refs.RFC2223">RFC
+   2223</a>". 虽然这里的" 适当名称"是由XML应用程序决定的,它的选择在文档处理过程中是保持
+一致的.
+
+2.3.1.5 eref 元素
+
+   "eref" 元素用来说明外部文档.有一个必须属性 "target",它是一个URI [4], 例,
+
+       <eref target="http://metalab.unc.edu/xml/">Cafe con Leche</eref>
+
+注意"target"属性是必须有的,但"eref"元素却可以是空元素,例:
+
+       <eref target="http://invisible.net/" />
+
+    在处理中XML应用程序会插入适当指示,如"[9]" 或是 "<a
+   href="http://invisible.net/">http://invisible.net/</a>".
+
+2.3.1.6 iref 元素
+
+iref" 元素用来给索引增添信息,其必须属性"item"是所存放信息的主键, 而可选属性 "subitem"
+是第二键.例:
+       <iref item="indexing" subitem="how to" />
+
+    最后,注意 "iref" 元素总是空的 – 它从不会包含任何文本内容.
+
+2.3.1.7 vspace 元素
+
+"vspace" 元素可能只会在出现在 "t" 元素内,作者用来给出XML应用程序的格式设定.有一个属性, 
+"blankLines",表示应插入的空行数.如果用缺省值 "0"表示物理空行.
+
+    另外,"vspace" 元素可用来在列表项目中强制产生一物理段落, 如:
+
+       <list style="numbers">
+           <t>This is list item.
+              <vspace blankLines="1" />
+              This is part of the same list item,
+              although when displayed, it appears
+              as a separate physical paragraph.</t>
+       </list>
+
+    XML应用程序生成文本文档时需进行仔细实践,当遇到 "blankLines"值时可能会引起分页. – 在
+极端情况下, 如果 "vspace" 元素产生分页,则不能再插入空行. 这就允许作者通过使用一些大的属性
+值来"强制"产生分页.例: "blankLines='100'".
+
+    最后,注意 "vspace" 元素总是空的 – 它从不包含任何文本内容.
+
+2.4 Back matter
+
+    最后, back" 元素用来显示参考附录:
+
+           ...
+           </middle>
+           <back>
+               <references>
+                   <reference ...>
+                   <reference ...>
+               </references>
+               <section ...>
+               <section ...>
+           </back>
+       </rfc>
+
+    back" 元素包含可选的"references" 元素, 已及一个或多个可选的 "section" 元素. "back" 元
+素本身也是可选的,如果你的文档中没有什么参考或者附录的话,就不需要包括它.
+
+2.4.1 references 元素
+
+"references" 元素包含了文档的参考书目.它包含一个或多个"reference" 元素.每一个
+"reference" 元素包含一个"front" 元素及一个或多个可选的"seriesInfo" 元素.   我们已经在2.2
+章中讨论了 "front" 元素."seriesInfo" 元素有两个属性, "name" 和"value" 分别标识了文档的序列
+条目.
+
+    "reference" 元素有一个可选的"anchor"属性,和 "xref" 元素 (Section 2.3.1.4)一起用于联结,
+   如:
+
+       <reference anchor="refs.RFC2200">
+           <front>
+               <title>Internet Official Protocol Standards</title>
+               <author initials="J." surname="Postel"
+                       fullname="Jon Postel">
+                   <organization abbrev="ISI">
+                   USC/Information Sciences Institute
+                   </organization>
+               </author>
+
+               <date month="June" year="1997" />
+           </front>
+           <seriesInfo name="RFC" value="2200" />
+           <seriesInfo name="STD" value="1" />
+       </reference>
+
+    "reference" 元素还有一个可选的"target"属性用于内部参照 (见 2.3.1.5). XML应用程序如果
+产生HTML文档则会相应用到"target"属性; 当然,如果"seriesInfo" 元素的"name" 属性有 "RFC"值的
+话,那 XML应用程序应自动为"target"属性提供一最佳值
+(如,"http://example.com/rfcs/rfc2200.txt").
+
+2.4.2 附录
+
+要在参考书目之后加入附录,只需简单的增加多个"section" 元素. (举个例子,请看2.4.章开头的
+例子)
+
+2.4.3 版权申明
+
+文档的版权申明包括在文档的结构中 -- XML应用程序在产生文本文件或HTML文件时会自动插入.
+
+3. 处理XML源文件
+
+    本章重点是关于XML源文件操作的应用程序. 有大量XML工具可以获得,参见Cafe con Leche [5].
+
+    有两类 XML 工具: 可检查类与非检查类.两类都对源文件进行语法检查(2.1所述语法). 然而,为
+了保证源文件是结构良好的,一些补充的类工具可以检查 DTD 参照是否与文件匹配.可以获得很多检查
+和非检查类的工具.
+
+3.1 编辑
+
+    有一些 XML编辑器可以获取.一个理想的编辑器应该可以进行检查.有两类标签:
+
+   o  编辑器可以列出整个文档的结构; 并且:
+
+   o  编辑器可以确认源文件DTD 是否符合语法规则.
+
+    Emacs 对XML的支持主要有两种模式: tdtd [6] 和 psgml [7]. 后一种模式允许你对源文件进行
+确认. (通过调用一内部程序).如果你访问Emacs中的源文件而且其主模式不是"SGML" 或 "XML", 那么
+通常它是把这些行加到".emacs" 文件中:
+
+       (setq auto-mode-alist
+             (cons (cons "\\.xml$" 'sgml-mode) auto-mode-alist))
+
+    然后重启动Emacs. 如果不行,试一下上面的源程序.
+
+    作者在编辑源程序时在Emacs中使用了所有两种sgml模式,编辑器是一种商业化编辑器 Clip!,版
+本是1.5[8].
+
+3.1.1 检查
+
+    如果编辑器不能进行检查,那就要运行程序来检查源文件.
+
+    作者为此使用了 AlphaWorks XML parser [9].它需要你的系统里有Java虚拟机.除了Java,他还
+能检查 C, Perl, Python, 和 Tcl.
+
+3.2 转换为文本模式
+
+作者曾写过一个工具:xml2rfc [10],它可以读源文件并产生文本格式和HTML格式的版本.
+    (本章程就是用 xml2rfc 处理的.)注意到xml2rfc不是一个检查工具, 所以最好使用一个可检查的
+编辑器或者是运行一个解析工具.
+
+3.3 转换为HTML格式
+
+    XML 类型语言(XSL)用来描述如何将源文件转换为其他格式的文件. 所以最好使用支持 XSL的格式
+化器以便将XML源文件转换为HTML格式.
+
+    然而, XSL 技术还没有完全成型.(所以本文档资料内没有包含这方面的参考资料,因为也许在你看
+到时就已经过时了.) 所以作为临时过渡,作者使用了 xml2rfc 工具,虽然它在 HTML 布局方面没有提供
+太大的余地.
+
+3.4 预览
+
+支持 XSL 或CSS的流览器可以直接预览源文件.
+
+    当前,作者没有使用任何流览器, 没有将源文件转换为文本或HTML格式.
+
+3.5 查找
+
+    作为文本编辑器,所有的文本查找工具 (如, grep) 都可以在源文件中使用.当然,有一些可阅读结
+构化源程序的的查找工具可以获得.
+
+    作者为此使用了 sgrep,版本为 1.9 [11], 如下:
+
+       sgrep -g xml 'elements("title") not in 'elements ("back")' \
+           writing-rfcs.xml
+
+    它从源文件中查找 title 元素.
+
+4. 安全考虑
+
+    本文档资料中没有提到安全条目; 但根据 [2],你的文档在接近结尾处包含有一段内容,它讨论文
+档主要协议或过程的安全性问题, 如:
+
+       <middle>
+           ...
+           <section title="Security Considerations">
+               <t>本文档资料中没有提到安全条目;
+               但, 但根据 [2] <xref target="refs.RFC2223" />,
+               你的文档在接近结尾处包含有一段内容,它讨论文档主要协议或过程的安全性问题.          
+</t>
+           </section>
+       </middle>
+
+参考资料:
+
+   [1]  World Wide Web Consortium, "Extensible Markup Language (XML)
+        1.0", W3C XML, February 1998.
+
+   [2]  Postel, J. and J. Reynolds, "Instructions to RFC Authors", RFC
+        2223, October 1997.
+
+   [3]  Bradner, S., "The Internet Standards Process -- Revision 3", BCP
+        9, RFC 2026, October 1996.
+
+   [4]  Berners-Lee, T., Fielding, R. and L. Masinter, "Uniform Resource
+        Identifiers (URI): Generic Syntax", RFC 2396, August 1998.
+
+   [5]  http://metalab.unc.edu/xml/
+
+   [6]  http://www.mulberrytech.com/tdtd/
+
+   [7]  http://www.inria.fr/koala/plh/sxml.html
+
+   [8]  http://www.t2000-usa.com/
+
+   [9]  http://www.alphaworks.ibm.com/formula/xml/
+
+   [10]  http://memory.palace.org/authoring/
+
+   [11]  http://www.cs.helsinki.fi/~jjaakkol/sgrep.html
+
+作者地址:
+
+   Marshall T. Rose
+   Invisible Worlds, Inc.
+   660 York Street
+   San Francisco, CA  94110
+   US
+
+   Phone: +1 415 695 3975
+   EMail: mrose@not.invisible.net
+   URI:   http://invisible.net/
+
+附录 A.  rfc 元素
+
+   "<rfc>" 标签在文件的开始处,它有一个 "ipr"属性 (2.2.7.1章), 产生一个Internet草案.然而,
+当RFC编辑器在标签内添加了其他属性时,就产生了一篇RFC,如:
+
+       <rfc number="2200"
+            obsoletes="2000, 1920, 1880, 1800, ..."
+            category="std"
+            seriesNo="1">
+
+    最起码, "number"属性是应该有的.
+
+    其他的属性有:
+
+   o  "obsoletes", RFC 数用豆号分开,文档陈旧;
+
+   o  "updates", 用豆号分开, 文档更新;
+
+   o  "category", 值为以下之一:
+
+      1.  "std", 标准文档;
+
+      2.  "bcp", 最流行文档;
+
+      3.  "exp", 试验草案文档;
+
+      4.  "historic", 历史文档; 或,
+
+      5.  "info", 缺省值, 信息文档.
+
+   o  "seriesNo",  STD (std), BCP (bcp), 或 FYI (info) 系列的相应号码.
+
+    最后,还有一个特殊的实体 "&rfc.number;". 作者在引用RFC文档自身的页数时需要用到它. 打印
+的文档中会出现有一适当的标记 (如 "XXXX").
+
+附录 B. RFC DTD
+
+   <!--
+     RFC文档DTD,  99-01-30提案
+     -->
+
+   <!--
+     内容
+
+       DTD 数据类型
+
+       顶层
+
+       Front matter
+
+       主体
+
+       Back matter
+     -->
+
+   <!--
+     DTD数据类型:
+           实体          描述
+           ======        ===============================================
+           NUMBER        [0-9]+
+           NUMBERS       用豆号分开的数值
+
+           DAY           月份中的日, 如: "1"
+           MONTH         一年中的月份, 如: "January"
+           YEAR          四位数字的年份, 如: "1999"
+
+           URI           如: "http://invisible.net/"
+
+           ATEXT/CTEXT   可打印的 ASCII文本 (无行终止)
+           TEXT          特征数据
+     -->
+
+   <!ENTITY % NUMBER     "CDATA">
+   <!ENTITY % NUMBERS    "CDATA">
+
+   <!ENTITY % DAY        "CDATA">
+   <!ENTITY % MONTH      "CDATA">
+   <!ENTITY % YEAR       "CDATA">
+
+   <!ENTITY % URI        "CDATA">
+
+   <!ENTITY % ATEXT      "CDATA">
+   <!ENTITY % CTEXT      "#PCDATA">
+
+   <!ENTITY % TEXT       "#PCDATA">
+
+   <!ENTITY   rfc.number "2629">
+
+   <!--
+     顶层
+     -->
+
+   <!--
+     attributes for the "rfc" element are supplied by the RFC
+     editor. when preparing drafts, authors should leave them blank.
+
+     the "seriesNo" attribute is used if the category is, e.g., BCP.
+     -->
+   <! element rfc         (front,middle,back?)>
+   <!ATTLIST rfc
+             number      %NUMBER;           #IMPLIED
+             obsoletes   %NUMBERS;          ""
+             updates     %NUMBERS;          ""
+             category    (std|bcp|info|exp|historic)
+                                            "info"
+             seriesNo    %NUMBER;           #IMPLIED
+             ipr         (full2026|noDerivativeWorks2026|none)
+                                            #IMPLIED
+             docName     %ATEXT;            #IMPLIED>
+
+   <!--
+     Front matter
+     -->
+
+   <! element front       (title,author+,date,area*,workgroup*,keyword*,
+                          abstract?,note*)>
+
+   <!-- the "abbrev" attribute is used for headers, etc. -->
+   <! element title       (%CTEXT;)>
+   <!ATTLIST title
+             abbrev      %ATEXT;            #IMPLIED>
+
+   <! element author      (organization,address?)>
+   <!ATTLIST author
+
+             initials    %ATEXT;            #IMPLIED
+             surname     %ATEXT;            #IMPLIED
+             fullname    %ATEXT;            #IMPLIED>
+
+   <! element organization
+                         (%CTEXT;)>
+   <!ATTLIST organization
+             abbrev      %ATEXT;            #IMPLIED>
+
+   <! element address     (postal?,phone?,facsimile?,email?,uri?)>
+
+   <!-- at most one of each the city, region, code, and country
+        elements may be present -->
+   <! element postal      (street+,(city|region|code|country)*)>
+   <! element street      (%CTEXT;)>
+   <! element city        (%CTEXT;)>
+   <! element region      (%CTEXT;)>
+   <! element code        (%CTEXT;)>
+   <! element country     (%CTEXT;)>
+   <! element phone       (%CTEXT;)>
+   <! element facsimile   (%CTEXT;)>
+   <! element email       (%CTEXT;)>
+   <! element uri         (%CTEXT;)>
+
+   <! element date        EMPTY>
+   <!ATTLIST date
+             day         %DAY;              #IMPLIED
+             month       %MONTH;            #REQUIRED
+             year        %YEAR;             #REQUIRED>
+
+   <!-- meta-data... -->
+   <! element area        (%CTEXT;)>
+   <! element workgroup   (%CTEXT;)>
+   <! element keyword     (%CTEXT;)>
+
+   <! element abstract    (t)+>
+   <! element note        (t)+>
+   <!ATTLIST note
+             title       %ATEXT;            #REQUIRED>
+
+   <!--
+     The body
+     -->
+
+   <! element middle      (section)+>
+
+   <! element section     (t|figure|section)*>
+   <!ATTLIST section
+             anchor      ID                 #IMPLIED
+             title       %ATEXT;            #REQUIRED>
+
+   <! element t           (%TEXT;|list|figure|xref|eref|iref|vspace)*>
+   <!ATTLIST t
+             hangText    %ATEXT;            #IMPLIED>
+
+   <!-- the value of the style attribute is inherited from the closest
+        parent -->
+   <! element list        (t+)>
+   <!ATTLIST list
+             style       (numbers|symbols|hanging|empty)
+                                            "empty">
+
+   <! element xref        (%CTEXT;)>
+   <!ATTLIST xref
+             target      IDREF              #REQUIRED
+             pageno      (true|false)       "false">
+
+   <! element eref        (%CTEXT;)>
+   <!ATTLIST eref
+             target      %URI;              #REQUIRED>
+
+   <! element iref        EMPTY>
+   <!ATTLIST iref
+             item        %ATEXT;            #REQUIRED
+             subitem     %ATEXT;            "">
+
+   <! element vspace      EMPTY>
+   <!ATTLIST vspace
+             blankLines  %NUMBER;           "0">
+
+   <! element figure      (preamble?,artwork,postamble?)>
+   <!ATTLIST figure
+             anchor      ID                 #IMPLIED
+             title       %ATEXT;            "">
+
+   <! element preamble    (%TEXT;|xref|eref|iref)*>
+   <! element artwork     (%TEXT;)*>
+   <!ATTLIST artwork
+             xml:space   (default|preserve) "preserve">
+   <! element postamble   (%TEXT;|xref|eref|iref)*>
+
+   <!--
+     Back matter
+     -->
+
+   <!-- sections, if present, are appendices -->
+   <! element back        (references?,section*)>
+
+   <! element references  (reference+)>
+   <! element reference   (front,seriesInfo*)>
+   <!ATTLIST reference
+             anchor      ID                 #IMPLIED
+             target      %URI;              #IMPLIED>
+   <! element seriesInfo  EMPTY>
+   <!ATTLIST seriesInfo
+             name        %ATEXT;            #REQUIRED
+             value       %ATEXT;            #REQUIRED>
+
+附录 C. 感谢
+
+   作者对下列作出贡献者深表感谢: Alan Barrett, Brad Burdick, Brian Carpenter, Steve Deering, 
+Patrik Faltstrom, Jim Gettys, Carl Malamud, Chris Newman, Kurt Starsinic,以及, Frank Strauss.
+
+索引
+
+I
+   索引
+      how to  16
+
+完全版权申明(英文原文)
+
+   Copyright (C) The Internet Society (1999).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+感谢
+
+RFC编辑功能基金由Internet协会提供.
+RFC2629——Writing I-Ds and RFCs using XML             用XML 写I-Ds 和 RFC文档
+
+
+RFC文档中文翻译计划                                                                1
+
+

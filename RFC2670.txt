@@ -1,0 +1,2730 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：郭大刚（guodagang guodagang@tyut.edu.cn）
+译文发布时间：2002-1-18
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+Network Working Group                                    M. St. Johns，Ed.
+Request for Comments: 2670                                   @Home Network 
+Category: Proposed Standard                                    August 1999    
+
+关于MCNS/DOCSIS兼容RF接口的RF接口MIB 
+（RFC2670——Radio Frequency (RF) Interface Management Information Base
+for MCNS/DOCSIS compliant RF interfaces）
+
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的”Internet架构委员会正式协议标准”来获得本协议的标准
+化程度和状态。本备忘录的发布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (1999)。版权声明。
+摘要
+这个备忘录定义了管理信息数据库(Management Information Base，缩写为MIB)的一部
+分用于管理INTERNET社团的网络管理对象。尤其是，它定义了一套基本的基于SNMP来
+管理遵从MCNS/DOCSIS标准的射频(Radio Frequency，缩写为RF)接口的管理对象。
+这个备忘录以遵从SNMP SMIv2 [5][6][7]的风格定义了一种MIB模块。这套对象和
+SNMP构架以及现存的SNMP标准是协调一致的。
+这个备忘录是IETF的IPCDN工作组的产物。其注解可以寄往工作组的邮件列表 
+ipcdn@terayon.com 以及作者。
+目录
+1. SNMP管理框架	2
+2. 术语表	3
+2.1.有线电视(CATV)	3
+2.2.频道(Channel)	3
+2.3. 线缆调制解调器(Cable Modem，缩写为CM)	3
+2.4. 线缆调制解调器头端系统(Cable Modem Termination System，缩写为CMTS)	4
+2.5.代码字(Codeword)	4
+2.6.数据包(Data Packet)	4
+2.7.dBmV	4
+2.8.DOCSIS	4
+2.9.下行(Downstream)	4
+2.10.前端(Head-end)	4
+2.11.MAC数据包	4
+2.12.MCNS	5
+2.13.袖珍通道	5
+2.14.QPSK(Quadrature Phase Shift Keying)	5
+2.15.QAM(Quadrature Amplitude Modulation)	5
+2.16.RF(Radio Frequency)	5
+2.17.Symbol-times	5
+2.18.上行(Upstream)	5
+3. 综述	5
+3.1. MIB的结构	6
+3.1.1.docsIfBase对象	6
+3.1.2.docsIfCm对象	6
+3.1.3.docsIfCmts对象	6
+3.2. 和接口MIB的关系	7
+3.2.1.分层模型	7
+3.2.2.虚电路(Virtual Circuits)	8
+3.2.3.ifTestTable	8
+3.2.4.ifRcvAddressTable	8
+3.2.5.ifEntry	8
+3.2.5.1.下行接口的ifEntry	8
+3.2.5.1.1. CMTS下行接口的ifEntry	8
+3.2.5.1.2. Cable Modem的下行接口ifEntry	9
+3.2.5.2.上行接口的ifEntry	9
+3.2.5.2.1.CMTS的上行接口ifEntry	10
+3.2.5.2.2. Cable Modem的上行接口ifEntry	10
+3.2.5.3. MAC 层的ifEntry	11
+4. 定义	11
+5. 致谢	57
+6. 参考文献	57
+7. 需要考虑的安全问题	58
+8.知识产权	59
+9.作者地址	59
+10. 完整的版权声明	59
+致谢	59
+
+1. SNMP管理框架
+目前，SNMP管理框架有五个主要的组成部分：
+o在RFC2571[1]中描述了整体结构。
+o描述和命名用来管理的对象和事件的机制。SMI第一版称做SMIv1，在STD 16，RFC 
+1155[2]，STD 16，FRC1212[3]，RFC1215[4]中描述。第二版，称做SMIv2，在STD58，
+RFC2578[5]，RFC2579[6]，RFC 2580[7]中描述。
+o传输管理信息的消息协议。SNMP消息协议的第一版称为SNMPv1，在STD15，
+RFC1157[8]中描述。第二版称为SNMPv2c，不是INTERNET标准协议，在RFC1901[9]，
+RFC1906[10]中描述。第三版称为SNMPv3，在RFC1906[10]，RFC2572[11]，RFC2574[12]
+中描述。
+o访问管理信息的操作协议。第一套可操作的与PDU格式有关的协议在STD15，
+RFC1157[8]中描述。第二套在RFC1905[13]中描述。
+o在RFC2573[14]中描述的是一套基础应用，还有基于视图的访问控制机制，在
+RFC2575[15]中描述。
+管理对象通过虚拟信息仓库访问，术语叫做管理信息库或MIB。MIB中的对象使用在SMI
+中定义的机制来定义。
+本备注指定了一个服从SMIv2的MIB模块。遵从SMIv1的MIB可通过适当的翻译得出，
+结果在语义上必须等价，除非由于不可翻译而省略对象或事件(use of Counter64)。在翻译时，
+一些机器可读的SMIv2信息会转换成SMIv1的原文描述。然而，这些丢失的信息被认为不
+会改变MIB的语义。
+2. 术语表
+在这个文档中的术语既来源于常规的同轴电缆系统的应用，也来源于有关DCSIS的文
+档。
+2.1.有线电视(CATV)
+原先的“有线电视(Community Antenna Television)”，现在指用来为社区传送视频信号
+的任何电缆或者光纤/电缆混合系统。
+2.2.频道(Channel)
+分配给一个RF介质的特定频率，由频道宽度(单位是Hertz，每秒的周期数)和中心频率
+指定。在北美的电缆系统中，上行频带一般是在5-42MHz这个范围，为了兼容现有系统下
+行频带一般是在50-750MHz这个范围。在北美，典型的广播频道的频宽是6MHz。上行频
+道的频宽根据DOCSIS标准而有所不同。
+2.3. 线缆调制解调器(Cable Modem，缩写为CM)
+在符合DOCSIS的电缆数据系统中CM被当作一个“从属(slave)” 数据终端设备。
+2.4. 线缆调制解调器头端系统(Cable Modem Termination 
+System，缩写为CMTS)
+对前端的电缆桥接器和电缆路由器的统称。在兼容DOCSIS的电缆数据系统中，CMTS
+是主数据终端设备。它是唯一的发射下行信号的数据终端设备，而且CMTS控制着和它相连
+的CM的下行数据传输的调度。
+2.5.代码字(Codeword)
+见[16]。用于RF介质层上的前向纠错模式的一种工作特性。
+2.6.数据包(Data Packet)
+MAC数据包的有效载荷部分。
+2.7.dBmV
+一微伏上的分贝值。RF功率的单位。
+2.8.DOCSIS
+“电缆接口上的数据规范(Data Over Cable Interface Specification)”。在ITU-T J.112 
+附录B cable modem系统的标准[20]中提出的一个术语。
+2.9.下行(Downstream)
+从前端到用户的方向。
+2.10.前端(Head-end)
+在大多数为用户提供视频信号的电缆系统中信号源。
+2.11.MAC数据包
+一种DOCSIS协议数据单元(PDU)。
+2.12.MCNS
+“多媒体电缆网络系统(Multimedia Cable Network System)”。一般情况下，用途和 
+DOCSIS相同。
+2.13.袖珍通道
+见[16]。通常，为了使CM在上行信道中传输数据，而由CMTS分配给CM的时间间隙。
+2.14.QPSK(Quadrature Phase Shift Keying)
+一种在RF介质上的特定的调制方案。见[19]。
+2.15.QAM(Quadrature Amplitude Modulation)
+一种在RF介质上的特定的调制方案。一般用表示调制星座的数量来进行描述(例如16 
+QAM)。见[19]，或者其他任何完整的讲解在RF上进行数据通讯的参考书。
+2.16.RF(Radio Frequency)
+射频。
+2.17.Symbol-times
+见[16]。一种RF调制方法的特征。
+2.18.上行(Upstream)
+从用户到前端的方向。
+3. 综述
+这个MIB为进行符合MCNS/DOCSIS标准的线缆调制解调器(Cable Modem，缩写为
+CM)和线缆调制解调器终端系统(Cable Modem Termination System，缩写为CMTS)的RF
+接口的管理提供了一套对象。这个规范引用了在DOCSIS RF接口规范[16]中阐述了的一部
+分参数和协议.
+3.1. MIB的结构
+这个MIB包括如下三种结构：
+o 所有与CM和CMTS相关的管理信息 (docsIfBaseObjects)。
+o 只和CM相关的管理信息(docsIfCmObjects)。
+o 只和CMTS相关的管理信息(docsIfCmtsObjects)。
+在这些表中聚集了这些功能上的组对象 – 例如服务质量(Quality of Service，缩写为
+QoS)、频道特性、MAC层管理等等。自行创建的 (例如根据硬件配置由设备创建的) 行可以，
+而且通常是状态对象和配置的组合。通常，要由管理工作站创建的行对于配置对象(读创建)
+要受到限制。
+3.1.1.docsIfBase对象
+docsIfDownstreamChannelTable – 这个表描述了在某个CMTS中激活的下行频道以
+及某个CM中收到的下行频道。
+docsIfUpstreamChannelTable - 这个表描述了在某个CMTS中激活的上行频道以及
+某个CM中当前的上行传输频道。
+docsIfQosProfileTable – 这个表描述了电缆数据系统中的有效的QoS服务协议子集。
+DocsIfSignalQualityTable – 这个表用于监测收到的RF信号的质量特性。
+3.1.2.docsIfCm对象
+docsIfCmMacTable – 这个表用于监测DOCSIS MAC接口，并且可以认为是对ifEntry
+的扩展。
+docsIfCmServiceTable – 这个表描述了在这个CM中可用的上行服务等级。在CMTS
+上有一个相同的表 – docsIfCmtsServiceEntry，它从CMTS的角度对服务分级进行了描述。
+3.1.3.docsIfCmts对象
+docsIfCmtsStatusTable – 这个表格提供了一系列在低层子接口上产生的累计值和事
+件的统计数据。
+docsIfCmtsCmStatusTable – 这个表格用于处理在由这个CMTS提供服务的系统中
+有关已知(例如注册的) cable modem的信息。
+docsIfCmtsServiceEntry – 这个表提供了对和上行服务分级有关的信息。
+docsIfCmtsModulationTable – 这个表格允许控制和这个CMTS相关的RF信道的调
+制方式。
+docsIfCmtsMacToCmTable – 这个表允许通过在docsIfCmtsCmTable中的一个(CM
+的)MAC地址的接口来进行快速访问。
+3.2. 和接口MIB的关系
+这一节澄清了这个MIB和Interfaces MIB[17]的关系。相关的几个方面在以下几个小节
+里进行了叙述。为了理解这些方面的大概含义，将参考一个应用来讲解Interfaces MIB文档。
+3.2.1.分层模型
+对每一个RF Downstream接口、RF Upstream接口以及RF MAC层都存在一个ifEntry
+的实例。必须执行ifStackTable [17]来定义相关的子接口。
+下面是一个具有一个下行和两个上行信道的MAC接口图例
+正如从这个例子中看到的那样，RF MAC接口是在下行和上行接口上的一层。
+在这个例子中，索引值的分配可能如下：
+ifIndex 
+ifType
+描述
+1
+docsCableMaclayer(127)
+CATV MAC层
+2
+docsCableDownstream(128) CATV 
+下行接口
+3
+docsCableUpstream(129)
+CATV上行接口
+4
+docsCableUpstream(129)
+CATV上行接口
+相应的ifStack表项应该是：
+IfStackHigherLayer
+ifStackLowerLayer
+0
+1
+1
+2
+1
+3
+1
+4
+2
+0
+3
+0
+4
+0
+在电话和Telco回传系统中也采用相同的接口模型。在纯粹的Telco回传系统中(Cable 
+Modem象CMTS一样)将没有上行，而只有下行电缆信道。支持Telco回传和电缆上行信道
+的系统可以直接使用以上模型，不必做任何修改。
+Telco回传上行通道由其他相应的MIB处理，例如PPP或者Modem MIB。
+3.2.2.虚电路(Virtual Circuits)
+由于这种介质不支持虚电路，所以在这个MIB中没有这方面的应用。
+3.2.3.ifTestTable
+这个MIB不支持ifTestTable。
+3.2.4.ifRcvAddressTable
+这个MIB不支持ifRcvAddressTable。
+3.2.5.ifEntry
+这一节是和在接口MIB规范中指定的需求唯一不同的部分。可以看到有关队列被从如下
+的描述中被删除了。
+3.2.5.1.下行接口的ifEntry
+下行接口的ifEntry支持接口MIB的ifGeneralInformationGroup和ifPacketGroup。这
+是在CMTS上唯一的输出接口和所有输入状态的累计 - ifIn* - 会返回数值0。这是在CM上
+唯一的一个输入接口和所有输出状态的累计 - ifOut* - 会返回数值0。
+3.2.5.1.1. CMTS下行接口的ifEntry
+ifTable
+注释
+ifIndex
+各个RF Cable下行接口都以一个ifEntry来表示。
+ifType
+docsCableDownstream(128)的IANA值。
+ifSpeed
+返回这个下行通道的速度。返回这个接口的带宽（以bits/s为单位）。这
+是字符速率乘以每字符的位数得到的。
+ifPhysAddress
+返回一个空字符串。
+ifAdminStatus
+这个接口的管理状态。
+ifOperStatus
+这个接口当前的可选状态。
+ifMtu
+接口可以发送的最大帧长度（以字节为单位）。这个数值包括MAC报头的长
+度。
+ifInOctets
+返回0。
+ifInUcastPkts
+返回0。
+ifInMulticastPkts
+返回0。
+ifInBroadcastPkts
+返回0。
+ifInDiscards
+返回0。
+ifInErrors
+返回0。
+ifInUnknownProtos 
+返回0。
+ifOutOctets
+这个接口上传输的字节总量。包括MAC数据包，也包括MAC报头长度。
+ifOutUcastPkts
+这个接口上传输的单播数据包的总数，也包括MAC数据报。
+ifOutMulticastPkts
+返回在这个接口上传输的组播数据包的数量，包括MAC数据包的数据。
+ifOutBroadcastPkts
+返回在这个接口上传输的广播数据包的数量，包括MAC数据包的数据。
+ifOutDiscards
+丢弃的输出数据包的总数。可能的结果是：缺乏缓存。
+ifOutErrors
+由于错误导致不能传输的数据包的数量。
+ifPromiscuousMode 
+返回失效。
+3.2.5.1.2. Cable Modem的下行接口ifEntry
+ifTable
+注释。
+ifIndex
+每个RF电缆下行接口都由一个ifEntry来进行标识。
+ifType
+docsCableDownstream(128)的IANA值。
+ifSpeed
+返回这个下行通道的速度。返回这个接口的带宽（以bits/s为单位）。这
+是字符速率乘以每字符的位数得到的。
+ifPhysAddress
+返回一个空串。
+ifAdminStatus
+这个接口的管理状态。
+ifOperStatus
+这个接口的当前可选状态。
+ifMtu
+可以从接口接收到的最大帧长度（以字节为单位）。这个数值包括MAC报
+头的长度。
+ifInOctets
+这个接口上收到的字节总数。包括MAC层的数据包，也包括MAC包头的长
+度。
+IfInUcastPkts
+从这个接口上收到的单播数据报的数量。也包括MAC层数据包。
+ifInMulticastPkts
+从这个接口上收到的组播数据报的数量。也包括MAC层数据包。
+ifInBroadcastPkts
+从这个接口上收到的广播数据报的数量。也包括MAC层数据包。
+ifInDiscards
+已经丢弃的收到的数据包的总数。可能的原因是：缓存缺乏
+ifInErrors
+输入数据包的数量，包括使这些数据包无法向高层交付的错误。可能的原
+因是：MAC FCS错误。
+ifInUnknownProtos
+带有未知数据包类型的帧数。也包括带有未知数据包类型MAC帧
+ifOutOctets
+返回0。
+ifOutUcastPkts
+返回0。
+ifOutMulticastPkts
+返回0。
+ifOutBroadcastPkts
+返回0。
+ifOutDiscards
+返回0。
+ifOutErrors
+返回0。
+ifPromiscuousMode
+查阅接口MIB。
+3.2.5.2.上行接口的ifEntry
+上行接口的ifEntry支持接口MIB的ifGeneralInformationGroup和ifPacketGroup。这
+只是一个对CMTS上输入接口和输出状态的统计 - ifOut* - 将返回数值0。这只是一个对CM
+上输出接口和所有输入状态的统计 - ifIn* - 将返回数值0。
+3.2.5.2.1.CMTS的上行接口ifEntry
+ifTable
+注释。
+ifIndex
+由ifEntry表示的各个RF电缆上行接口。
+ifType
+docsCableUpstream(129)的IANA数值。
+ifSpeed
+返回这个上行信道的速率。这个返回值是这个接口的带宽（以bits/s为单
+位），有关定义的更高速的调制方式。这是字符速率乘以这种调制方式的每
+字符的位数得到的。
+ifPhysAddress
+返回空串。
+ifAdminStatus
+这个接口的管理状态。
+ifOperStatus
+这个接口当前的可选择的状态。
+ifMtu
+这个接口可以收的最大帧长度（单位为字节）。这个值包括MAC包头的长度。
+ifInOctets
+这个接口收到的总的字节数，也包括MAC层的数据包和MAC包头的长度。
+ifInUcastPkts
+这个接口上收到的单播数据包的数量，也包括MAC层数据包。
+ifInMulticastPkts
+这个接口上收到的组播数据包的数量，也包括MAC层数据包。
+ifInBroadcastPkts
+这个接口上收到的广播数据包的数量，也包括MAC层数据包。
+ifInDiscards
+丢弃的收到的数据包的总数，可能的原因是：缓存缺乏。
+ifInErrors
+输入数据包的数量，包括使这些数据包无法向高层交付的错误。可能的原因
+是: MAC FCS错误。
+ifInUnknownProtos
+含有未知数据类型的帧的数量，也就是含有未知数据包类型的MAC帧。
+ifOutOctets
+返回0
+ifOutUcastPkts
+返回0
+ifOutMulticastPkts
+返回0
+ifOutBroadcastPkts
+返回0
+ifOutDiscards
+返回0
+ifOutErrors
+返回0
+3.2.5.2.2. Cable Modem的上行接口ifEntry
+ifTable
+注释。
+ifIndex
+由ifEntry表示的各个RF电缆上行接口。
+ifType
+docsCableUpstream(129)的IANA数值。
+ifSpeed
+返回这个上行信道的速率。这个返回值是这个接口的带宽（以bits/s为单
+位），有关定义的更高速的调制方式。这是字符速率乘以这种调制方式的每字
+符的位数得到的。 
+ifPhysAddress
+返回空串。
+ifAdminStatus
+这个接口的管理状态。
+ifOperStatus
+这个接口当前的可供选择的状态。
+ifMtu
+这个接口可以传输的最大帧长度（以字节为单位）。这个数值包括MAC包头的
+长度。
+ifInOctets
+返回0。
+ifInUcastPkts
+返回0。
+ifInMulticastPkts 
+返回0。
+ifInBroadcastPkts
+返回0。
+ifInDiscards
+返回0。
+ifInErrors
+返回0。
+ifInUnknownProtos
+返回0。
+ifOutOctets
+这个接口上传输的字节总数。这个数值包括MAC数据包的数据，也包括MAC
+的包头长度。
+ifOutUcastPkts
+这个接口上收到的单播数据包的数量，也包括MAC层数据包。
+ifOutMulticastPkts
+这个接口上收到的组播数据包的数量，也包括MAC层数据包。
+ifOutBroadcastPkts
+这个接口上收到的广播数据包的数量，也包括MAC层数据包。
+ifOutDiscards
+丢弃的输出数据包的总量。 可能的原因是：缺乏缓存。
+ifOutErrors
+由于错误导致不能传输的数据包的数量。
+ifPromiscuousMode
+返回失效。
+3.2.5.3. MAC 层的ifEntry
+MAC层的ifEntry支持接口MIB的ifGeneralInformationGroup和ifPacketGroup。这个
+接口为为低层的下行和上行接口提供了的统计状态。
+ifTable
+注释。
+ifIndex
+由ifEntry表示的各个RF电缆上行接口。
+ifType
+docsCableMaclayer(127)的IANA值。
+ifSpeed
+返回0。
+ifPhysAddress
+返回这个接口的物理地址。
+ifAdminStatus
+这个接口的管理状态。
+ifOperStatus
+当前这个MAC层接口可选择的状态。
+ifHighSpeed
+返回0。
+ifMtu
+返回1500。
+ifInOctets
+从这个接口收到的目标是上部协议层的数据字节的总数。
+ifInUcastPkts
+返回从这个接口收到的目标是上部协议层的单播数据包的数量。
+ifInMulticastPkts
+返回从这个接口收到的目标是上部协议层的组播数据包的数量。
+ifInBroadcastPkts
+返回从这个接口收到的目标是上部协议层的广播数据包的数量。
+ifInDiscards
+已经丢弃的收到的数据包的总数。可能的原因是：缺乏缓存。
+ifInErrors
+输入数据包的数量，包括使这些数据包无法向高层交付的错误。可能的原
+因是：数据包FCS错、有缺陷的MAC包头。
+ifInUnknownProtos
+带有未知数据包类型的帧数。也包括带有未知数据包类型MAC帧
+ifOutOctets
+这个接口上传输的从上层协议层收到的字节总数。
+ifOutUcastPkts
+返回从上层协议层收到并且从这个接口发出的点播数据包的数量。
+ifOutMulticastPkts
+返回从上层协议层收到并且从这个接口发出的组播数据包的数量。
+ifOutBroadcastPkts
+返回从上层协议层收到并且从这个接口发出的广播数据包的数量。
+ifOutDiscards
+丢弃的输出数据包的总量。可能的原因是：缺乏缓存。
+ifOutErrors
+由于错误而导致无法传输的数据包的数量。
+ifPromiscuousMode
+查询Interfaces MIB。
+4. 定义
+DOCS-IF-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+MODULE-IDENTITY，
+OBJECT-TYPE，
+-- do not importBITS，
+Unsigned32，
+Integer32，
+Counter32，
+TimeTicks，
+IpAddress，
+transmission
+ FROM SNMPv2-SMI
+TEXTUAL-CONVENTION，
+MacAddress，
+RowStatus，
+TruthValue，
+TimeInterval，
+TimeStamp
+ FROM SNMPv2-TC
+ 对象类，
+
+MODULE-COMPLIANCE
+ FROM SNMPv2-CONF
+ifIndex，InterfaceIndexOrZero
+ FROM IF-MIB;
+
+docsIfMib MODULE-IDENTITY
+LAST-UPDATED “9908190000Z” -- August 19，1999
+ORGANIZATION “IETF IPCDN Working Group”
+CONTACT-INFO
+“Michael StJohns
+ Postal: @Home Network
+425 Broadway
+Redwood City，CA
+U.S.A.
+ Phone:+1 650 569 5368
+ E-mail: stjohns@corp.home.net”
+描述
+“这是在CM和CMTS中遵从MCNS/DOCSIS的RF接口的MIB模块。”
+REVISION “9908190000Z”
+描述
+“发布的最初版本是RFC 2670。由Mike StJohns修改并确定了问题的版本首先通过了
+MIB专家的认定。特别注意，docsIfRangingResp和 docsIfCmtsInsertionInterval已经废止，
+取而代之以其他具有同样功能，语法也更相似的对象。”
+::= { transmission 127 }
+
+-- 文本约定
+
+TenthdBmV ::= 文本约定
+DISPLAY-HINT “d-1”
+状态：现行
+描述
+“这个数据类型表示了通常以dBmV的形式表示的功率等级。单位是十分之一dBmV；
+例如，5.1 dBmV表示为51。”
+语法：32位整数
+
+TenthdB ::= 文本约定
+DISPLAY-HINT “d-1”
+状态：现行
+描述
+“这个数据类型表示了通常以dB的形式表示的功率等级。单位是十分之一dB；例如，
+5.1 dB表示为51。”
+语法：32位整数
+
+docsIfMibObjects对象标识符 ::= { docsIfMib 1 }
+docsIfBaseObjects 对象标识符 ::= { docsIfMibObjects 1 }
+docsIfCmObjects对象标识符 ::= { docsIfMibObjects 2 }
+docsIfCmtsObjects 对象标识符 ::= { docsIfMibObjects 3 }
+
+-- 基本类
+
+-- 以下表格既用于Cable Modem，也用于CMTS。
+
+docsIfDownstreamChannelTable对象类型
+语法：DocsIfDownstreamChannelEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了下行信道的属性(频带)。”
+参阅
+“DOCSIS RF接口规范，表4-12和4-13。”
+::= { docsIfBaseObjects 1 }
+
+docsIfDownstreamChannelEntry对象类型
+语法：DocsIfDownstreamChannelEntry
+最大权限：不可访问
+状态：现行
+描述
+“为对于下行信道属性列表提供的表项。在这个表中的表项对应于每个ifEntry都存在一
+个docsCableDownstream(128)的ifType。”
+索引{ ifIndex }
+::= { docsIfDownstreamChannelTable 1 }
+
+DocsIfDownstreamChannelEntry ::= 序列{
+docsIfDownChannelId
+32位整数，
+docsIfDownChannelFrequency
+32位整数，
+docsIfDownChannelWidth
+32位整数，
+docsIfDownChannelModulation
+整数，
+docsIfDownChannelInterleave
+整数，
+docsIfDownChannelPower
+TenthdBmV
+}
+
+docsIfDownChannelId对象类型
+语法：32位整数(0..255)
+最大权限：只读
+状态：现行
+描述
+“在这个给定的MAC接口中的下行信道的CMTS的标志。如果接口是宕的，这个对象
+返回当前最新的值。如果下行信道ID未知，这个对象返回数值0。”
+::= { docsIfDownstreamChannelEntry 1 }
+
+docsIfDownChannelFrequencyOBJECT-TYPE
+语法：32位整数(0..1000000000)
+单位：“hertz”
+最大权限：读/写
+状态：现行
+描述
+“这个频道下行频率的中心频率。这个对象会返回当前调制器的频率。如果CMTS提供
+了IF输出，这个对象会返回0，除非这个CMTS处于最终的下行RF频率内。见相关对象中
+有关这个对象的有效带宽的描述。”
+参阅
+“DOCSIS RF接口规范，4.3.3节。”
+::= { docsIfDownstreamChannelEntry 2 }
+
+docsIfDownChannelWidthOBJECT-TYPE
+语法：32位整数(0..16000000)
+单位：“hertz”
+最大权限：读/写
+状态：现行
+描述
+“这个下行信道的带宽。认为大多数应用都支持6MHz(北美)和/或8MHz(欧洲)的信道宽
+度。见相关对象中有关这个对象的有效带宽的描述。”
+参阅
+“DOCSIS RF接口规范，表4-12和4-13。”
+::= { docsIfDownstreamChannelEntry 3 }
+
+docsIfDownChannelModulation对象类型
+语法：整数 {
+unknown(1)，
+other(2)，
+qam64(3)，
+qam256(4)
+}
+最大权限：读/写
+状态：现行
+描述
+“这个下行信道的调制类型。如果接口是宕的，这个对象会返回配置的值(CMTS)、当前
+的大多数数值(CM)、或者未知的的值(1)。参见对相关对象进行写操作的条件和限制。见参考
+文献中有关qam64和qam256暗含的调制模式的规范。”
+参阅
+“DOCSIS RF接口规范，3.6.2节。”
+::= { docsIfDownstreamChannelEntry 4 }
+
+docsIfDownChannelInterleave对象类型
+语法：整数 {
+unknown(1)，
+other(2)，
+taps8Increment16(3)，
+taps16Increment8(4)，
+taps32Increment4(5)，
+taps64Increment2(6)，
+taps128Increment1(7)
+}
+最大权限：读/写
+状态：现行
+描述
+“用于下行信道的Forward Error Correction (FEC)。
+数值定义如下：
+taps8Increment16(3):
+protection 5.9/4.1 usec,latency .22/.15 msec
+taps16Increment8(4):
+protection 12/8.2 usec,latency .48/.33 msec
+taps32Increment4(5):
+protection 24/16 usec,latency .98/.68 msec
+taps64Increment2(6):
+protection 47/33 usec,latency 2/1.4 msec
+taps128Increment1(7):
+protection 95/66 usec,latency 4/2.8 msec
+ 如果这个接口宕了，这个对象就会恢复到配置的数值(CMTS)、当前值(CM)或者未知的
+数值(1)。如果插入值已知，但是在表中没有定义的，返回其他的数值(2)。参见对相关对象进
+行写操作的条件和限制。查看参考文献中有关通过设置这个对象来描述的FEC配置。”
+参阅
+“DOCSIS RF接口规范，4.3.2节。”
+::= { docsIfDownstreamChannelEntry 5 }
+
+docsIfDownChannelPower对象类型
+语法：TenthdBmV
+单位：“dBmV”
+最大权限：读/写
+状态：现行
+描述
+“在CMTS上，计算的信号发射功率。在CM上，收到的电平。如果CM不支持电平测
+量，可以把它设置为0。如果接口宕掉，这个对象返回配置的数值(CMTS)、当前值(CM)或
+者数值0。参见对相关对象进行写操作的条件和限制。见推荐电平指标。”
+参阅
+“DOCSIS RF接口规范，表4-12和Table 4-13。”
+::= { docsIfDownstreamChannelEntry 6 }
+
+-- 下列表格既可以用于CM，也可以用于CMTS。对于CM，在这个表格中只显示隶属
+的频道。对于CM，这个表是只读的。
+
+docsIfUpstreamChannelTable对象类型
+语法：DocsIfUpstreamChannelEntry
+最大权限：不可访问
+状态：现行
+描述
+“这个表描述了捕获的上行信道的属性(频宽)。”
+::= { docsIfBaseObjects 2 }
+
+docsIfUpstreamChannelEntry对象类型
+语法：DocsIfUpstreamChannelEntry
+最大权限：不可访问
+状态：现行
+描述
+“上行频道的属性列表。在这个表中的表项，对于每一个ifEntry都有一个
+docsCableUpstream(129)的ifType。”
+索引{ ifIndex }
+::= { docsIfUpstreamChannelTable 1 }
+
+DocsIfUpstreamChannelEntry ::= 序列{
+            docsIfUpChannelId
+32位整数，
+            docsIfUpChannelFrequency
+32位整数，
+            docsIfUpChannelWidth
+32位整数，
+            docsIfUpChannelModulationProfile
+无标记32位数，
+            docsIfUpChannelSlotSize
+无标记32位数，
+            docsIfUpChannelTxTimingOffset
+无标记32位数，
+            docsIfUpChannelRangingBackoffStart
+32位整数，
+            docsIfUpChannelRangingBackoffEnd
+32位整数，
+            docsIfUpChannelTxBackoffStart
+32位整数，
+            docsIfUpChannelTxBackoffEnd
+32位整数，
+}
+
+docsIfUpChannelId对象类型
+语法：32位整数(0..255)
+最大权限：只读
+状态：现行
+描述
+“上行频道的CMTS标志。”
+::= { docsIfUpstreamChannelEntry 1 }
+
+docsIfUpChannelFrequency对象类型
+语法：32位整数(0..1000000000)
+单位：“hertz”
+最大权限：读/写
+状态：现行
+描述
+“上行信道的中心频率。如果未定义或者未知的频率，那么对象返回0。目前技术允许
+的最小上行频率是5MHz。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，表2-2。”
+::= { docsIfUpstreamChannelEntry 2 }
+
+docsIfUpChannelWidth对象类型
+语法：32位整数(0..20000000)
+单位：“hertz”
+最大权限：读/写
+状态：现行
+描述
+“这个上行信道的带宽。如果没有定义这个信道的带宽或者带宽未知的话，这个对象返
+回数值0。目前，信道宽度最低为200000 Hz。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，表4-3。”
+::= { docsIfUpstreamChannelEntry 3 }
+
+docsIfUpChannelModulationProfile对象类型
+语法：无标记32位数
+最大权限：读/写
+状态：现行
+描述
+“在docsIfCmtsModulationTable中描述这个信道的docsIfModIndex的条目的定义。此
+外，在这里时间间隔分组使用代码描述了信道，合在一起就充分地描述了对信道的调制。如
+果docsIfCmtsModulationTable条目不存在或者docsIfCmtsModulationTable为空的话，这
+个对象返回0。参见对相关对象进行写操作的条件和限制。”
+::= { docsIfUpstreamChannelEntry 4 }
+
+docsIfUpChannelSlotSize对象类型
+语法：无标记32位数
+最大权限：读/写
+状态：现行
+描述
+“每个上行的袖珍通道以6.25毫秒记。如果没有定义或者未知的话，就返回0。参见对
+相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，6.1.2.4节。”
+::= { docsIfUpstreamChannelEntry 5 }
+
+docsIfUpChannelTxTimingOffset对象类型
+语法：无标记32位数
+最大权限：只读
+状态：现行
+描述
+“CM上当前的往返时间的度量，或者CMTS看到的最大往返时间。用CM上行传输的
+时长来确定同步到达的CMTS。单位为(6.25ms/64)一个周期。”
+参阅
+“DOCSIS RF接口规范，6.5节。”
+::= { docsIfUpstreamChannelEntry 6 }
+
+docsIfUpChannelRangingBackoffStart对象类型
+语法：32位整数(0..16)
+最大权限：读/写
+状态：现行
+描述
+“当重新尝试广泛搜索请求时要用到的初始随机补偿窗口。以权值2来表示。CMTS上
+的数值16表示采用了适当的所有权重试机制。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，6.4.4节。”
+::= { docsIfUpstreamChannelEntry 7 }
+
+docsIfUpChannelRangingBackoffEnd对象类型
+语法：32位整数(0..16)
+最大权限：读/写
+状态：现行
+描述
+“当重新尝试广泛搜索请求时要用到的最终随机补偿窗口。以权值2来表示。CMTS上
+的数值16表示采用了适当的所有权重试机制。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，6.4.4节。”
+::= { docsIfUpstreamChannelEntry 8 }
+
+docsIfUpChannelTxBackoffStart对象类型
+语法：32位整数(0..16)
+最大权限：读/写
+状态：现行
+描述
+“当重新尝试传输时要用到的最初随机补偿窗口。以权值2来表示。CMTS上的数值16
+表示采用了适当的所有权重试机制。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，6.4.4节。”
+::= { docsIfUpstreamChannelEntry 9 }
+
+docsIfUpChannelTxBackoffEnd对象类型
+语法：32位整数(0..16)
+最大权限：读/写
+状态：现行
+描述
+“当重新尝试传输时要用到的最初随机补偿窗口。以权值2来表示。CMTS上的数值16
+表示采用了适当的所有权重试机制。参见对相关对象进行写操作的条件和限制。”
+参阅
+“DOCSIS RF接口规范，6.4.4节。”
+::= { docsIfUpstreamChannelEntry 10 }
+
+-- 下列表格描述了各种服务分级的属性。这个表格的各个表项参照了 
+docsIfServiceEntries。为了减少docsIfServiceTable里的冗余信息，它以单独的表格形式存
+在。这个表既用于CM，也用于CMTS。CM只需要根据它的docsIfServiceTable来维护服
+务分级表项。
+
+docsIfQosProfileTable对象类型
+语法：DocsIfQosProfileEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“各个服务分级的属性的描述。”
+::= { docsIfBaseObjects 3 }
+
+docsIfQosProfileEntry对象类型
+语法：DocsIfQosProfileEntry
+最大权限：不可访问
+状态：现行
+描述
+“描述了某个服务级别的属性。如果在CMTS中以读创建方式执行的话，就要由
+docsIfCmtsQosProfilePermissions 的数值来控制这个表中各个表项的内容了。如果以只读
+方式执行的话，就要根据收到的从CM返回的REG-REQ MAC消息(CMTS执行)或者根据从
+TFTP选择文件中获得的信息(CM执行)来创建这个表中各个表项的内容了。在CMTS里，
+如果docsIfCmtsServiceTable不在引用的话，就会将这个只读表项删除。当这个表格中的某
+个表项被CM的docsIfCmServiceTable或者CMTS的docsIfCmtsServiceTable引用时，不
+得将其删除。在被docsIfCmtsServiceTable中的表项引用时，不得改变这个表格中的表项。
+如果这个表格是自动创建的，那么对于各个服务级别将只有一个单独的表项。不推荐对相同
+的服务级别参数建立多个表项。”
+索引{ docsIfQosProfIndex }
+::= { docsIfQosProfileTable 1 }
+
+DocsIfQosProfileEntry ::= 序列{
+            docsIfQosProfIndex
+32位整数，
+            docsIfQosProfPriority
+32位整数，
+            docsIfQosProfMaxUpBandwidth
+32位整数，
+            docsIfQosProfGuarUpBandwidth
+32位整数，
+            docsIfQosProfMaxDownBandwidth
+32位整数，
+            docsIfQosProfMaxTxBurst
+32位整数，
+            docsIfQosProfBaselinePrivacy
+TruthValue,
+            docsIfQosProfStatus
+RowStatus
+}
+
+docsIfQosProfIndex对象类型
+语法：32位整数(1..16383)
+最大权限：不可访问
+状态：现行
+描述
+“在docsIfQosProfileTable中唯一定义的一个表项的索引值。”
+::= { docsIfQosProfileEntry 1 }
+
+docsIfQosProfPriorityOBJECT-TYPE
+语法：32位整数(0..7)
+最大权限：读确认
+状态：现行
+描述
+“在分配带宽时，分配给某种服务的相应的优先权等级。0表示低优先权等级；7表示
+最高优先权级别。特定设备的优先级描述。在这个行激活后，就不必改变了。”
+DEFVAL { 0 }
+::= { docsIfQosProfileEntry 2 }
+
+docsIfQosProfMaxUpBandwidth对象类型
+语法：32位整数(0..100000000)
+最大权限：读确认
+状态：现行
+描述
+“最大上行带宽，单位是bps，允许对一种服务进行服务分级。如果对上行带宽没有限
+制的话，是0。在这个行激活后，就不必改变了。”
+DEFVAL { 0 }
+::= { docsIfQosProfileEntry 3 }
+
+docsIfQosProfGuarUpBandwidth对象类型
+语法：32位整数(0..100000000)
+最大权限：读确认
+状态：现行
+描述
+“保证的最小上行带宽，单位是bps，允许对一种服务进行服务分级。在这个行激活后，
+就不必改变了。”
+DEFVAL { 0 }
+::= { docsIfQosProfileEntry 4 }
+
+docsIfQosProfMaxDownBandwidth对象类型
+语法：32位整数(0..100000000)
+最大权限：读确认
+状态：现行
+描述
+“最大下行带宽，单位是bps，允许对一种服务进行服务分级。如果对下行带宽没有限
+制的话，是0。在这个行激活后，就不必改变了。”
+DEFVAL { 0 }
+::= { docsIfQosProfileEntry 5 }
+
+docsIfQosProfMaxTxBurst对象类型
+语法：32位整数(0..255)
+最大权限：读确认
+状态：现行
+描述
+“某个上行数据流需要的最大的袖珍通道的数量。0值意味着不受限制。在这个行激活
+后，就不必改变了。”
+DEFVAL { 0 }
+::= { docsIfQosProfileEntry 6 }
+
+docsIfQosProfBaselinePrivacyOBJECT-TYPE
+语法：TruthValue
+最大权限：读确认
+状态：现行
+描述
+“显示是否已经把这个服务级别的BP激活了。在对这条内容操作时，这个对象不得进
+行更改。”
+DEFVAL { false }
+::= { docsIfQosProfileEntry 7 }
+
+docsIfQosProfStatus对象类型
+语法：RowStatus
+最大权限：读确认
+状态：现行
+描述
+“这个对象用于创建和删除这个表格里的表项。当这个表项被CM上的
+docsIfCmServiceTable或者CMTS上的docsIfCmtsServiceTable中的任何表项引用时，这
+个对象不能动态修改。”
+::= { docsIfQosProfileEntry 8 }
+
+docsIfSignalQualityTable对象类型
+语法：DocsIfSignalQualityEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“在CM上，描述下行信道的物理信号质量。在CMTS上，描述上行信道的物理信号质
+量。在CMTS上，这个表可能把时间冲突间隔排除在外。”
+::= { docsIfBaseObjects 4 }
+
+docsIfSignalQualityEntry对象类型
+语法：DocsIfSignalQualityEntry
+最大权限：不可访问
+状态：现行
+描述
+“在CM上，描述下行信道的物理特征。在CMTS上，描述上行信道的物理信号质量。
+对于这个表格中的各个表项都以CMTS上docsCableUpstream(129) 的ifType和CM上的
+docsCableDownstream(128) 的ifType对应一个ifEntry，。”
+索引{ ifIndex }
+::= { docsIfSignalQualityTable 1 }
+
+DocsIfSignalQualityEntry ::=序列{
+            docsIfSigQIncludesContention
+TruthValue,
+            docsIfSigQUnerroreds
+32位计数器，
+            docsIfSigQCorrecteds
+32位计数器，
+            docsIfSigQUncorrectables
+32位计数器，
+            docsIfSigQSignalNoise
+TenthdB,
+            docsIfSigQMicroreflections
+32位整数，
+            docsIfSigQEqualizationData
+八位字符串
+}
+
+docsIfSigQIncludesContention对象类型
+语法：TruthValue
+最大权限：只读
+状态：现行
+描述
+“如果这个CMTS包括了在这个表中的累计值中间隔的话，取值true(1)。否则对于CM
+总是false(2)。”
+参阅
+“DOCSIS RF接口规范，6.4.4节。”
+::= { docsIfSignalQualityEntry 1 }
+
+docsIfSigQUnerroreds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在这个信道上收到的没有错误的代码字。包括了所有的代码字，无论他们是否是到达
+这个设备的数据帧的一部分。”
+参阅
+“DOCSIS RF接口规范，4.2.3和4.3.6节。”
+::= { docsIfSignalQualityEntry 2 }
+
+docsIfSigQCorrecteds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在这个信道上收到的可纠错的代码字。包括了所有的代码字，无论他们是否是到达这
+个设备的数据帧的一部分。”
+参阅
+“DOCSIS RF接口规范，4.2.3和4.3.6节。”
+::= { docsIfSignalQualityEntry 3 }
+
+docsIfSigQUncorrectables对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在这个信道上收到的不可纠错的代码字。包括了所有的代码字，无论他们是否是到达
+这个设备的数据帧的一部分。”
+参阅
+“DOCSIS RF接口规范，4.2.3和4.3.6节。”
+::= { docsIfSignalQualityEntry 4 }
+
+docsIfSigQSignalNoise对象类型
+语法：TenthdB
+单位：“dB”
+最大权限：只读
+状态：现行
+描述
+“这个频道的信噪比。在CM上，描述了下行频段的信噪比。在CMTS上，描述了上行
+频段的平均信噪比。”
+参阅
+“DOCSIS RF接口规范，表2-1 and 2-2。”
+::= { docsIfSignalQualityEntry 5 }
+
+docsIfSigQMicroreflections对象类型
+语法：32位整数(0..255)
+单位：“dBc”
+最大权限：只读
+状态：现行
+描述
+“包括这个接口上感知的带内响应的总的微观反映，以dBc来度量信号能级。这个对象
+不可能返回一个完全正确的数值，但是给出一个在这个接口上收到的显示微观反映的范围。
+直到应用程序能够提供足够精确的信息。”
+参阅
+参阅
+“DOCSIS RF接口规范，表2-1和2-2。”
+::= { docsIfSignalQualityEntry 6 }
+
+docsIfSigQEqualizationData对象类型
+语法：八位字符串
+最大权限：只读
+状态：现行
+描述
+“对于CM，返回下行信道的平均数据。对于CMTS，返回上行信道的平均数据。如果
+数值未知或者没有定义相关数据可用的话，返回空字符串。”
+参阅
+“DOCSIS RF接口规范，图6-23。”
+::= { docsIfSignalQualityEntry 7 }
+
+-- CABLE MODEM类
+
+-- #######
+
+-- CM MAC表
+
+docsIfCmMacTable对象类型
+语法：DocsIfCmMacEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“对各个CM MAC接口的属性的描述，对ifEntry中的用到的信息进行了扩展。”
+::= { docsIfCmObjects 1 }
+
+docsIfCmMacEntry对象类型
+语法：DocsIfCmMacEntry
+最大权限：不可访问
+状态：现行
+描述
+“包含了描述各个MAC表项属性对象的表项，对ifEntry中的信息进行了扩展。和这个
+表中的每个表项都有ifEntry中的一个docsCableMaclayer(127)的ifType与之对应。”
+索引{ ifIndex }
+::= { docsIfCmMacTable 1 }
+
+DocsIfCmMacEntry ::= SEQUENCE {
+            docsIfCmCmtsAddress
+Mac地址，
+            docsIfCmCapabilities
+位，
+            docsIfCmRangingRespTimeout
+TimeTicks,
+            docsIfCmRangingTimeout
+TimeInterval
+}
+
+docsIfCmCmtsAddress对象类型
+语法：MAC地址
+最大权限：只读
+状态：现行
+描述
+“用于标识控制这个MAC域的CMTS。在CM上，就是SYNC、MAP和其他MAC层
+消息中得到的源地址。如果是未知的CMTS，返回00-00-00-00-00-00。”
+::= { docsIfCmMacEntry 1 }
+
+docsIfCmCapabilities对象类型
+语法：位{
+atmCells(0)，
+concatenation(1)
+}
+最大权限：只读
+状态：现行
+描述
+“标识了这个接口采用的MAC的性能。注意：总是支持数据包转发的。因此，不需要
+定义标识位来明确指定具有这种性能。”
+::= { docsIfCmMacEntry 2 }
+
+-- 这个对象已经被废止了，取而代之以docsIfCmRangingTimeout来对键入的 
+TimeInterval进行校正。新的MIB应用应该采用docsIfCmRangingTimeout来代替。
+
+docsIfCmRangingRespTimeout对象类型
+语法：TimeTicks
+最大权限：读/写
+状态：废止
+描述
+“对某个搜索响应数据报的等待时间。”
+参阅
+“DOCSIS RF接口规范，图7-6和7-7，定时器T3。”
+DEFVAL { 20 }
+::= { docsIfCmMacEntry 3 }
+
+docsIfCmRangingTimeout对象类型
+语法：TimeInterval
+最大权限：读/写
+状态：现行
+描述
+“对某个搜索响应数据报的等待时间。”
+参阅
+“DOCSIS RF接口规范，图7-6和7-7，定时器T3。”
+DEFVAL { 20 }
+::= { docsIfCmMacEntry 4 }
+
+-- CM状态表。
+-- 这个表只用于CM上。
+
+docsIfCmStatusTable对象类型
+语法：DocsIfCmStatusEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表维护着大量的CM的状态对象和计数器。”
+::= { docsIfCmObjects 2 }
+
+docsIfCmStatusEntry对象类型
+语法：DocsIfCmStatusEntry
+最大权限：不可访问
+状态：现行
+描述
+“在CM中，有关某个MAC层的场合的一系列状态对象和计数器。在这个表中，对应
+于每一个具有某种docsCableMaclayer(127)的ifType的ifEntry 都有一个表项。”
+索引{ ifIndex }
+::= { docsIfCmStatusTable 1 }
+
+DocsIfCmStatusEntry ::= 序列{
+docsIfCmStatusValue
+整数，
+docsIfCmStatusCode
+八位字符串，
+docsIfCmStatusTxPower
+TenthdBmV,
+docsIfCmStatusResets
+32位计数器，
+docsIfCmStatusLostSyncs
+32位计数器，
+docsIfCmStatusInvalidMaps
+32位计数器，
+docsIfCmStatusInvalidUcds
+32位计数器，
+docsIfCmStatusInvalidRangingResp
+32位计数器，
+docsIfCmStatusInvalidRangingResponses
+32位计数器，
+docsIfCmStatusInvalidRegistrationResp
+32位计数器，
+docsIfCmStatusInvalidRegistrationResponses
+32位计数器，
+docsIfCmStatusT1Timeouts
+32位计数器，
+docsIfCmStatusT2Timeouts
+32位计数器，
+docsIfCmStatusT3Timeouts
+32位计数器，
+docsIfCmStatusT4Timeouts
+32位计数器，
+docsIfCmStatusRangingAborteds
+32位计数器，
+}
+
+docsIfCmStatusValue对象类型
+语法：整数 {
+other(1)，
+notReady(2)，
+notSynchronized(3)，
+phySynchronized(4)，
+usParametersAcquired(5)，
+rangingComplete(6)，
+ipComplete(7)，
+todEstablished(8)，
+securityEstablished(9)，
+paramTransferComplete(10)，
+registrationComplete(11)，
+operational(12)，
+accessDenied(13)
+}
+最大权限：只读
+状态：现行
+描述
+“当前CM的连接状态，象在RF接口规范中描述的那样。”
+参阅
+“DOCSIS RF接口规范，第7.2章。”
+::= { docsIfCmStatusEntry 1 }
+
+docsIfCmStatusCode对象类型
+语法：八位字符串
+最大权限：只读
+状态：现行
+描述
+“在RF接口规范中定义的CM状态代码。这种状态代码包含着指示错误类型的某种特
+征字，跟在2个或者3个指示状态情况的数字后面。”
+参阅
+“DOCSIS RF接口规范，Cable Modem状态码。”
+::= { docsIfCmStatusEntry 2 }
+
+docsIfCmStatusTxPower对象类型
+语法：TenthdBmV
+单位：“dBmV”
+最大权限：只读
+状态：现行
+描述
+“捕获的上行频道的运行电平。”
+参阅
+“DOCSIS RF接口规范，4.2.8节。”
+::= { docsIfCmStatusEntry 3 }
+
+docsIfCmStatusResets对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM重置或者初始化这个接口的次数。”
+::= { docsIfCmStatusEntry 4 }
+
+docsIfCmStatusLostSyncs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM丧失下行频道同步的次数。”
+参阅
+“DOCSIS RF接口规范，6.5节。”
+::= { docsIfCmStatusEntry 5 }
+
+docsIfCmStatusInvalidMaps对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM收到的无效的MAP消息的次数。”
+参阅
+“DOCSIS RF接口规范，6.3.2.2和6.4.2节。”
+::= { docsIfCmStatusEntry 6 }
+
+docsIfCmStatusInvalidUcds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM收到的无效的UCD消息的次数。”
+参阅
+“DOCSIS RF接口规范，6.3.2.2节。”
+::= { docsIfCmStatusEntry 7 }
+
+-- docsIfCmStatusInvalidRangingResp取代了32位计数器的命名要求
+
+docsIfCmStatusInvalidRangingResponses对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM收到的无效的定向响应消息的次数。”
+::= { docsIfCmStatusEntry 8 }
+
+-- docsIfCmStatusInvalidRegistrationResp取代了32位计数器的命名要求
+
+docsIfCmStatusInvalidRegistrationResponses对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“CM收到的无效的注册响应UCD消息的次数。”
+::= { docsIfCmStatusEntry 9 }
+
+docsIfCmStatusT1Timeouts对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“终结于CM的T1计数器的次数。”
+参阅
+“DOCSIS RF接口规范，图7-3。”
+::= { docsIfCmStatusEntry 10 }
+
+docsIfCmStatusT2Timeouts对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“终结于CM的T2计数器的次数。”
+参阅
+“DOCSIS RF接口规范，图7-6。”
+::= { docsIfCmStatusEntry 11 }
+
+docsIfCmStatusT3Timeouts对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“终结于CM的T3计数器的次数。”
+参阅
+“DOCSIS RF接口规范，图7-6和7-7。”
+::= { docsIfCmStatusEntry 12 }
+
+docsIfCmStatusT4Timeouts对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“终结于CM的T4计数器的次数。”
+参阅
+“DOCSIS RF接口规范，图7-7。”
+::= { docsIfCmStatusEntry 13 }
+
+docsIfCmStatusRangingAborteds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“由CMTS终结的定向处理的次数。”
+::= { docsIfCmStatusEntry 14 }
+
+-- Cable Modem服务表格
+
+docsIfCmServiceTableOBJECT-TYPE
+语法：DocsIfCmServiceEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“对某个CM上各个上行服务队列特征的描述。”
+::= { docsIfCmObjects 3 }
+
+docsIfCmServiceEntry对象类型
+语法：DocsIfCmServiceEntry
+最大权限：不可访问
+状态：现行
+描述
+“对上行带宽服务队列特征的描述。对应于这个表中的各个表项都有一个服务ID。 主
+要索引是一个带有docsCableMaclayer(127) 的ifType的ifIndex。”
+索引{ ifIndex，docsIfCmServiceId }
+::= { docsIfCmServiceTable 1 }
+
+DocsIfCmServiceEntry ::= 序列{
+docsIfCmServiceId
+32位整数，
+docsIfCmServiceQosProfile
+32位整数，
+docsIfCmServiceTxSlotsImmed
+32位计数器，
+docsIfCmServiceTxSlotsDed
+32位计数器，
+docsIfCmServiceTxRetries
+32位计数器，
+docsIfCmServiceTxExceeded
+32位计数器，
+docsIfCmServiceTxExceededs
+32位计数器，
+docsIfCmServiceRqRetries
+32位计数器，
+docsIfCmServiceRqExceeded
+32位计数器，
+docsIfCmServiceRqExceededs
+32位计数器，
+}
+
+docsIfCmServiceId对象类型
+语法：32位整数(1..16383)
+最大权限：不可访问
+状态：现行
+描述
+“定义一个上行带宽的服务队列。这个服务队列属性对CM和CMTS都是一致的。 
+CMTS根据CM的请求和相关的服务级别的队列把上行带宽分配给这个服务队列。”
+::= { docsIfCmServiceEntry 1 }
+
+docsIfCmServiceQosProfile对象类型
+语法：32位整数(0..16383)
+最大权限：只读
+状态：现行
+描述
+“在docsIfQosProfileTable中描述某个特定服务的服务级别属性的索引。如果在
+docsIfQosProfileTable中没有相关表项存在，这个对象返回数值0。”
+::= { docsIfCmServiceEntry 2 }
+
+docsIfCmServiceTxSlotsImmed对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在当前模式下用来传输数据PDU的上行袖珍通道的数量。只包括那些假定已经到达
+头端的那些PDU(也就是说，那些已经明确确认的)。不包括重新尝试传输或者请求的袖珍通
+道。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 3 }
+
+docsIfCmServiceTxSlotsDed对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“用专用模式传输数据PDU的上行袖珍通道的数量(也就是Data Grant单播的结果)。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 4 }
+
+docsIfCmServiceTxRetries对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“传输数据PDU尝试的次数，包括无法响应的对回执的请求。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 5 }
+
+-- 把docsIfCmServiceTxExceeded重新命名为32位计数器命名的前提条件
+
+docsIfCmServiceTxExceededs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“由于过多没有回执的重试而导致传输失败的数据PDU的数量。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 6 }
+
+docsIfCmServiceRqRetries对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“无法产生回执的传输带宽请求的尝试的次数。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 7 }
+
+-- docsIfCmServiceRqExceeded取代了32位计数器的命名要求
+
+docsIfCmServiceRqExceededs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“由于过多没有回执的重试而导致带宽请求失败的次数。”
+参阅
+“DOCSIS RF接口规范，6.4节。”
+::= { docsIfCmServiceEntry 8 }
+
+-- CMTS类
+
+-- CMTS MAC表
+
+docsIfCmtsMacTable对象类型
+语法：DocsIfCmtsMacEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“描述了各个CMTS MAC接口的属性，对ifEntry的可用信息进行了扩展。对于所有的
+CMTS设备都是强制执行的。”
+::= { docsIfCmtsObjects 1 }
+
+docsIfCmtsMacEntry对象类型
+语法：DocsIfCmtsMacEntry
+最大权限：不可访问
+状态：现行
+描述
+“包含着描述了各个MAC入口属性的对象的条目，在ifEntry中给出了相关的信息。在
+这个表中的每个条目都对应着具有某个docsCableMaclayer(127)的ifType的ifEntry。”
+索引{ ifIndex }
+::= { docsIfCmtsMacTable 1 }
+
+DocsIfCmtsMacEntry ::= 序列{
+            docsIfCmtsCapabilities
+位
+            docsIfCmtsSyncInterval
+32位整数，
+            docsIfCmtsUcdInterval
+32位整数，
+            docsIfCmtsMaxServiceIds
+32位整数，
+            docsIfCmtsInsertionInterval
+TimeTicks,   -- 废止
+            docsIfCmtsInvitedRangingAttempts
+32位整数，
+            docsIfCmtsInsertInterval
+TimeInterval
+}
+
+docsIfCmtsCapabilities对象类型
+语法：位{
+atmCells(0)，
+concatenation(1)
+}
+最大权限：只读
+状态：现行
+描述
+“定义在这个接口上的CMTS MAC应用程序的性能。注意：总是支持数据包的传输的。
+因此，不必明确指定特定的位来表示这种能力。”
+参阅
+“DOCSIS RF接口规范，第6章。”
+::= { docsIfCmtsMacEntry 1 }
+
+docsIfCmtsSyncInterval对象类型
+语法：32位整数(1..200)
+单位：“毫秒”
+最大权限：读/写
+状态：现行
+描述
+“在这个接口上成功传输CMTS之间的SYNC 消息的时间间隔。”
+参阅
+“DOCSIS RF接口规范，6.5节和附录B。”
+::= { docsIfCmtsMacEntry 2 }
+
+docsIfCmtsUcdInterval对象类型
+语法：32位整数(1..2000)
+单位：“毫秒”
+最大权限：读/写
+状态：现行
+描述
+“在这个接口上成功地传输在CMTS之间的各个上行信道的上行信道Descriptor消息的
+时间间隔。”
+参阅
+“DOCSIS RF接口规范，6.5节和附录B。”
+::= { docsIfCmtsMacEntry 3 }
+
+docsIfCmtsMaxServiceIds对象类型
+语法：32位整数(1..16383)
+最大权限：只读
+状态：现行
+描述
+“可以同时启用的服务ID的最大数量。”
+::= { docsIfCmtsMacEntry 4 }
+
+-- 这个对象已经被废止，相应的以bydocsIfCmtsInsertInterval来代替它定位SYNTAX
+输入问题。用这个对象代替这个MIB的新的应用程序。
+
+docsIfCmtsInsertionInterval对象类型
+语法：TimeTicks
+最大权限：读/写
+状态：废止
+描述
+“在各个广播的数据终端设备之间保持连接的累计时间。在各个广播的数据终端设备之
+间保持的连接用于准许新的CM加入网络。0表示用特定厂商的算法来代替固定时长。规范
+允许的最大时间是2秒。”
+参阅
+“DOCSIS RF接口规范，7.2.5节和附录B，Ranging Interval。”
+::= { docsIfCmtsMacEntry 5 }
+
+docsIfCmtsInvitedRangingAttempts对象类型
+语法：32位整数(0..1024)
+最大权限：读/写
+状态：现行
+描述
+“发出搜索请求邀请的最大的尝试数量。如果是0值的话，就意味着系统应该永远搜索
+下去。”
+参阅
+“DOCSIS RF接口规范，7.2.5节和附录B。”
+::= { docsIfCmtsMacEntry 6 }
+
+docsIfCmtsInsertInterval对象类型
+语法：TimeInterval
+最大权限：读/写
+状态：现行
+描述
+“消耗在各个广播数据终端设备保持的连接的时间。广播数据终端设备保持的连接用来
+允许新的CM加入网络。0表示用特定厂商的算法来代替固定时长。规范允许的最大时间是
+2秒。”
+参阅
+“DOCSIS RF接口规范，附录B。”
+::= { docsIfCmtsMacEntry 7 }
+
+-- CMTS状态表
+
+docsIfCmtsStatusTable对象类型
+语法：DocsIfCmtsStatusEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“对于MAC层，这个组维护着一系列状态的对象和计数器。”
+::= { docsIfCmtsObjects 2 }
+
+docsIfCmtsStatusEntry对象类型
+SYNTAXDocsIfCmtsStatusEntry
+最大权限：不可访问
+状态：现行
+描述
+“就某个MAC层而言的状态表项。对应于每个ifEntry 在这个表里都有一个 
+docsCableMaclayer(127)的ifType和它对应。”
+索引{ ifIndex }
+::= { docsIfCmtsStatusTable 1 }
+
+DocsIfCmtsStatusEntry ::= 序列{
+            docsIfCmtsStatusInvalidRangeReqs
+32位计数器，
+            docsIfCmtsStatusRangingAborteds
+32位计数器，
+            docsIfCmtsStatusInvalidRegReqs
+32位计数器，
+            docsIfCmtsStatusFailedRegReqs
+32位计数器，
+            docsIfCmtsStatusInvalidDataReqs
+32位计数器，
+            docsIfCmtsStatusT5Timeouts
+32位计数器，
+}
+
+docsIfCmtsStatusInvalidRangeReqs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了这个接口收到的有缺陷的RNG-REQ消息数。”
+::= { docsIfCmtsStatusEntry 1 }
+
+docsIfCmtsStatusRangingAborteds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了由CMTS导致的异常中断的范围尝试的次数。”
+::= { docsIfCmtsStatusEntry 2 }
+
+docsIfCmtsStatusInvalidRegReqs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了这个接口收到的有缺陷的REG-REQ消息数。”
+::= { docsIfCmtsStatusEntry 3 }
+
+docsIfCmtsStatusFailedRegReqs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了这个接口上注册尝试失败的次数，例如认证失败和服务分级失败。”
+::= { docsIfCmtsStatusEntry 4 }
+
+docsIfCmtsStatusInvalidDataReqs对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了这个接口上有缺陷的数据请求的数量。”
+::= { docsIfCmtsStatusEntry 5 }
+
+docsIfCmtsStatusT5Timeouts对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“这个对象累计了这个接口上时间计数器T5到期的次数。”
+::= { docsIfCmtsStatusEntry 6 }
+
+-- CM状态表格(和CMTS一起)。
+-- 这个表格只对CMTS有用。它包括了在CMTS上用到的各个CM的状态信息。
+
+docsIfCmtsCmStatusTable对象类型
+语法：DocsIfCmtsCmStatusEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“在CMTS中的一系列对象，维护着连接到这个CMTS的各个Cable Modem。”
+::= { docsIfCmtsObjects 3 }
+
+docsIfCmtsCmStatusEntry对象类型
+语法：DocsIfCmtsCmStatusEntry
+最大权限：不可访问
+状态：现行
+描述
+“某个CM状态。在这个表中的各个表项对应于连接到具有这个表的CMTS的各个
+CM。”
+索引{ docsIfCmtsCmStatusIndex }
+::= { docsIfCmtsCmStatusTable 1 }
+
+DocsIfCmtsCmStatusEntry ::= 序列{
+            docsIfCmtsCmStatusIndex
+32位整数，
+            docsIfCmtsCmStatusMacAddress
+Mac地址，
+            docsIfCmtsCmStatusIpAddress
+Ip地址，
+            docsIfCmtsCmStatusDownChannelIfIndex
+InterfaceIndexOrZero,
+            docsIfCmtsCmStatusUpChannelIfIndex
+InterfaceIndexOrZero,
+            docsIfCmtsCmStatusRxPower
+TenthdBmV,
+            docsIfCmtsCmStatusTimingOffset
+32位无标记数，
+            docsIfCmtsCmStatusEqualizationData
+八位字符串，
+            docsIfCmtsCmStatusValue
+整数，
+            docsIfCmtsCmStatusUnerroreds
+32位计数器，
+            docsIfCmtsCmStatusCorrecteds
+32位计数器，
+            docsIfCmtsCmStatusUncorrectables
+32位计数器，
+            docsIfCmtsCmStatusSignalNoise
+TenthdB,
+            docsIfCmtsCmStatusMicroreflections
+32位整数
+}
+
+docsIfCmtsCmStatusIndex对象类型
+语法：32位整数(1..2147483647)
+最大权限：不可访问
+状态：现行
+描述
+“在表中唯一标识一个表项的索引数值。对于一个CM，在CMTS正常运行期间，这个
+索引值不得改变。”
+::= { docsIfCmtsCmStatusEntry 1 }
+
+docsIfCmtsCmStatusMacAddress对象类型
+语法：MAC地址
+最大权限：只读
+状态：现行
+描述
+“CM的MAC地址。如果Cable Modem具有多个MAC地址的话，这就是和电缆接口
+对应的MAC地址。”
+::= { docsIfCmtsCmStatusEntry 2 }
+
+docsIfCmtsCmStatusIpAddress对象类型
+语法：IP地址
+最大权限：只读
+状态：现行
+描述
+“CM的IP地址。如果没有给CM分配IP地址或者IP地址未知的话，这个对象返回数
+值0.0.0.0。如果CM拥有多个IP地址的话，这个对象返回和电缆接口对应的IP地址。”
+::= { docsIfCmtsCmStatusEntry 3 }
+
+docsIfCmtsCmStatusDownChannelIfIndex对象类型
+语法：InterfaceIndexOrZero
+最大权限：只读
+状态：现行
+描述
+“连接的这个CM下行信道的IfIndex。如果下行信道未知，这个对象返回数值0。”
+::= { docsIfCmtsCmStatusEntry 4 }
+
+docsIfCmtsCmStatusUpChannelIfIndex对象类型
+语法：InterfaceIndexOrZero
+最大权限：只读
+状态：现行
+描述
+“连接的这个CM上行信道的IfIndex。如果下行信道未知，这个对象返回数值0。”
+::= { docsIfCmtsCmStatusEntry 5 }
+
+docsIfCmtsCmStatusRxPower对象类型
+语法：TenthdBmV
+单位：“dBmV”
+最大权限：只读
+状态：现行
+描述
+“从这个CM的上行数据流中获得的接收电平。如果接受电平未知的话，这个对象返回
+数值0。”
+参阅
+“DOCSIS RF接口规范，表格4-13。”
+::= { docsIfCmtsCmStatusEntry 6 }
+
+docsIfCmtsCmStatusTimingOffset对象类型
+语法：无标记32位数
+最大权限：只读
+状态：现行
+描述
+“对于某个CM来讲的当前往返时间的度量。CM上行传输确认和CMTS同步的时长。
+单位以6.25ms/64为周期。 如果数值未知的话，返回0。”
+参阅
+“DOCSIS RF接口规范，6.5节。”
+::= { docsIfCmtsCmStatusEntry 7 }
+
+docsIfCmtsCmStatusEqualizationData对象类型
+语法：八位字符串
+最大权限：只读
+状态：现行
+描述
+“这个CM的均衡数据。如果这个数值未知或者没有均衡数据可用或者定义的话，返回
+一个空字符串。”
+参阅
+“DOCSIS RF接口规范，图6-23。”
+::= { docsIfCmtsCmStatusEntry 8 }
+
+docsIfCmtsCmStatusValue对象类型
+语法：整数 {
+other(1)，
+ranging(2)，
+rangingAborted(3)，
+rangingComplete(4)，
+ipComplete(5)，
+registrationComplete(6)，
+accessDenied(7)
+}
+最大权限：只读
+状态：现行
+描述
+“当前CM的连接状态，就象在RF接口规范中定义的那样。返回的状态信息是由CMTS
+设定的CM状态，并且显示如下事件：
+other(1)
+任何下列状态之外的状态。
+ranging(2)
+CMTS从CM收到的一个初始定向请求消息，而定向处理还没有完成。
+rangingAborted(3)
+CMTS已经向CM发出的一个定向失败的消息。
+rangingComplete(4)
+CMTS已经向CM发送的一个定向完成消息。
+ipComplete(5)
+CMTS已经收到一个DHCP应答消息，并且把它转发给了CM。
+registrationComplete(6)
+CMTS已经向CM发送了一个注册响应消息。
+accessDenied(7)
+CMTS已经向CM发送了一个注册失败的消息。
+CMTS只需要报告它可以监测到的状态。”
+参阅
+“DOCSIS RF接口规范，7.2章。”
+::= { docsIfCmtsCmStatusEntry 9 }
+
+docsIfCmtsCmStatusUnerroreds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“从这个CM中收到的没有错误的代码字。”
+参阅
+“DOCSIS RF接口规范，4.2.3节”
+::= { docsIfCmtsCmStatusEntry 10 }
+
+docsIfCmtsCmStatusCorrecteds对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“从这个CM收到的可纠错代码字。”
+参阅
+“DOCSIS RF接口规范，4.2.3节”
+::= { docsIfCmtsCmStatusEntry 11 }
+
+docsIfCmtsCmStatusUncorrectables对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“从CM收到的无法纠错的代码字。”
+参阅
+“DOCSIS RF接口规范，4.2.3节。”
+::= { docsIfCmtsCmStatusEntry 12 }
+
+docsIfCmtsCmStatusSignalNoise对象类型
+语法：TenthdB
+单位：“dB”
+最大权限：只读
+状态：现行
+描述
+“从这个CM查到的上行数据的信噪比。如果信噪比未知，这个对象返回数值0。”
+::= { docsIfCmtsCmStatusEntry 13 }
+
+docsIfCmtsCmStatusMicroreflections对象类型
+语法：32位整数(0..255)
+单位：“dBc”
+最大权限：只读
+状态：现行
+描述
+“总体微观反应，包括在接口上获得的带内的响应（单位为信号电平dBc）。这个对象没
+有假定返回一个完全精确的数值，但是应该给定一个在这个接口上的微观反应的范围。它一
+直要等到应用程序能够给出尽可能精确的信息为止。”
+参阅
+“DOCSIS RF接口规范，表格2-1和2-2”
+::= { docsIfCmtsCmStatusEntry 14 }
+
+-- CMTS服务表格。
+
+docsIfCmtsServiceTable对象类型
+语法：DocsIfCmtsServiceEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“描述了CMTS中上行服务队列的属性。”
+::= { docsIfCmtsObjects 4 }
+
+docsIfCmtsServiceEntry对象类型
+语法：DocsIfCmtsServiceEntry
+最大权限：不可访问
+状态：现行
+描述
+“描述了CMTS中上行通道带宽服务队列的属性。对应于docsCableMaclayer(127)的
+ifType和MAC层的各个服务队列(Service ID)，在这个表里以表项对应各个ifEntry。通过在
+MAC层创建独立的SIC，在这个表里创建一个表项；当删除了某个服务ID时，就又被删除
+掉了。”
+索引{ ifIndex，docsIfCmtsServiceId }
+::= { docsIfCmtsServiceTable 1 }
+
+DocsIfCmtsServiceEntry ::= 序列{
+            docsIfCmtsServiceId
+32位整数，
+            docsIfCmtsServiceCmStatusIndex
+32位整数，
+            docsIfCmtsServiceAdminStatus
+整数，
+            docsIfCmtsServiceQosProfile
+32位整数，
+            docsIfCmtsServiceCreateTime
+TimeStamp,
+            docsIfCmtsServiceInOctets
+32位计数器，
+            docsIfCmtsServiceInPackets
+32位计数器，
+}
+
+docsIfCmtsServiceId对象类型
+语法：32位整数(1..16383)
+最大权限：不可访问
+状态：现行
+描述
+“识别一个上行带宽的服务队列。服务队列的属性在Modem和CMTS之间进行共享。
+CMTS根据CM的请求和分配给这个队列的服务级别来分配上行带宽给这个服务队列。”
+::= { docsIfCmtsServiceEntry 1 }
+
+docsIfCmtsServiceCmStatusIndex对象类型
+语法：32位整数(0..65535)
+最大权限：只读
+状态：现行
+描述
+“在docsIfCmtsCmStatusTable中利用这个服务队列来识别Cable Modem的指针的入
+口。如果有几个Cable Modems采用这个服务队列，这个对象的数值是0。”
+::= { docsIfCmtsServiceEntry 2 }
+
+docsIfCmtsServiceAdminStatus对象类型
+语法：整数 {
+enabled(1)，
+disabled(2)，
+destroyed(3) }
+最大权限：读/写
+状态：现行
+描述
+“总而言之，允许禁用、(重新)激活、或者删除某个特定的调制解调器的服务等级。”
+::= { docsIfCmtsServiceEntry 3 }
+
+docsIfCmtsServiceQosProfile对象类型
+语法：32位整数(0..16383)
+最大权限：只读
+状态：现行
+描述
+“在docsIfQosProfileTable中的描述的和这个特定服务相关的服务等级。如果没有相关
+的associated docsIfQosProfileTable的表项存在，这个对象返回数值0。”
+::= { docsIfCmtsServiceEntry 4 }
+
+docsIfCmtsServiceCreateTime对象类型
+
+--语法：TimeTicks
+语法：TimeStamp
+最大权限：只读
+状态：现行
+描述
+“当创建这个表项时，sysUpTime的值。”
+::= { docsIfCmtsServiceEntry 5 }
+
+docsIfCmtsServiceInOctets对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在这个服务ID上收到的Packet Data字节的累计数量。这个数字不包括电缆MAC包
+头。”
+::= { docsIfCmtsServiceEntry 6 }
+
+docsIfCmtsServiceInPackets对象类型
+语法：32位计数器
+最大权限：只读
+状态：现行
+描述
+“在这个服务ID上收到的Packet Data数据包的累计数量。”
+::= { docsIfCmtsServiceEntry 7 }
+
+--下列表格提供了上行通道的调制图。在这个表格中的表项可以被一个或者更多的上行
+通道重复使用。对于各个docsIfModIntervalUsageCode 的值都会有一个调制图。
+
+docsIfCmtsModulationTable对象类型
+语法：DocsIfCmtsModulationEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“描述了一个或多个上行频道的的调制图。”
+::= { docsIfCmtsObjects 5 }
+
+docsIfCmtsModulationEntry对象类型
+语法：DocsIfCmtsModulationEntry
+最大权限：不可访问
+状态：现行
+描述
+“描述了一个或者更多的上行信道的间隔代码的一种调制模式。这个表中的表项由操作
+者创建。最初的缺省表项在系统初始化时就创建了。为了在这个表里创建一个表项，不必规
+定一个特定的对象。注意：一些对象没有DEFVAL，在创建表项时，不必规定和计算缺省值。
+在这些表项处于调用状态时，可以修改这些值。”
+索引{ docsIfCmtsModIndex，docsIfCmtsModIntervalUsageCode }
+::= { docsIfCmtsModulationTable 1 }
+
+DocsIfCmtsModulationEntry ::= 序列{
+            docsIfCmtsModIndex
+32位整数，
+            docsIfCmtsModIntervalUsageCode
+整数，
+            docsIfCmtsModControl
+RowStatus,
+            docsIfCmtsModType
+整数，
+            docsIfCmtsModPreambleLen
+32位整数，
+            docsIfCmtsModDifferentialEncoding
+TruthValue,
+            docsIfCmtsModFECErrorCorrection
+32位整数，
+            docsIfCmtsModFECCodewordLength
+32位整数，
+            docsIfCmtsModScramblerSeed
+32位整数，
+            docsIfCmtsModMaxBurstSize
+32位整数，
+            docsIfCmtsModGuardTimeSize
+Unsigned32,
+            docsIfCmtsModLastCodewordShortened
+TruthValue,
+            docsIfCmtsModScrambler
+TruthValue
+}
+
+docsIfCmtsModIndex对象类型
+语法：32位整数(1..2147483647)
+最大权限：不可访问
+状态：现行
+描述
+“在信道调制表里的一个索引，表示间隔代码组，都是和同一个信道相关的。”
+::= { docsIfCmtsModulationEntry 1 }
+
+docsIfCmtsModIntervalUsageCode对象类型
+语法：整数{
+request(1)，
+requestData(2)，
+initialRanging(3)，
+periodicRanging(4)，
+shortData(5)，
+longData(6)
+}
+最大权限：不可访问
+状态：现行
+描述
+“当遇到其他间隔代码时，完整地示范了所有给上行信道设置的调制模式的信道调制表
+里的索引。”
+参阅
+“DOCSIS RF接口规范，表格6-16。”
+::= { docsIfCmtsModulationEntry 2 }
+
+docsIfCmtsModControl对象类型
+语法：RowStatus
+最大权限：读确认
+状态：现行
+描述
+“在这个表中控制和影响行的状态。”
+::= { docsIfCmtsModulationEntry 3 }
+
+docsIfCmtsModType对象类型
+语法：整数{
+other(1)，
+qpsk(2)，
+qam16(3)
+}
+最大权限：读确认
+状态：现行
+描述
+“这个信道采用的调制类型。如果调制类型既不是qpsk也不是qam16的话，返回其他
+值（1）。参见参考文献中qpsk或者qam16所指的调制模式。参见对对象写的条件和限制。”
+参阅
+“DOCSIS RF接口规范，4.2.2节。”
+DEFVAL { qpsk }
+::= { docsIfCmtsModulationEntry 4 }
+
+docsIfCmtsModPreambleLen对象类型
+语法：32位整数(0..1024)
+最大权限：读确认
+状态：现行
+描述
+“这种调制模式的同步信号的长度（以位为单位）。缺省值是在给定调制模式时CMTS
+应用所需要的最小值。”
+参阅
+“DOCSIS RF接口规范，4.2.5节。”
+::= { docsIfCmtsModulationEntry 5 }
+
+docsIfCmtsModDifferentialEncoding对象类型
+语法：TruthValue
+最大权限：读确认
+状态：现行
+描述
+“详细说明了是否在这个频道上使用了不同的编码方式。”
+DEFVAL { false }
+::= { docsIfCmtsModulationEntry 6 }
+
+docsIfCmtsModFECErrorCorrection对象类型
+语法：32位整数(0..10)
+最大权限：读确认
+状态：现行
+描述
+“在向前的纠错码字中的可纠错的位数。没有使用纠错时这个值是0。附加的校验位是
+这个值的两倍。”
+参阅
+“DOCSIS RF接口规范，4.2.3节。”
+DEFVAL { 0 }
+::= { docsIfCmtsModulationEntry 7 }
+
+docsIfCmtsModFECCodewordLength对象类型
+语法：32位整数(1..255)
+最大权限：读确认
+状态：现行
+描述
+“在向前的纠错码字中的数据位的数量。如果docsIfCmtsModFECErrorCorrection是0
+的话，就没有运用这个对象。”
+参阅
+“DOCSIS RF接口规范，4.2.3节。”
+DEFVAL { 32 }
+::= { docsIfCmtsModulationEntry 8 }
+
+docsIfCmtsModScramblerSeed对象类型
+语法：32位整数(0..32767)
+最大权限：读确认
+状态：现行
+描述
+“编码器多项式的15位的核。”
+参阅
+“DOCSIS RF接口规范，4.2.4节。”
+DEFVAL { 0 }
+::= { docsIfCmtsModulationEntry 9 }
+
+docsIfCmtsModMaxBurstSize对象类型
+语法：32位整数(0..255)
+最大权限：读确认
+状态：现行
+描述
+“在这个信道上脉冲可以传输的袖珍通道的最大数量。如果脉冲长度收到本地MAP的
+限制而不是收到调制模式的限制的话，返回数值0。缺省值是0，而短数据是8。”
+::= { docsIfCmtsModulationEntry 10 }
+
+docsIfCmtsModGuardTimeSize对象类型
+语法：无标记32位数
+最大权限：只读
+状态：现行
+描述
+“这个信道脉冲尾部的记号时间的数量。缺省值是最小时长这种调制模式所需的最小时
+长。”
+参阅
+“DOCSIS RF接口规范，4.2.7节。”
+::= { docsIfCmtsModulationEntry 11 }
+
+docsIfCmtsModLastCodewordShortened对象类型
+语法：TruthValue
+最大权限：读确认
+状态：现行
+描述
+“显示是否删除了最近的FEC代码字。”
+参阅
+“DOCSIS RF接口规范， 4.2.10节。”
+DEFVAL { true }
+::= { docsIfCmtsModulationEntry 12 }
+
+docsIfCmtsModScrambler对象类型
+语法：TruthValue
+最大权限：读确认
+状态：现行
+描述
+“显示是否使用了扰频器。”
+参阅
+“DOCSIS RF接口规范，4.2.4节。”
+DEFVAL { false }
+::= { docsIfCmtsModulationEntry 13 }
+
+docsIfCmtsQosProfilePermissions对象类型
+语法：位{
+createByManagement(0)，
+updateByManagement(1)，
+createByModems(2)
+}
+最大权限：读/写
+状态：现行
+描述
+“这个对象详细说明了在docsIfQosProfileTable里创建对象允许采用的方法。如果表项
+可以用SNMP创建的话，就必须设置CreateByManagement(0)。如果允许用SNMP更新表
+项的话，就要设置UpdateByManagement(1)。如果可以基于从CM收到的REG-REQ MAC
+消息中的信息来创建表项的话，就要设置CreateByModems(2)。如果docsIfQosProfileTable
+被按照读创建方式执行的话，这个对象里的信息只能应用。另外，这个对象按照只读方式执
+行，并且返回CreateByModems(2)。在对这种对象进行写操作时，无论是
+CreateByManagement(0)还是 CreateByModems(1)都必须设置。”
+::= { docsIfCmtsObjects 6 }
+
+docsIfCmtsMacToCmTable对象类型
+语法：DocsIfCmtsMacToCmEntry的序列
+最大权限：不可访问
+状态：现行
+描述
+“这个表在docsIfCmtsCmStatusTable中提供了快速查找的索引。在这个表里对应于每
+个在docsIfCmtsCmStatusTable的行都有一个行与之对应。通常，管理工作站只需用这个表
+来获得docsIfCmtsCmStatusTable (符合CM的RF接口MAC地址的)里的某个站点，并且
+不必重申(比如通过GetNext)这个表。”
+ ::= { docsIfCmtsObjects 7 }
+
+docsIfCmtsMacToCmEntry对象类型
+SYNTAXDocsIfCmtsMacToCmEntry
+最大权限：不可访问
+状态：现行
+描述
+“docsIfCmtsMacToCmTable的行。对于每一个应用这个表格和CMTS相连的CM在
+表中都有一个表项。”
+索引{ docsIfCmtsCmMac }
+::= {docsIfCmtsMacToCmTable 1 }
+
+DocsIfCmtsMacToCmEntry ::= 序列{
+                 docsIfCmtsCmMac
+Mac地址，
+                docsIfCmtsCmPtr
+整数32位
+}
+
+docsIfCmtsCmMac对象类型
+语法：MAC地址
+最大权限：不可访问
+状态：现行
+描述
+“引用的CM的RF侧的MAC地址。(举例来说，把docsCableMacLayer(127)作为它
+的ifType的CM上的接口。”
+ ::= { docsIfCmtsMacToCmEntry 1 }
+
+docsIfCmtsCmPtr对象类型
+语法：32位整数(1到2147483647)
+最大权限：只读
+状态：现行
+描述
+“docsIfCmtsCmStatusTable里的表项索引。在查询正确的实例数值(比如，一个CM的
+MAC地址)时，就会返回表示这个CM的docsIfCmtsCmStatusTable里的索引。”
+ ::= { docsIfCmtsMacToCmEntry 2 }
+
+-- 通告类是为了便于未来的扩展。
+
+docsIfNotification 对象标识符::= { docsIfMib 2 }
+
+docsIfConformance对象标识符::= { docsIfMib 3 }
+docsIfCompliances对象标识符::= { docsIfConformance 1 }
+docsIfGroups 对象标识符::= { docsIfConformance 2 }
+
+-- 兼容性通告
+
+docsIfBasicCompliance MODULE-COMPLIANCE
+状态：现行
+描述
+“兼容MCNS/DOCSIS的RF接口的设备的兼容性声明。”
+
+MODULE-- docsIfMib
+
+-- 无条件的强制性类
+强制性类{
+docsIfBasicGroup
+}
+
+-- 有条件的强制性类
+类docsIfCmGroup
+描述
+“这种类只对于Cable Modem是强制性的，对于CMTS不是强制性的。”
+
+-- 有条件强制性的类
+类docsIfCmtsGroup
+描述
+“这个类只对于CMTS是强制性的，但对于Cable Modem不是强制性的。”
+
+对象docsIfDownChannelFrequency
+语法：32位整数(54000000..860000000)
+最小权限：只读
+描述
+“在CMTS里读/写；在CM里只读。上述数值对于采用Sub-Split信道分配方案的电缆
+设备同样适用。如果已经对DOCSIS进行了扩展来覆盖其他的信道分配方案(而且频率固定)
+的话，就要对这个对象作相应的修改了。”
+
+对象docsIfDownChannelWidth
+语法：32位整数(6000000)
+最小权限：只读
+描述
+“这个对象以只读方式来执行。在CM里，这个对象总是采用只读方式。上述数值对运
+行在NTSC(National Television Standards Committee)标准下的电缆设备同样适用。如果已
+经对DOCSIS进行了扩展来和其他标准一起协同工作(比如欧洲标准)的话，就要对这个对象
+作相应的修改了。”
+
+对象docsIfDownChannelModulation
+语法：整数{
+ qam64 (3)，
+ qam256 (4)
+}
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfDownChannelInterleave
+语法：整数{
+taps8Increment16(3)，
+taps16Increment8(4)，
+taps32Increment4(5)，
+taps64Increment2(6)，
+taps128Increment1(7)
+}
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfDownChannelPower
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfUpChannelFrequency
+语法：32位整数(5000000..42000000)
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。上述数值对于采用了子信道规
+划的电缆设备是适用的。如果对DOCSIS扩展后可以覆盖其他的频率规划类型(以及频率分
+配)的话，这个对象将做相应的修改。”
+
+对象docsIfUpChannelWidth
+语法：32位整数(200000..3200000)
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。上述数值对于运行在NTSC 
+(National Television Standards Committee)标准下的电缆设备是适用的。如果DOCSIS扩展
+后可以工作在其他标准(例如欧洲标准)下的话，这个对象将做相应的修改。”
+
+对象docsIfUpChannelModulationProfile
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfUpChannelSlotSize
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中是只读形式。”
+
+对象docsIfUpChannelRangingBackoffStart
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfUpChannelRangingBackoffEnd
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfUpChannelTxBackoffStart
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfUpChannelTxBackoffEnd
+最小权限：只读
+描述
+“在CMTS中是读/写；在Cable Modem中是只读形式。”
+
+对象docsIfQosProfPriority
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfMaxUpBandwidth
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfGuarUpBandwidth
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfMaxDownBandwidth
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfMaxTxBurst
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfBaselinePrivacy
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfQosProfStatus
+最小权限：只读
+描述
+“在Cable Modem中本对象总是只读的。在CMTS中该对象以只读形式实施。”
+
+对象docsIfCmtsServiceAdminStatus
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsSyncInterval
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsUcdInterval
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsInsertInterval
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsInvitedRangingAttempts
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsQosProfilePermissions
+最小权限：只读
+描述
+“该对象以只读形式实施。”
+
+对象docsIfCmtsModType
+语法：整数{
+qpsk (2)，
+qam16 (3)
+ }
+描述
+“管理站点只设置16QAM或者QPSK调制，但其他可能基于设备配置。”
+
+::= { docsIfCompliances 1 }
+
+docsIfBasicGroup对象类
+对象{
+docsIfDownChannelId，
+docsIfDownChannelFrequency，
+docsIfDownChannelWidth，
+docsIfDownChannelModulation，
+docsIfDownChannelInterleave，
+docsIfDownChannelPower，
+docsIfUpChannelId，
+docsIfUpChannelFrequency，
+docsIfUpChannelWidth，
+docsIfUpChannelModulationProfile，
+docsIfUpChannelSlotSize，
+docsIfUpChannelTxTimingOffset，
+docsIfUpChannelRangingBackoffStart，
+docsIfUpChannelRangingBackoffEnd，
+docsIfUpChannelTxBackoffStart，
+docsIfUpChannelTxBackoffEnd，
+docsIfQosProfPriority，
+docsIfQosProfMaxUpBandwidth，
+docsIfQosProfGuarUpBandwidth，
+docsIfQosProfMaxDownBandwidth，
+docsIfQosProfMaxTxBurst，
+docsIfQosProfBaselinePrivacy，
+docsIfQosProfStatus，
+docsIfSigQIncludesContention，
+docsIfSigQUnerroreds，
+docsIfSigQCorrecteds，
+docsIfSigQUncorrectables，
+docsIfSigQSignalNoise，
+docsIfSigQMicroreflections，
+docsIfSigQEqualizationData
+}
+状态：现行
+描述
+“在Cable Modem和CMTS中都实现的对象类。”
+::= { docsIfGroups 1 }
+
+--以下表单改正了有关32位计数器变量的命名约定 。
+
+docsIfCmGroup对象类
+对象{
+docsIfCmCmtsAddress，
+docsIfCmCapabilities，
+--docsIfCmRangingRespTimeout，
+ docsIfCmRangingTimeout，
+docsIfCmStatusValue，
+docsIfCmStatusCode，
+docsIfCmStatusTxPower，
+docsIfCmStatusResets，
+docsIfCmStatusLostSyncs，
+docsIfCmStatusInvalidMaps，
+docsIfCmStatusInvalidUcds，
+--docsIfCmStatusInvalidRangingResp，
+docsIfCmStatusInvalidRangingResponses，
+--docsIfCmStatusInvalidRegistrationResp，
+docsIfCmStatusInvalidRegistrationResponses，
+docsIfCmStatusT1Timeouts，
+docsIfCmStatusT2Timeouts，
+docsIfCmStatusT3Timeouts，
+docsIfCmStatusT4Timeouts，
+docsIfCmStatusRangingAborteds，
+docsIfCmServiceQosProfile，
+docsIfCmServiceTxSlotsImmed，
+docsIfCmServiceTxSlotsDed，
+docsIfCmServiceTxRetries，
+--docsIfCmServiceTxExceeded，
+docsIfCmServiceTxExceededs，
+docsIfCmServiceRqRetries，
+--docsIfCmServiceRqExceeded
+docsIfCmServiceRqExceededs
+}
+状态：现行
+描述
+“在Cable Modem中实现的对象类。”
+::= { docsIfGroups 2 }
+
+docsIfCmtsGroup对象类
+对象{
+docsIfCmtsCapabilities，
+docsIfCmtsSyncInterval，
+docsIfCmtsUcdInterval，
+docsIfCmtsMaxServiceIds，
+--docsIfCmtsInsertionInterval，
+docsIfCmtsInvitedRangingAttempts，
+docsIfCmtsInsertInterval，
+docsIfCmtsStatusInvalidRangeReqs，
+docsIfCmtsStatusRangingAborteds，
+docsIfCmtsStatusInvalidRegReqs，
+docsIfCmtsStatusFailedRegReqs，
+docsIfCmtsStatusInvalidDataReqs，
+docsIfCmtsStatusT5Timeouts，
+docsIfCmtsCmStatusMacAddress，
+docsIfCmtsCmStatusIpAddress，
+docsIfCmtsCmStatusDownChannelIfIndex，
+docsIfCmtsCmStatusUpChannelIfIndex，
+docsIfCmtsCmStatusRxPower，
+docsIfCmtsCmStatusTimingOffset，
+docsIfCmtsCmStatusEqualizationData，
+docsIfCmtsCmStatusValue，
+docsIfCmtsCmStatusUnerroreds，
+docsIfCmtsCmStatusCorrecteds，
+docsIfCmtsCmStatusUncorrectables，
+docsIfCmtsCmStatusSignalNoise，
+docsIfCmtsCmStatusMicroreflections，
+docsIfCmtsServiceCmStatusIndex，
+docsIfCmtsServiceAdminStatus，
+docsIfCmtsServiceQosProfile，
+docsIfCmtsServiceCreateTime，
+docsIfCmtsServiceInOctets，
+docsIfCmtsServiceInPackets，
+docsIfCmtsModType，
+docsIfCmtsModControl，
+docsIfCmtsModPreambleLen，
+docsIfCmtsModDifferentialEncoding，
+docsIfCmtsModFECErrorCorrection，
+docsIfCmtsModFECCodewordLength，
+docsIfCmtsModScramblerSeed，
+docsIfCmtsModMaxBurstSize，
+docsIfCmtsModGuardTimeSize，
+docsIfCmtsModLastCodewordShortened，
+docsIfCmtsModScrambler，
+docsIfCmtsQosProfilePermissions，
+docsIfCmtsCmPtr
+}
+状态：现行
+描述
+“在CMTS中实现的对象类。”
+::= { docsIfGroups 3 }
+
+docsIfObsoleteGroup对象类
+对象{
+docsIfCmRangingRespTimeout，
+docsIfCmtsInsertionInterval
+}
+状态：废止
+描述
+“这个对象类已经废止。”
+::= { docsIfGroups 4 }
+
+END
+5. 致谢
+这篇文档是IPCDN工作组的产物。这篇文档是基于由CableLabs的Pam Anderson、
+BayNetworks的Wilson Sawyer和Continental Cablevision的Rich Woundy写成的文档。
+最初的工作组的作者，cisco Systems的Guenter Roeck，作了大量的工作把这个文档作成
+当前的格式。
+也对帮助校订这篇文档的Azlina Palmer表示感谢。
+6. 参考文献
+[1]Harrington，D.，Presuhn，R. and B. Wijnen，“An Architecture forDescribing SNMP 
+Management Frameworks”，RFC 2571，April 1999.
+[2]Rose，M. and K. McCloghrie，“Structure and Identification ofManagement 
+Information for TCP/IP-based Internets”，STD 16，RFC1155，May 1990.
+[3]Rose，M. and K. McCloghrie，“Concise MIB Definitions”，STD 16， RFC 1212，
+March 1991.
+[4]Rose，M.，“A Convention for Defining Traps for use with theSNMP”，RFC 1215，
+March 1991.
+[5]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“Structure ofManagement 
+Information for Version 2 (SMIv2)”，STD 58，RFC 2578， April 1999.
+[6]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“TextualConventions for 
+SMIv2”，STD 58，RFC 2579，April 1999.
+[7]McCloghrie，K.，Perkins，D. and J. Schoenwaelder，“ConformanceStatements for 
+SMIv2”，STD 58，RFC 2580，April 1999.
+[8]Case，J.，Fedor，M.，Schoffstall，M. and J. Davin，“SimpleManagement Protocol”，
+STD 15，RFC 1157，May 1990.
+[9]Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser， “Introduction to 
+Community-based SNMPv2”，RFC 1901，January1996.
+[10]Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser，“TransportMappings for 
+Version 2 of the Simple Network Management Protocol (SNMPv2)”，RFC 1906，January 
+1996.
+[11] Case，J.，Harrington D.，Presuhn R. and B. Wijnen，“MessageProcessing and 
+Dispatching for the Simple Network ManagementProtocol (SNMP)”，RFC 2572，April 
+1999.
+[12] Blumenthal，U. and B. Wijnen，“User-based Security Model (USM)for version 3 
+of the Simple Network Management Protocol(SNMPv3)”，RFC 2574，April 1999.
+[13] Case，J.，McCloghrie，K.，Rose，M. and S. Waldbusser，“ProtocolOperations 
+for Version 2 of the Simple Network ManagementProtocol (SNMPv2)”，RFC 1905，January 
+1996.
+[14] Levi，D.，Meyer，P. and B. Stewart，“SNMP Applications”，RFC2573，April 1999.
+[15] Wijnen，B.，Presuhn，R. and K. McCloghrie，“View-based AccessControl Model 
+(VACM) for the Simple Network Management Protocol(SNMP)”，RFC 2575，April 1999.
+[16] “Data-Over-Cable Service Interface Specifications: Cable ModemRadio 
+Frequency Interface Specification SP-RFI-I04-980724”， DOCSIS，July 1998， 
+http://www.cablemodem.com/public/pubtechspec/SP-RFI-I04-980724.pdf.[17] 
+McCloghrie，K. and F. Kastenholz，”The Interfaces Group MIBusing SMIv2”，RFC 2233，
+November 1997.
+[18] StJohns，M. ，“Cable Device Management Information Base forDOCSIS 
+Compliant Cable Modems and Cable Modem TerminationSystems”，RFC2669，August 
+1999.
+[19] Proakis，John G.，“Digital Communications，3rd Edition”， McGraw-Hill，New 
+York，New York，1995，ISBN 0-07-051726-6
+[20] “Transmission Systems for Interactive Cable Television Services， Annex B”，
+J.112，International Telecommunications Union，March1998.
+7. 需要考虑的安全问题
+这个MIB和提供重要的公共INTERNET访问的系统有关。同样的，对由这个MIB描述
+的对象的不适当的操作可能会导致大量拒绝对最终用户提供服务。另外，对
+docsIfCmServiceQosProfile、docsIfCmtsServerQosProfile、docsIfQosProfileTable的元素
+的操作可以允许最终用户改善他们的服务响应、减少订户的服务响应。
+这个MIB不会对cable modem系统中服务的机密性、认证或者授权有所影响。对于身
+份认证和授权，请参见有关文档“Cable Device Management Information Base for DOCSIS 
+compliant Cable Modems and Cable Modem Termination Systems”[18]。对于机密性，工
+作组将会发布一个描述DOCSIS Baseline Privacy机制的管理的MIB。
+8.知识产权
+IETF不考虑任何关于知识产权或其他权利的有效性或适用范围的问题，这些权利可能附
+属于那些实现和使用本文档描述的技术的文档中声明，基于此产权声明的许可不是必须的。
+而且也无须表示为了识别此声明而做的努力。关于标准制定和标准相关的IETF版权声明过
+程的信息可以在BCP-11中找到。可以从IETF秘书处得到出版物的有效版权声明的复制和
+许可证书，还可以使用此详述的制定者和使用者的私人授权，以便得到通用的授权和许可。
+IETF邀请任何感兴趣的组织注意其版权、专利或专利应用、其它专有权利，它们可能需
+要使用这个标准的技术。请告知IETF 执行董事会相关的信息。
+9.作者地址
+Michael StJohns
+@Home Network
+425 Broadway
+Redwood City，CA 94063
+Phone: +1 650 569 5368
+EMail: stjohns@corp.home.net
+10. 完整的版权声明
+Copyright (C) The Internet Society (2000)。版权所有。
+本文档及其译文可以拷贝和提供给他人，且其衍生物，如评论、解释或帮助实施的作品
+可以全部或部分地定制、拷贝、出版和发布，对此我们不加任何限制，前提是上述版权声明，
+及本段内容包含在所有的拷贝和派生作品中。然而，本文档本身不允许以任何方式修改，例
+如删除Internet社团或其他Internet组织的版权声明或参考，除非是为了开发Internet标准
+的需要。即便在这种情况下，也需要添加Internet标准中定义的版权声明，或者根据需要把
+他翻译成英语以外的其他语言。
+上述准许的有限许可是永久性的， 无论是Internet社团以及其继承者或代理者都将不会
+废止这些许可。
+本文档及其中包含的信息基于”AS IS”提供，而且INTERNET社团和IETF拒绝所有
+授权、表达或影射，包括但不限于任何这里使用的消息的授权将不会违背任何版权或者隐含
+的商业性授权或对特定的合理目的。
+致谢
+目前，RFC编者活动的基金由Internet社团提供。
+
+RFC2670——Radio Frequency (RF) Interface Management Information Base for MCNS/DOCSIS compliant RF 
+interfaces          关于MCNS/DOCSIS兼容RF接口的RF接口MIB 
+
+
+2
+RFC文档中文翻译计划

@@ -1,0 +1,182 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：马  良  （idayang   superwiles@263.net）
+译文发布时间：2001-8-7
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+Network Working Group                                           R. Glenn
+Request for Comments: 2410                                          NIST
+Category: Standards Track                                        S. Kent
+                                                                BBN Corp
+                                                           November 1998
+NULL加密算法及其在IPsec协议中的应用
+    (RFC2410---The NULL Encryption Algorithm and Its Use With Ipsec)
+
+
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化程
+度和状态。本备忘录的发布不受任何限制。
+
+版权声明
+ Copyright (C) The Internet Society (1998).  All Rights Reserved.
+
+摘要
+        本备忘录定义了NULL加密算法并阐述了它在IPsec协议的封装安全载荷模
+块(ESP)中的应用。NULL算法不改变明码文本。实际上，就NULL算法本身
+而言，它什么也不改变。NULL算法向封装安全载荷模块(ESP)提供了一种途径
+使得其可以实现非加密验证及确保完整性的功能。更进一步关于ESP实施所需
+的必要组成部分的信息可以从[ESP]，[ROAD] 中获取。 
+1. 简介	2
+2. 算法定义。	2
+2.1 关键材料	2
+2.2 同步加密	3
+2.3  填充	3
+2.4  性能	3
+2.5  测试向量	3
+3.  ESP_NULL运行条件	3
+4.  安全考虑	4
+5．知识产权说明。	4
+6.  致谢	4
+7.  参考书目	4
+8.  作者地址	5
+
+1. 简介
+本备忘录定义了NULL加密算法并阐述它向封装安全载荷模块(ESP)提供了
+一种途径使得其可以实现非加密验证及确保完整性的功能。
+    NULLL算法是一种"块"密码，起源于一种古老的加密方法。尽管谣传美国
+国家安全局(NSA)禁止公开这种算法，但并没有迹象表明NSA这样做。最近的
+考古证据表明NULL加密算法创建于罗马时代,被视为凯撒密码的一种输出形式.
+但因为罗马数字缺乏表示零的符号，所以记录有关NULL算法发展的工作被历史
+学家忽视了长达两个世纪。
+        [ESP]中详细说明了用来确保机密性的算法与负责身份验证与完整性的算法各自的
+用途.NULL算法则是一种便利的途径来替代确保机密性或是负责身份验证而不进行加 
+密。
+    IPsec验证头[AH]的规范说明中提供了一种类似的服务.通过同时计算包含一个包 
+的数据字段的验证数据字段和IP头在传输中的不变部分。ESP_NULL在计算验证数据  
+字段时不包含IP头。这样可以有效的使得IPsec服务适用于非IP协议的网络设备.关于
+怎样将Ipsec服务应用于非IP协议的网络设备的讨论超出了本文档的讨论范围。
+    在本备忘录中，NULL算法只在封装安全载荷模块（ESP）的上下文环境中使用。
+关于封装安全载荷（ESP）的各部分是怎样配合来提供安全服务的进一步信息请查阅
+[ESP],[ROAD]
+ 出现在本文档中的关键字“MUST","MUST NOT',"REQUIRED""SHALL",
+"SHALL NOT","SHOULD""SHOULD NOT","RECOMMENDED","MAY","OPTIONAL"
+ 的含义都可以在[RFC 2119]中查阅到。
+2. 算法定义。
+        NULL算法的数学定义是通过使用单位函数I对数据块的作用来实现的。
+如下所示：
+       NULL(b) = I(b) = b
+2.1 关键材料
+        就象其它现代密码，如RC5[RFC-2040],NULL加密算法可以使用用长度不同的
+密钥，然而较长的密钥可以满足对安全性需求的巨大增长。
+2.2 同步加密
+        由于NULL算法的无状态性质，则不必在每一个包(甚至每一个SA中)传送初
+始化向量IV或其它类似的同步加密数据。NULL算法整合了很多"块"式密码与
+"流"式密码的优良特性，因此不再需要发送初始化向量或类似的同步加密数据。
+2.3  填充
+         NULL算法有一大小为1 byte的块。所以填充是不必要的。
+2.4  性能
+         NULL算法比通常使用的对称加密算法和通常所使用的基于硬件和操作系统平台
+的算法都要快很多.
+2.5  测试向量
+          以下是一组用于推动关于同步NULL实施发展的测试向量。
+      test_case =  1
+data = 0x123456789abcdef
+data_len =  8
+NULL_data =  0x123456789abcdef
+
+test_case =    2
+data =           "Network Security People Have A Strange Sense Of Humor"
+data_len =       53
+NULL_data =      "Network Security People Have A Strange Sense Of Humor"
+3.  ESP_NULL运行条件
+ESP_NULL 是通过NULL在ESP的上下文环境中的使用来定义。这一节通过指出
+所需执行参数的细节来更加深入的说明ESP_NULL。
+为了使Internet密鈅交换[IKE]提取密鈅更加有效及为了使协同便利和避免潜在的输
+出控制问题。，在该算法中密鈅的大小必须为0 byte. 
+  为了便于协同，该算法的初始化向量大小必须为0 Bits.
+  填充可以包含在[ESP]中声明过的分组出站包。
+4.  安全考虑
+         NULL算法既不提供机密性也不会提供其它任何安全服务，它仅仅是一条便利
+途径去替换在使用ESP加密时的选项。ESP可以提供非加密身份验证和数据完整性
+确认。不像AH这项服务不能应用于IP头的任何部分。在写这篇文档的同时，没
+有证据表明在使用同一验证算法时，ESP_NULL不如AH安全。（一个用使用了某种
+验证算法的ESP_NULL来保护的数据包与一个用使用了某种验证算法的AH保护的数
+据包是一样安全的）
+    如[ESP]中所规定的，当使用加密算法和使用验证算法在ESP中是可选的时候。
+，将强制性的使用一种足够强大的加密算法或一种强大的身份验证算法，或是两者都
+被使用。
+     在写这篇文档时，并没有法律禁止出口0长度密鈅的NULL算法。
+5．知识产权说明。
+       Pursuant to the provisions of [RFC-2026], the authors represent that
+   they have disclosed the existence of any proprietary or intellectual
+   property rights in the contribution that are reasonably and
+   personally known to the authors.  The authors do not represent that
+   they personally know of all potentially pertinent proprietary and
+   intellectual property rights owned or claimed by the organizations
+   they represent or third parties.
+6.  致谢
+   Steve Bellovin suggested and provided the text for the Intellectual
+   Property Rights section.
+
+   Credit also needs to be given to the participants of the Cisco/ICSA
+   IPsec & IKE March 1998 Interoperability Workshop since it was there
+   that the need for this document became apparent.
+7.  参考书目
+    [ESP]        Kent, S., and R. Atkinson, "IP Encapsulating Security
+                Payload", RFC 2406, November 1998.
+
+   [AH]         Kent, S., and R. Atkinson, "IP Authentication Header",
+                RFC 2402, November 1998.
+   [ROAD]       Thayer, R., Doraswamy, N., and R. Glenn, "IP Security
+                Document Roadmap", RFC 2411, November 1998.
+
+  [DOI]        Piper, D., "The Internet IP Security Domain of
+                Interpretation for ISAKMP", RFC 2408, November 1998.
+
+   [IKE]        Harkins, D., and D. Carrel, "The Internet Key Exchange
+                (IKE)", RFC 2409, November 1998.
+
+   [RFC-2026]   Bradner, S., "The Internet Standards Process -- Revision
+                3", BCP 9, RFC 2026, October 1996.
+   [RFC-2040]   Baldwin, R., and R. Rivest, "The RC5, RC5-CBC, RC5-CBC-
+                Pad, and RC5-CTS Algorithms", RFC 2040, October 1996
+
+   [RFC-2119]   Bradner, S., "Key words for use in RFCs to Indicate
+                Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+8.  作者地址
+    Rob Glenn
+   NIST
+
+   EMail: rob.glenn@nist.gov
+
+Stephen Kent
+   BBN Corporation
+
+   EMail: kent@bbn.com
+
+  The IPsec working group can be contacted through the chairs:
+
+   Robert Moskowitz
+   ICSA
+
+   EMail: rgm@icsa.net
+ 
+ Ted T'so
+   Massachusetts Institute of Technology
+
+   EMail: tytso@mit.edu
+
+
+    
+RFC2410---The NULL Encryption Algorithm and Its Use With Ipsec
+ NULL加密算法及其在IPsec协议中的应用
+
+
+1
+RFC文档中文翻译计划

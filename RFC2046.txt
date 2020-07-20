@@ -1,0 +1,1097 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：阮健（ruanjian   rj79@sina.com）
+译文发布时间：2001-12-9
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+Network Working Group                                          N. Freed
+Request for Comments: 2046                                     Innosoft
+Obsoletes: 1521, 1522, 1590                               N. Borenstein
+Category: Standards Track                                 First Virtual
+                                                          November 1996
+MIME第二部分:媒体类型
+(RFC2046——Multipurpose Internet Mail Extensions (MIME) Part Two: Media Types)
+
+本备忘录的状态
+本文档描述了用于Internet交流的Internet标准路径协议的规范,还需要讨论和建议来改
+进. 请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化程度和状态。
+本备忘录的发布不受任何限制。
+摘要
+STD11,RFC 882定义了一种信息表示协议,该协议规定了US-ASCII格式信息头的详细细
+节,但是信息内容或者信息体仍是flat US-ASCII text.本文档和其他一系列文档一起称为
+MIME,重新定义了允许的信息格式.
+(1) 非US-ASCII的字符集的文本报文主体
+(2)非文本报文主体的不同格式的扩展集
+(3)多部分报文主体
+(4)除了US-ASCII的字符集的文本报头信息
+这一整套文档基于更早的文档RFC934和RFC1049,但对它们进行了扩展和修正.由于
+RFC822对报文主体涉及太少,所以这些文档大多数和RFC822是没有关系的.
+RFC2045是这套文档中的最初的文档,它规定了用于描述MIME消息结构的多种报头.
+第二个文档定义了MIME媒体类型系统的总体结构并且定义了媒体类型的初始集.第三个文
+档是RFC2047,它扩展了RFC822,允许在Internet邮件头域中有非US-ASCII文本.第四个文档
+RFC2048说明了与MIME相关设备的多种注册程序.第五个也是最后一个文档RFC2049描述了
+MIME一致性标准,同时提供了一些关于ＭＩＭＥ消息格式的说明性的例子,还有感谢和参考
+数目.
+这些文档都是RFC1521和RFC1522的修正版,RFC1521和1522又是RFC1341和1342
+的修订版.在RFC2049中的附录描述了和以前版本的不同和变化.
+
+
+目录
+1. 介绍	3
+2．顶层媒体类型的定义	3
+3．初始顶层媒体类型的概述	3
+4．离散的媒体类型值	4
+4. 1 文本（Text）媒体类型	4
+4. 1. 1 换行的表示	5
+4. 1. 2 字符集参数	5
+4. 1. 3.  Plain(纯文本)子类型	7
+4. 1. 4.Unrecognized（未被承认的）子类型	7
+4.  2.  Image Media Type（ 图象类型）	7
+4.  3.  Audio Media Type（音频类型）	7
+4.  4.  Video Media Type（视频类型）	8
+4.  5.  Application Media Type（ 应用类型）	8
+4. 5. 1. Octet-Stream Subtype（8bit子节流子类型）	8
+4. 5. 2. PostScript Subtype（标注类型）	9
+4. 5. 3. 其它application的子类型	10
+5.  Composite Media Type Values（复合类型值）	10
+5. 1.  Multipart Media Type（多部分类型）	10
+5. 1. 1.Common Syntax（共同语法）	11
+5. 1. 2处理嵌套的报文和multiparts（多部分）	14
+5. 1. 3 Mixed子类型	15
+5. 1. 4 alternative子类型	15
+5. 1. 5 Digest子类型	16
+5. 1. 6.  Parallel 子类型	17
+5. 1. 7其他的Multipart子类型	18
+5.  2. 报文媒体类型	18
+5. 2. 1  RFC 822子类型	18
+5. 2. 2  Partial子类型	18
+5. 2. 2. 1报文分段和重组	19
+5. 2. 2. 2  分割和重组实例	20
+5. 2. 3  External-Body(外部主体)子类型	21
+5. 2. 3. 1. 普通external-body(外部主体)参数	22
+5. 2. 3. 2  'ftp' and 'tftp' Access-Types(访问类型)	22
+5. 2. 3. 3  'anon(匿名)-ftp'访问类型	23
+5. 2. 3. 4  'local-file(本地文件)'访问类型	23
+5. 2. 3. 5  'mail-server(邮件服务)'访问类型	23
+5. 2. 3. 6  External-body(外部主体)安全问题	24
+5. 2. 3. 7  实例与深入说明	24
+5. 2. 4 其他message(报文)子类型	26
+7. 总结	26
+8. 安全性考虑	26
+9. 作者地址	26
+附录A：语法集	27
+
+1. 介绍
+在这套文档的第一个文档RFC2045中,定义了许多报头域,包括
+Content-Type.Content-Type域用来指定一个MIME实体中主体的数据类型,给出它的媒体类
+型和子类型,并提供特定的媒体类型可能需要的辅助信息.报文头的余下部分只是一个参数
+集,指定了一个属性/属性值符号.参数的次序是不重要的.
+一般来说,顶层(top-level)媒体类型用来声明数据总的类型,而子类型指定了这一类型
+的格式.因此,一个媒体类型“image/xyz"足以告诉用户数据是一幅图象,即使用户没有关于
+特定的图象格式“xyz"的知识.例如,这些信息可以用来决定是否给用户看不被承认子类型
+的原始数据—这个动作对于“text"的未被承认（unrecognized）的子类型可能是合理的，
+但对于“image”或“audio"的未被承认(unrecognized)的子类型是不合理的。由于这个原
+因，"text", "image", "audio", 和 "video"的注册子类型不应该包含其他类型的信息。这
+种混合的格式应该使用"multipart"或"application"类型来表示。
+参数是媒体子类型的修饰部分，不会从本质上影响内容的种类。这组有意义的参数依赖
+于媒体类型和子类型。大多数参数和一种特定的子类型相关联。但是，一种给定的顶层媒体
+类型可能定义一些参数，这些参数适用于这一类型的所有子类型。参数可能是定义的媒体类
+型或子类型必选的，也可能是可选择的。MIME实现还必须忽略名字不被承认的所有参数。
+MIME的Content-Type报头域和媒体类型机制可以很好的扩展，我们希望媒体类型/子
+类型对和他们相关联参数集合可以随着时间显著增长。MIME的一些其他功能，如转换代码
+和"message/external-body"访问类型随着时间发展很可能定义新的值，为了确保这套属性
+值的发展有序，规范，风格一致，MIME建立了一个登记程序，他使用IANA（Internet Assigned 
+Numbers Authority）作为MIME各个方面扩展的中心登记处。这个登记程序在RFC2048中进
+行了描述。
+本文档的余下部分将定义和描述最初的七个标准顶层媒体类型。
+2．顶层媒体类型的定义
+顶层媒体类型的定义包括：
+（1）	类型名字和描述，包括这一类型下是否某一特定类型被限制的标准
+（2）	参数名字和定义，这些参数为这一类型的所有子类型所定义（包括这些参数是否是
+必需的还是可选的）
+（3）	用户或网关如何处理这一类型的未知子类型
+（4）	这一顶层类型的网关实体的总体考虑
+（5）	这一顶层类型实体内容和编码转换（content-transfer-encodings）的所有限制
+3．初始顶层媒体类型的概述
+五种离散的顶层媒体类型是：
+（1）	text—文本信息。特别地，子类型“plain”表示包含各种无格式命令和指令的纯文本。
+纯文本显示出来是“as-is”。不需要专门的软件来获取文本的完整意思，对表示字符
+集的支持除外。其他的子类型用来在形式上丰富文本，应用软件可以提升文本的外
+观，但不需要为了获得内容的大体意思而使用这些软件。因此，可能“text”的子类
+型包括任何可读的文字处理格式，而不需软件来理解信息。特殊的，使用内含二进
+制格式信息的格式不被认为直接可读。一种非常简单和便携的子类型“richtext”在
+RFC1341中有定义，更进一步的版本“enriched”在RFC1896中定义。
+（2）	image—图象数据。“image”需要一个显示设备（如一台显示器，一台图形打印机，
+或者一台传真机）来表现信息。初始的子类型定义为一种广泛使用图象格式JPEG。
+这些子类型定义为两种广泛使用的图象格式jpeg和gif。
+（3）	audio—音频数据。“Audio”需要一个音频输出设备（如一个扬声器或电话）来“显
+示”内容。在这个文档里定义了初始的子类型“basic".
+（4）	Video—视频数据。“Video”显示动态图象的能力，典型的包括专门的硬件和软件。
+在这个文档里定义了初始的子类型“mpeg”。
+（5）	Application—其他种类的数据，典型的是无法解释的二进制数据和需要应用程序处
+理的信息。子类型“octet-stream”适用于无法解释的二进制数据场合，这种场合下
+最简单的推荐动作是为用户把信息写到一个文件中。“PostScript”子类型适用于附言
+材料。其他预想的子类型用于“应用”包括电子数据表格，基于邮件的时序系统数
+据，“活性”（可计算的）消息语言，以及不能直接可读的文字处理格式。注意，一
+些应用数据的类型可能存在安全性考虑，最显著的是“application/PostScript”和任
+何形式的活性消息。稍后我们将讨论这些话题。
+两种合成的顶层媒体类型是：
+（1）	multipart—由多个独立的数据类型实体组成的数据。最初定义了四个子类型，包括
+基本的“mixed”子类型―指定了各个部分的一般的混合集，“alternative”表示在多
+重格式中的相同数据，“parallel”用于期望各个部分同时看到，“digest”用于多部分
+实体，其中每个部分有一个默认的类型“message/rfc822”。
+（2）	message—一种压缩的消息。媒体类型“message”的主体是它自己全部或者消息对
+象一些种类的局部。这些对象不会反过来包含其他实体。当压缩的内容本身是
+RFC822消息时使用“rfc822”子类型。“partial”定义针对部分RFC822消息，允许
+太大的消息主体分段传输。另一个子类型“external-body”通过引用一个外部的数据
+源来指定大的主体。
+注意的是，上面列出的媒体类型值可能会扩张，通过扩张，子类型集合不断增长。
+4．离散的媒体类型值
+七个最初的媒体类型值中的五个是关于离散的主体。这些类型的内容一定可以用非MIME
+机制解决。它们对MIME处理器是不透明的。
+4. 1 文本（Text）媒体类型
+“text”媒体类型的意图是发送主要是文本格式的数据。“charset”参数用来指出“text”
+子类型的主体文本的字符集，典型的包括“text/plain”子类型，这是最普通的纯文本子类型。
+纯文本不提供也不允许格式化命令，字体属性规范，处理指令，解释指令，或内容标记。纯
+文本只被看作是字符的线性序列，可能仅仅被换行或换页打断。纯文本可能允许在文本中相
+同位置上一些字符的堆叠。纯文本手稿就像阿拉伯语或西伯来语可能包括这样的特性，那就
+是允许任意组合文本片断，甚至是相反的写字方向。
+在纯文本之上，还有很多格式来表示“rich text”。许多这种表示的一个有趣的特征是它们不
+需要解释软件就可以达到一定的可读性。在最高层上，有必要把它们和不可读的数据区别开
+来，如图象，视频或以不可读形式表示的文本。在缺少适当的解释软件时，格式化的文本数
+据应该以子类型“text”的形式展现给用户，对于大多数非文本数据是不合适的。
+4. 1. 1 换行的表示
+任何MIME“text”子类型的规范格式必须把换行表示成一个CRLF序列。同样地,在
+MIME“text”中碰到CRLF就代表一个换行。在换行序列之外使用CR和LF是禁止的。
+这条规则使用于所有情况，不管格式或者字符集。
+注意：当主体依靠媒体类型来显示时换行要有适当的解释。特别的，当显示一个
+“text/plain”主体时可以把换行看作是到新行的过渡，但是不适用于“text”的子类型
+“text/enriched”【RFC－1896】。同样地，在显示时是否加入换行是媒体类型的一个功能。
+没有必要加入所有的换行来正确显示“text/plain”，然而“text/plain”也需要适当加入换行。
+注意：一些协议定义了一行的最大长度。例如，SMTP【RFC－821】允许一行最多998
+个字节。使用这种协议传输的时候，包括很长的没有CRLF序列的片断的数据必须用一种合
+适的转换机制进行编码。
+4. 1. 2 字符集参数
+“text/plain”数据的Content-Type域指定了一个重要的参数－字符集。下面是一个例子：
+
+Content-type: text/plain; charset=iso-8859-1
+
+不像一些其他参数值，字符集参数值是不区分大小写的。默认的字符集是US－ASCII。
+“text”未来子类型的规范必须指定是否利用“charset”参数，是否限制它的值。对于“text”
+中“text/plain”之外的其他子类型，“charset”参数的语义应该和在“text/plain”定义的一样，
+例如，主体完全由给定的字符集中的字符组成。特别的，未来“text”子类型的定义者应该
+密切关注多字节字符集的含义。
+“text”的子类型的字符集参数给出了字符集的名称，就像RFC 2045中定义的“character 
+set”一样。前面详细定义的换行规范必须严格遵守，不符合这些规范的字符集不能使用在
+MIME“text”子类型中。
+最初确定的字符集名称列表可以在这一节最后看到。额外的字符集应当通过IANA注
+册。
+其他的媒体类型选择采用这里定义的字符集参数，除了CRLF/换行限制。因此，所有遵守
+RFC2045中“character set”常规定义的字符集都可以注册供MIME使用。
+注意，如果指定的字符集包括8比特字符使用在主体中，为了通过一些邮件传输协议（如
+SMTP【RFC821】）传输主体，需要内容/编码转换域和相应的数据编码。
+默认的字符集US－ASCII在以前是很混乱和模糊的。不仅在定义中有含糊，而且在应
+用中有很多变种。为了消除这种二义性，强烈推荐用户在Content-Type报头域中明确指定
+字符集参数。"US-ASCII"不表示一个任意的7比特字符集，但是指定主体中的所有字节必须
+根据"US-ASCII"字符集翻译。ISO 646 [ISO-646]面向应用版本通常不同于US－ASCII。字
+符集名称“US-ASCII”明确引用定义在ANSI X3.4-1986 [US- ASCII]中的字符集。ISO646
+新的国际参考版（IRV）和US-ASCII是一样的。字符集名称“ASCII”保留但禁止用于任何
+目的。
+注：RFC821明确规定了“ASCII”，并参考了较早的美国标准版。指定媒体类型和字符
+集的一个目的是允许接收者毫无二义性的解释数据。假定不是“strict ASCII”作为默认字符
+集，将冒改变正在传输的消息语义的危险。这也意味着包含依据ISO其他版本（非US-ASCII
+和1991 IRV版）编码的字符的消息必须使用相应的字符集规范来和MIME保持一致。
+完整的US-ASCII字符集列在ANSI X3.4- 1986。值得注意的是，除了合成的CRLF代表
+换行，包括DEL在内的控制字符没有详细的意义。下面的两个字符在广泛使用中有实际意义：
+FF经常表示“在新页的开头开始后续的文本”；TAB或HT经常表示“把光标后移，移动的列
+数是8的倍数”。除了这些惯例，任何对控制字符的使用必须是下面两种情形之一：
+（1）	由于非“plan”的文本子类型明确分配了一些附加意义，或者
+（2）	发送者和接受者之间有一个私人的协定，这种协定是令人泄气的应该用文档中的其
+他功能代替。
+注：在US-ASCII之外有许多庞大的字符集。大量部分或全部重叠的字符集并不是一件好事
+情。可以广泛使用的但是可以表示时间上所有语言的单一的字符集是首选的。不幸的是，几
+个委员会还将继续使用多种字符集。因此，在本文当中定义了一小部分标准字符集。
+定义的字符集是：
+（1）	US-ASCII――定义在ANSI X3.4-1986 [US-ASCII]。
+（2）	ISO-8859-X――ISO646字符集已经被8859代替，8859成为Internet邮件指定的字
+符集。本文档出版时，“X”的合理的值是从1到10。
+范围在128－159之间的字符在ISO-8859-X中没有指定意义。ISO-8859-X中值在128以下
+的字符和它们在US-ASCII中有一样的意思。
+ISO8859第六部分（拉丁/阿拉伯字母）和第8部分（拉丁/西伯来字母）包括了从右至
+左和从左至右两种字符，但是没有定义一种规范的次序来表示双方向文本。"ISO-8859-6" 和 
+"ISO-8859-8"字符集指定使用形象的方法【RFC-1556】。
+所有这些字符集都是纯7比特或8比特集，没有“shift”和“escape”功能。“shift”和
+“escape”序列的含义也没有在这些字符集中定义。
+上面定义的字符集在MIME中都是没有争议的。本文档没有认可特殊的非US-ASCII
+字符集，并且承认字符集未来的发展是未知的。
+注意，使用的任何非US-ASCII字符集必须在Content-Type域中具体指定。
+上面定义的字符集之外的、没有正式发行和IANA注册的字符集，或者私人约定的字符集，
+这种情况下字符集名称必须以“X－”开始。
+实现者不要定义新的字符集除非绝对需要。
+“charset”参数主要定义用于文本数据，在这节中进行了描述。但是，有可能非文本数据也
+希望指定字符集属性值，这种情况下应该使用相同的句法和属性值。
+一般来说，合成软件应该总是使用“最低级的通用命名”字符集。例如，如果一个主体只包
+括US-ASCII字符，应该标记成US-ASCII字符集，而不是ISO-8859-1。更普遍的情况，如
+果一个字符集是另一个字符集的子集，而主体只包含子集中的字符，那么应该标记那个子集。
+这将增加接受方正确看到结果的可能性。
+4. 1. 3.  Plain(纯文本)子类型
+      最简单、最重要的“text(文本)”子类型是“plain(纯文本)”。这表明纯文
+  本不包含任何的命令格式或符号。纯文本是有意被保持原样的显示，就是说，正确
+  的显示纯文本不需要进行命令格式、字体属性、特殊符号、处理结构、目录或段落
+  标志的处理。缺省的使用格式“text/plain;charset=us-ascii”常用于因特网实践
+  中现有的电子邮件。在RFC 822中由关于这个子类型的详细的定义。
+     在这个文件中并没有其他的文本子类型的定义。     
+4. 1. 4.Unrecognized（未被承认的）子类型
+      Unrecognized（未被承认的）子类型被当作“plain”纯文本子类
+   型，只要MIME知道怎样处理字符集。如果它的字符集是未被承认的，就被当作
+   “application/octet-stream”处理。
+4.  2.  Image Media Type（ 图象类型）
+      “image”（图像）类型的主体部分包含一幅图像，它的子类型命名这幅特殊图像
+   的格式。这些命名不区分大小写。初始的子类型是JPEG格式的“jpeg”类型，它
+   使用JFIF编码[JPEG]。
+       这里列出的“image”图像子类型即不是唯一的，也不是详细的，如果想要了
+   解更多的在IANA注册过的子类型，可参考RFC 2048。
+       Unrecognized（未被承认的）图像子类型一般被当作“application/octet
+    -stream”处理。当它们没有被标注为安全而只是普通的图像浏览应用时，执行器
+   可能随意的选择可用的图像子类型代替，如果那个子类型可用的话。
+   注意：用这种方法把应用程序支持的大部分的危险的图像子类型处理成普通目的
+   图像浏览应用可能会遗留下来一些安全性问题。
+4.  3.  Audio Media Type（音频类型）
+      "audio"（音频）类型的主体部分包含音频数据。虽然目前还没有一致的理想的
+  音频格式用于电脑，但有一些压缩格式能提供共同操作的能力。[Page 11]
+     最初的子类型"basic"（基本的）通过提供一个绝对的最小公分母音频格式
+  满足这种需要。在以后的文件中可能定义更丰富的格式，它具有更高品质和更低
+  带宽的音频。
+     "audio/basic" 子类型采用单道8bit ISDN mu-law[PCM]编码，采样频率为8000
+   Hz.
+     未被承认的音频子类型有时被当作"application/octet-stream"类型处理。执行
+  器可能随意的选择一个可用的音频子类型，选择的这个子类型不是确定的一个，可有
+  多个选择，来满足应用程序的多方面的需要，只要该应用是可行的。
+4.  4.  Video Media Type（视频类型）
+      "video"（视频）类型的主体部分是一个随时间变化的运动图像，可能带有颜色和
+  同步的声音。术语"video"（视频）这里是从最一般的角度来说的，而不是特指某一个
+  技术或格式。也不排除动态图像编码。"mpeg"子类型指的是一种用MPEG标准编码的视频
+  类型。
+      应该注意虽然这个文档不提倡在单一的主体部分有多种媒体类型的混合，事实
+  上已经有许多所谓的有同步描述的视频格式， "video"（视频）类型支持这种格式。
+      未被承认的视频子类型有时被当作"application/octet-stream"类型处理。执行
+  器可能随意的选择一个可用的视频子类型，选择的这个子类型不是确定的一个，可有
+  多个选择，来满足应用程序的多方面的需要，只要该应用是可行的。
+4.  5.  Application Media Type（ 应用类型）
+      "application"（应用）类型用于不连续的、离散的数据，这些数据不适合其他的
+   类型，但作为一种数据必须被应用程序处理。这种信息必须被应用程序在用户看见和
+   使用前处理。 "application"（应用）类型的其他的用途包括文件传输、电子数据表、
+   有时序的电子邮件数据和计算语法。（后者，特别地，能引起安全性问题，故被实现
+  者重视，在"application/PostScript"类型中有关这方面详细的讨论。） [Page 12]
+     例如，一个会议的时间安排可能定义一个标准的关于被提议的会议日期信息的
+  描述，一个聪明的用户代理会使用这些信息管理一个用户的对话，然后可能发送关于
+  那个对话的额外的材料，更一般地，已经开发出几个活性的消息语言，它们可用来编
+  写一些特殊的程序被发送到一个远程接口位置并且自动地在接受者环境中运行。
+     那样的程序可能被定义为"application"类型。这个文档定义了两个子类型：
+   octet-stream,（8bit流） and PostScript（标记）.
+   "application"（应用）的子类型不是应用的名字和它的一部分名字，在这个应用中
+  数据是已定义的。这不是意味着，然而，任何一个应用程序的名字会作为一个
+  "application"的子类型。   
+4. 5. 1. Octet-Stream Subtype（8bit子节流子类型）
+    Octet-Stream（8bit子节流）子类型的主体部分包括任意的二进制数据。当前的设置
+的参数定义为:  
+    (1)PYTE--普通的类型或二进制数据。这是有意作为人类可接受的信息形式而不是其他
+的任何一个机械的处理。
+   （2）PADDING--由二进制流组成的填补的比特数量是根据实际的内容产生附加的的8bit
+子节数据。这在当总的比特数不是8的倍数时是有用的。
+    这两个是可选的。
+    另外的参数，"CONVERSIONS"，在RFC 1341 中定义，但是已经不用了。RFC 1431也定
+义了"NAME"参数的用法。它表示一个用来写数据的文件的文件名。在后来的RFC文档中反对
+在分开的内容中使用该头域。
+   推荐的为一个执行接收"application/octet-stream"的实体的使用方法是简单的把数据
+放到一个文件中，如使用Content-Transfer-Encoding（内容传输编码），或使用它作为一
+个用户定义的进程的输入。          [Page 13]
+   为了减少传输抵赖，它强烈建议执行中不用机械地路径搜索，在那里武断地命名一个程
+序的参数作为输入。  
+4. 5. 2. PostScript Subtype（标注类型）
+   "application/postscript"的类型显示一个有标注的程序。通常允许两个不同的标注
+语言；起始的标注1变量在[POSTSCRIPT]中描绘，另外一个标注变量在[POSTSCRIPT2]描绘。
+   标注是一个Adobe体系公司的一个注册商标，MIME类型的使用
+"application/postscript"意味着商标的所有的权利。
+     标注语言定义提供了设施，为了内部的特殊的语言特征定义，用在程序中使用。这种
+特殊语言的标号特征叫做标注文档结构规范或DSC。DSC是非常普通和充分的用于常规的信
+息系统中。不管有没有要求，它被强烈的推荐使用，作为一个互用性的辅助。缺乏常规的习
+惯性的结构的文档不能让人相信会在一个给定的环境下工作。同样地，一些系统可能设定最
+坏的情况并拒绝处理无结构的文档。
+   普通目的的执行标注细节是有严重的安全性隐患，实现者会气馁于发送一些带标注体
+"off- the-shelf"的翻译。然而它通常是安全的，在发送标注给一个打印机时，在那里通过
+一个典型的打印环境潜在的伤害是很大的，执行者应该考虑所有的下面个情况，在他们增加
+交互式的显示标注体给他们的MIME读者的时候。 
+   下面是这部分的一些概要，虽然可能不全，和在标注实体传输中的可能出现的问题。
+   （1）PostScript语言危险的操作包括，但不是限制，"deletefile", "renamefile", 
+"filenameforall", 和 "file"."File"只在一些费标准的输入输出应用中是危险的。执行可
+能定义非标准的文件操作；这些可能产生对安全的危险。 "Filenameforall"文件搜索操作
+通配符 ，在第一次出现时无危险的。                                        
+          然而，这种操作潜在的暴露有用的信息，这种信息可能本身是敏感的。  
+ 消息发送者应该避免使用有潜在危险的文件操作符，既然这些操作符是十分可能引发安全
+问题。消息接受和显示软件应该消除所有的安全隐患的文件操作符或采取特殊的方法。当
+PostScript 解释器处理文件时，这些操作符应该被当作外部的代理。那样的话，使and/or
+检查应该在到达解释语言本身之前完成。注意确保没有enabling full函数方法存在。        
+           
+    (2)  PostScript 语言给现有的标准的解释器提供工具或服务等。外部环境的改变，
+通常保留在文件里，有时也会存于容易丢失的内存中。与解释器相关的操作和文件有潜在的
+接口。然而，无限制地使用会导致拒绝服务。PostScript解释器的操作包括exitserver操
+作和startjob操作。消息发送和接收软件不应该生成PostScript，而是让解释器来完成，
+既然退出的能力可能是难以获得的，在PostScript安全执行时。消息发送和接收软件应该
+完全不能有能力来保留PostScript环境的改变，通过排除或禁止"startjob" 和
+"exitserver"操作。 如果这些操作不能排除或完全的禁止和他们相关联的密码，就应该设
+置一个hard- to-guess值。 
+    （3) PostScript 提供操作来设置system-wide和device-specific参数。这些参数设
+置可能保留交叉的工作也可能对解释器正确操作造成危险。PostScript设置系统和设备
+参数的操作包括，但不仅限于，    "setsystemparams" 和 "setdevparams"操作。消息发
+送软件不应该产生依靠系统和设备参数设置能正确操作的PostScript。设置这些参数的能
+力可能在安全的PostScript执行中被禁止。消息发送和显示软件有能力禁用系统和设备参
+数的设置。如果这些操作不能完全禁用和他们有关的密码，至少应该设置一个
+hard-to-guess值。
+    （4）一些 PostScript 的执行器提供了非标准的工具来直接登陆和执行机器代码。
+那样的工具是十分下容易找的，以至于滥芋充数。消息发送软件不应该提供那样的功能。
+ 包括hardware-specific在内，它们可能在PostScript安全执行器中不可用的。消息
+接收和显示软件不应该允许那样的操作，如果它们存在的话
+   （5）PostScript是一种扩展语言，它的许多执行器提供了各自的扩展。本文档不
+讨论这些有不确定因素的扩展。消息发送软件不应该使用非标准的扩展；因为它们可能
+在一些执行器中丢失。消息发送和显示软件应该保证非标准的PostScript操作是安全的、
+不会产生任何的危险。
+    （6）写一个消耗大量的系统资源的PostScript是可能的。写一个循环执行的
+PostScript也是可能的。如果把这两种类型的程序大送给信任的收件人，可能引起
+破坏。消息发送软件应该避免解释和分发那样的程序，因为它是反社会的。消息接收和
+显示软件应该提供适当的机制，当合理数量的时间消逝后作中断处理。另外，PostScript
+解释器应该被限制只使用合理数目的系统资源。                  
+   （7）  在PostScript里面可能包括各种形式的原始的二进制数据。在因特网邮件上
+不推荐这样使用。其一是因为不是所有PostScript解释器支持这种数据格式，其二是因为
+这样会使MIME Content-Tansfer-Encoding(内容传送编码)变得复杂。（没有那样的二进制
+数据，PostScript可能是把数据当作line-oriented数据，如果把二进制数据和
+line-oriented数据数据混合在单一的Postscript 数据流里面，PostScript把数据当作
+CRLF处理，结果非常会出现问题。）
+    （8） 最后，某些PostScript解释器可能存在bug，在接受者的系统里可能引发未被
+授权的问题。有些我们没有办法对付，有些可以采取适当的方法纠正。
+4. 5. 3. 其它application的子类型
+   将来有可能定义许多其它的application的子类型。MIME执行器必须最低限度把
+  任何不可识别的子类型当作"application/octet-stream"类处理。
+5.  Composite Media Type Values（复合类型值）
+   七个内容类型中复合类型占了两个。复合实体可以被MIME机制处理--一个MIME处理
+器代表性地直接处理主体部分。
+5. 1.  Multipart Media Type（多部分类型）
+      在multipart entity(多部分实体)的例子中，一个或多个不同的数据集合并在一
+  个单一的body(体)中，一个"multipart"（多部分）类型 field的（域）必须出现在实
+  体的header(头域)。body（体）必须包括一个或多个body part（体部分)，每一个位
+  于boundary（边界）定界符线之前，最后一个则跟着一个结束边界定界符线。在它的
+  边界定界符线后，每一个体部分由头域、空行、体组成。因此一个体部分在语法上类
+  似于RFC 822中的message(消息)，但是在意义上是不同的。
+      一个体部分是一个实体，因此实际上不会被当作RFC 822中的消息来解释。首先，
+  在体部分中实际上不需要头域。因此，一个以空行开始的体部分是允许的，它被解释
+  成缺省值的头域。在这样的一个例子中，Content-Type（内容类型）被解释成
+  "text/plain; charset=US-ASCII".                             
+       唯一有意义的体部分头域是以那些以"Content-"开始的名字。在体部分中所有其它
+的头域可能被忽视。虽然它们通常很有可能被保留下来，必要时可以被网关丢弃。其它的域
+被允许出现在体部分中但不受支持。以"X-"开始的域可能实验或私人目的被创建，它们包含
+的这些信息被识别出来后，可能会被某些网关丢弃。   
+  注意：RFC 822消息和体部分的区别是微妙的、不重要的。 一个因特网和X.400邮件的
+  网关，举个例子说，必须能识别一个包含图像的体部分和一个包含压缩消息的体部分，
+  这个压缩的消息是一幅JPEG图像。为了描绘后者，体部分必须有"Content-Type:
+  message/rfc822"，并且它的体（空行之后）必须是压缩的消息，它自己的体头域是
+   "Content-Type: image/jpeg"。相似的语法便于消息到体部分的转化，反之亦然，
+  但是它们两个的区别必须被实现程序理解。（因为在特殊的情况下，体部分实际上是消
+  息，也可以定义为"digest"子类型。）
+      正如前面所说，每一个体部分是在包含边界定界符的边界定界符线之前。边界
+  定界符不能出现在任何的压缩部分里面、本身的行上、任何行的前缀。这表明在至关
+  重要的一点是应该选一个结构代理和指定一个统一的边界参数值，在多部分的内部
+  不要包含边界参数值。  
+      所有目前和将来出现的多部分子类型必须使用同样的语法。在它们的语义上子类
+   型可能不同，并在语法上强加于另外的限制，但是必须使多部分必要的语法一致。
+   这种必要确保所有用户代理至少能够识别和区分多部分实体的体部分，即使是那些
+   未被公认的子类型。 
+      正如在内容传送编码[RFC 2045]中规定的，除了 "7bit", "8bit", 和 "binary"
+   外多部分实体不允许其它的编码。多部分边界定界符和头域在所有的例子中总是描
+  述成7bit US-ASCII（虽然头域可能编码成非US-ASCII的正文，参见 RFC 2047），体
+  部分的数据被编码成相应的内容传送编码。            [Page 18] 
+5. 1. 1.Common Syntax（共同语法）
+        这部分定义多部分子类型的共同的语法。所有的多部分子类型必须使用该语法。
+   一个简单的例子会在这部分的后面出现。在RFC 2049给出了一个更复杂的多部分消息
+  的例子。
+        多部分实体的内容类型域需要一个边界参数"boundary"。边界定界符线定义为
+   由两个连字符（"-",十进制值是45）和紧跟着从内容类型头域取来的"boundary"边界
+   参数值组成，空格和CRLF分隔符可选。
+   注意：连字符在早期的RFC 934中的压缩消息不兼容，搜索边界符然后执行是容易的。
+   然而，应该提醒多部分的消息不完全和RFC 934RFC 934中的压缩消息兼容；特别地，
+   它们不服从RFC 934规定的内含连字符开头的行引用。这种机制后来不用了，因为后者
+   引用了前一级的引用。这种合并使连字符在这种情况下不合适。
+   设计实现程序的警告：关于内容类型的语法参数设置边界参数值经常是必要的，边界
+   参数值要被后面引用。虽然不一定是必需的，但不会有危害。实现者必须仔细的学习
+   语法以免产生无效的内容类型域。因此，一个多部分的内容类型头域可能像下面的样
+  子：
+    Content-Type: multipart/mixed; boundary=gc0p4Jq0M2Yt08j34c0p
+   但是下面是无效的:
+    Content-Type: multipart/mixed; boundary=gc0pJq0M:08jU534c0p
+   （由于冒号）必须改为：
+    Content-Type: multipart/mixed; boundary="gc0pJq0M:08jU534c0p"
+       这个内容类型值表明内容有一个或多个部分组成，每一个部分相互独立，语法结构
+   相同是RFC 822中的消息，头域允许空，体部分在边界线       
+     --gc0pJq0M:08jU534c0p前。
+        边界线必须出现在行的开始，i.e.紧跟着CRLF分隔符，边界定界符线被认
+   为紧接着初始的CRLF，而不是前面部分的一部分。分界符可能跟着0或多个空格
+   。然后被另一个 CRLF分隔符终止。开始下一个体部分的头域或两个 CRLF分隔符
+  （即空行）。如果内容类型域没有则表示它使用缺省的"multipart/digest"每个
+   体部分的子类型为"message/rfc822"，或是"text/plain"类型。
+   注意：位于边界定界符线之前的CRLF概念性地依附于边界符，因此它可能不以
+   CRLF结束（空行）。体部分必须被认为以空行结束，因此在边界定界符行之前
+   需要两个CRLF，第一个是前面体部分地一部分，后一个是压缩边界的一部分。 
+       编界定界符不能出现在压缩的原文里面，并且不能大于70个字符，不计算
+  前面的连字符。
+       最后一个体部分的边界定界符行是特别的，在它之后没有其它的体部分了。
+  该边界定界符行与前面的边界定界符行一样，只是在定界符值后多了两个连字符。
+   如--gc0pJq0M:08jU534c0p--
+   设计实现程序注意：边界字符串和边界值对照，在每一个候选行的开始处。一个
+   确切的匹配整个候选行不是必需的；但有充分的理由让边界出现在所有CRLF结束
+   后。
+       在第一个定界符行和最后一个定界符行之间应留出一些空间给附加的信息。
+   这个区域通常有一些空白在左边，执行器必须忽略在第一个和最后一个边界行之
+   间的空白。
+   注意："preamble"（导言）和"epilogue"（结尾）部分通常是没用的，因为在网关
+   处理这些区域时这部分缺乏适当的类型和清楚的语义，特别在X.400 网关。然而，
+   去掉preamble部分空白后，许多MIME执行器发现这是一个便利的地方， 
+   可以插入一些解释性的注释给收件人看，他可以用pre-MIME软件读取这部分消息，
+   既然它们被MIME软件忽略。
+   注意：因为边界定界符不能出现在体部分，用户代理必须小心翼翼的选择一个一致的
+   边界符参数值。在上面的例子中边界符参数值是由一个设计的运算器产生的，
+   这个值必须几乎不可能和现存的压缩数据重合，且不要事先扫描数据。改变运算
+   规则导致更多的易读的边界定界符容易被一个老的用户代理接收，但是要更多注意
+   可能该边界定界符会出现在一些数据行中。最简单的边界行是"---"，相应的结束
+   边界行是"-----"。 作为一个最简单的例子，下面的多部分消息有两部分，它们都是纯
+文本，一个明确的指明类型，另一个则不指明：
+     From: Nathaniel Borenstein <nsb@bellcore.com>
+     To: Ned Freed <ned@innosoft.com>
+     Date: Sun, 21 Mar 1993 23:56:48 -0800 (PST)
+     Subject: Sample message
+     MIME-Version: 1.0
+     Content-type: multipart/mixed; boundary="simple boundary"
+
+     This is the preamble.  It is to be ignored, though it
+     is a handy place for composition agents to include an
+     explanatory note to non-MIME conformant readers.
+
+     --simple boundary
+
+     This is implicitly typed plain US-ASCII text.
+     It does NOT end with a linebreak.
+     --simple boundary
+     Content-type: text/plain; charset=us-ascii
+
+     This is explicitly typed plain US-ASCII text.
+     It DOES end with a linebreak.
+
+     --simple boundary--
+
+这里的结尾通常被忽略。  
+                              
+在另一个multipart实体内的主体部分multipart媒体类型的使用是明确允许的。在这种
+情况下很明显：我们必须确保嵌套的multipart实体使用不同的边界分隔符。看RFC 2049的
+一个嵌套multipart实体的例子。
+  只有单个主体的multipart媒体类型的使用可能在确定的上下文中是有用的，并且是明
+确允许的。
+NOTE：经验表明单主体的multipart媒体类型对发送非文本的各媒体类型是有用的。它
+有提供了序言的优点，在其中包括了解码指令。而且，许多SMTP（简单邮件传输协议）网
+关移动或移除了MIME(多用途的网际邮件扩充协议)的首部字段，一种智能的MIME译码器
+甚至能在没有Content-Type（内容类型）头的情况下对multipart(多部分)的边界进行很好的
+猜测，从而成功地对报文解码。
+对multipart媒体类型来说，唯一的强制性的全局参数是边界参数，它由一个字符集的1
+至70个字符组成，这个字符集能健壮的通过邮件网关，不会以white space（空白段）结束。
+(若边界分隔线以空白段结束，这空白段必定被认为是由网关添加的，必须删除。)它在下面
+的BNF中正式地进行了规定：
+boundary := 0*69<bchars> bcharsnospace
+bchars := bcharsnospace / " "
+bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" /
+                      "+" / "_" / "," / "-" / "." /
+                      "/" / ":" / "=" / "?"
+总之，multipart 实体的主体可以规定如下：
+     dash-boundary := "--" boundary
+                    ；边界取决于Content-Type field字段的边界参数的值。
+     multipart-body := [preamble CRLF]
+     dash-boundary transport-padding CRLF
+     body-part *encapsulation
+     close-delimiter transport-padding
+     [CRLF epilogue]
+     transport-padding := *LWSP-char
+                      ；创建者绝对不能产生非零长度的transport-padding，但接收方必
+须能够处理由报文传输添加的padding。
+encapsulation := delimiter transport-padding
+                      CRLF body-part
+ delimiter := CRLF dash-boundary
+close-delimiter := delimiter "--"
+preamble := discard-text
+epilogue := discard-text
+discard-text := *(*text CRLF) *text
+                  ；可以忽视或丢弃
+body-part := MIME-part-headers [CRLF *OCTET]
+                  ；在主体部分的内容千万不能以特定的虚边界开始，分隔符也不能在主
+体的任何地方出现。注意到主体部分的语法分析器不同于报文的语法分析器，正如在文本中
+描述的那样。
+    OCTET := <any 0-255 octet value>
+重要的：在这个BNF中显示的成分中自由地插入linear-white-space和RFC822注解是
+不允许的。因为这个BNF没有指定一个结构化的报头字段。
+注意：在确定的传输领域，RFC822的限制条文比如限制主体部分使用printable 
+US-ASCII 字符可能并不是有效的。（那就是说，传输领域中存在着类似在RFC821中规定
+且在RFC822中假定的internet邮件传输标准，但是没有确定的限制条文。）对这些限制的放
+宽可以这样被认为是局部地扩展主体的定义，比如说：在US-ASCII的范围外再包含八位位
+组，只要传输支持这些扩展，并且在Content- Transfer-Encoding（内容传输编码）报头字段
+中充分地记录。但是头部（不管是报文头还是主体部分的头部）在任何情况下都不允许包含
+非US-ASCII字符。
+注意：在multipart类型中明显缺少的是一种结构化的主体部分。那些若想提供更多结
+构化或完整化的multipart报文传输便利性，则需要定义在语句构成上一致的multipart的子
+类型，但在不同部分要定义相互关系。举个例子，multipart的子类型可以被定义为包括一个
+特有的部分，它依次被使用来规定不同部分的关系，可以在Content-ID（内容ID）字段注
+明。若采用这种方法的话，旧的执行部分将无法识别新的子类型，但将把它作为
+multipart/mixed类型，这样使得用户能识别标志的部分。
+5. 1. 2处理嵌套的报文和multiparts（多部分）
+在这个文档的并发部分定义的"message/rfc822"子类型除非数据用完，否则不会终结。
+同样，一个不正确地缩短了的"multipart"实体可能没有终止边界标记，由于邮件系统的瘫痪
+在操作上会出现这种情况。
+当这些实体嵌入到另一个multipart结构中时，有必要对这些实体进行正确的处理。因
+此MIME的执行就要能识别在任何层次内部嵌套中的外层的边界标记。仅仅检查下一个预
+期的标记或其它终结条件是不够的。
+5. 1. 3 Mixed子类型
+当主体部分是独立的并且需要按一定的顺序捆绑时就要用到multipart类型的子类型
+"mixed" 。任何一种执行时无法识别的multipart子类型都被视为子类型"mixed"。
+5. 1. 4 alternative子类型
+"multipart/alternative"类型与"multipart/mixed"在语句构成上是一致的，但语意是不同的。
+不同处在于主体的每一部分都是相同信息的选择性版本。
+系统应当承认不同部分的内容是可互换的。系统可以根据本地的环境和参照来选择最
+好的类型，有时甚至可以通过与用户的交互。对于"multipart/mixed"类型，主体部分的顺序
+是很重要的。因此，alternatives以不断忠实于原文的顺序出现。通常，最佳的选择是最后部
+分用系统本地环境易于接收的类型。
+举个例子，"multipart/alternative"可以用来以文本格式发送报文从而能方便地在任何地方
+展现出来：
+
+From: Nathaniel Borenstein <nsb@bellcore.com>
+     To: Ned Freed <ned@innosoft.com>
+     Date: Mon, 22 Mar 1993 09:41:09 -0800 (PST)
+     Subject: Formatted text mail
+     MIME-Version: 1.0
+     Content-Type: multipart/alternative; boundary=boundary42
+
+     --boundary42
+     Content-Type: text/plain; charset=us-ascii
+
+       ... plain text version of message goes here ...
+
+     --boundary42
+     Content-Type: text/enriched
+
+       ... RFC 1896 text/enriched version of same message
+           goes here ...
+
+     --boundary42
+     Content-Type: application/x-whatever
+
+       ... fanciest version of same message goes here ...
+
+     --boundary42--
+在这个例子中，邮件系统理解了"application/x-whatever"格式的用户只愿看到想要的版
+本，而其它用户根据他们系统的实际容量将只愿看到enriched（丰富的）版本或plain text(纯
+文本的)版本。
+通常，组织"multipart/alternative" 实体的用户代理商必定按偏爱递增的顺序来放置主体部分，
+也就是说首选的格式放在最后。对fancy text格式，发送方用户代理商会把最简单的格式放
+在最前，最丰富的格式放在最后。接手方用户代理商可挑选显示他们能够显示的最后的格式。
+如果二中之一自身是multipart类型且包含不可识别的子部分时，用户代理商就会选择或者
+显示这其中之一，即早期的那个，或者两者都显示。
+注意：从执行者的观点看，也许把这个顺序倒过来更明智些，就是把最简单的放在最
+后。然而，当"multipart/alternative"实体被认为用non-MIME-conformant阅读器时，把最简单
+的放在最先是一种可能的选择。然而这种方法加重了conformant MIME阅读器的负担，在
+此时它与旧的邮件阅读器的互用性就非常重要了。
+也许会出现这种情况，一些用户代理如果能够识别不止一种格式，他们将会让用户选
+择观看的格式。举个例子，如果报文既包括了精细格式的image 版本，又包括了易于编辑
+的text版本，那将是很有意义的。但是最重要的是，用户并非无意识地看到了同一数据的多
+种版本。用户或可看到最后被识别的版本，或可以作出选择。
+
+在MULTIPART/ALTERNATIVE中CONTENT-ID（内容ID）的语义："multipart/alternative"
+实体的每一部分代表了相同的数据，但是两者之间的映射并不一定没有信息丢弃。举个例子，
+当把ODA翻译成附言或纯文本时，信息就会丢弃。在两部分信息内容不一致处，建议给每
+一部分一个不同的Content-ID（内容编号）值。当信息内容一致时。比如说，
+"message/external-body"类型的几个部分规定了交替的方法存取一致的数据，此时就应当使用
+相同的Content-ID字段值来优化任何的高速缓存机制，这机制在接受方的终端。然而，如
+果有这种Content- ID字段的话，不同部分的Content- ID值也不该与描述
+"multipart/alternative"的完全相同。也就是说，一个Content- ID值指着"multipart/alternative" 实
+体，然而一个或多个其它的Content-ID值将指向各部分的内部。
+5. 1. 5 Digest子类型
+这个文档定义了multipart内容类型的digest子类型。这个类型在语句构成上跟
+"multipart/mixed"是一致的，但语义是不同的。尤其是，在摘要中，主体部分缺省的内容类
+型值是在"text/plain"和"message/rfc822"之间变化的。这样做就允许了易读的摘要格式，它对
+RFC934的兼容性非常的好（除了引用文惯例）。
+注意：虽然在不同于"message/rfc822"的摘要的主体部分指定一个内容类型值是可行的，
+比如一个"text/plain"部分包含了摘要内容的描述，事实上这样做是不可行的。
+"multipart/digest"内容类型是用来发送报文集的。如果需要"text/plain"部分，它将作为
+"multipart/mixed"报文的单独的部分包括进来。
+这种格式的摘要看起来如下：
+
+     From: Moderator-Address
+     To: Recipient-List
+     Date: Mon, 22 Mar 1994 13:34:51 +0000
+     Subject: Internet Digest, volume 42
+     MIME-Version: 1.0
+     Content-Type: multipart/mixed;
+                   boundary="---- main boundary ----"
+
+     ------ main boundary ----
+
+       ...Introductory text or table of contents...
+
+     ------ main boundary ----
+     Content-Type: multipart/digest;
+                   boundary="---- next message ----"
+
+     ------ next message ----
+
+     From: someone-else
+     Date: Fri, 26 Mar 1993 11:13:32 +0200
+     Subject: my opinion
+
+       ...body goes here ...
+
+     ------ next message ----
+
+     From: someone-else-again
+     Date: Fri, 26 Mar 1993 10:07:13 -0500
+     Subject: my different opinion
+
+       ... another body goes here ...
+
+     ------ next message ------
+
+     ------ main boundary ------
+
+
+5. 1. 6.  Parallel 子类型
+这个文档定义了"multipart"内容类型的"parallel"子类型。这种类型在句法上与
+"multipart/mixed"是一致的，但是语义是不同的。特别的，在一个并行实体中，主体部分的
+顺序并不是非常重要的。
+这种类型的一个普通的介绍就是把各部分同时在可能的软硬件上显示出来。然而，组织
+代理会意识到许多邮件读者不具备这种能力，无论如何都会顺序地显示各部分。
+5. 1. 7其他的Multipart子类型
+其他的Multipart子类型将会出现。MIME的实现通常必定把无法被识别的multipart子
+类型等同地视为"multipart/mixed"。
+5.  2. 报文媒体类型
+在发送邮件时，通常希望封装在另一个邮件报文中。一种特殊的媒体类型"message"就
+是被定义来实现这个功能的。特别的是，"message"（报文）的"rfc822"子类型就是用来封装
+RFC822报文。
+注意：报文的子类型或许被定义来接受或丢弃报文。然而，接受或丢弃的报文可以被当
+成多部分报文来处理，其中第一部分包含了所有的控制和描述信息，第二部分
+"message/rfc822"类型是被接受或丢弃报文。在这种方式下，组和起来的接受或丢弃的报文
+将会保留在原始报文中的类型信息，允许它正确地递交给接受方，因此它是被倡导的。
+报文的子类型常常在在允许编码的地方加上限制。这些限制的描述和每一种特定的子类
+型都是关联的。
+邮件网关、中继和其它的邮件处理代理通常是改变RFC 822报文的顶层（top-level）报
+头。特别是，他们频繁地增加、删除、追加头文件字段。这些操作对封装的即内含在message
+类型的报文主体内的报头来说是明确禁止的。
+5. 2. 1  RFC 822子类型
+"message/rfc822"的媒体类型指出：主体按照RFC 822报文的句法包含了封装的报文。
+然而，不象顶层的RFC 822报文，这些限制（也就是说每个"message/rfc822"主体必须包含
+一个"From", "Date"和至少一个目的头文件）被删除了，以这样的要求来替代：也就是说必
+须出现"From", "Subject", 或 "Date" 中的一个。
+应当注意到：尽管使用了数字"822"，但是"message/rfc822"实体并不严格限于与RFC 822
+完全一致。"message/rfc822"对象的语义也不必限定于RFC 822中定义的语意。更明确的是，
+"message/rfc822"报文可以是消息条款或一种MIME报文。 
+除了"7bit"、"8bit"或"binary"外，其它的编码对"message/rfc822"实体的主体来说都是不
+允许的。报头字段在任何情况下都是US-ASCII，主体内的数据仍可编码，在这种情况下，
+处在封装的报文内的Content-Transfer-Encoding（内容传送编码）的报头字段将会反映这一
+点。在封装的报文头的Non-US-ASCII text可以指定为使用RFC 2047中描述的机制。
+5. 2. 2  Partial子类型
+"partial"子类型是用来把大的邮件分成几个独立的片段进行传送，然后由接受方的用
+户代理自动地组装。（这思想与IP分组后用基本的IP协议组装相似。）当中间传输代理限制
+了单个可传送报文的大小时就可使用这种机制。媒体类型"message/partial"就这样指出，主体
+包含了一个大的邮件的片段。
+因为"message"类型的数据从不会用base64或quoted-printable（加引号的可打印）类型
+编码，若"message/partial"邮件在支持binary或8bit传输的环境中构建，那就会出现问题。
+这问题就是binary数据将会被分成多部分的"message/partial"报文，每一部分要求二进制传
+输。若这些报文在网关遇到了7bit的传输环境，除了等待所有的片段组装成内部的报文，
+然后把组装的数据以base64或quoted-printable类型编码，没有合适的方法进行7bit的编码。
+虽然不同的分组可以经由不同的网关，但是这仍然是不可接受的解决办法。因此规定了
+"message/partial"类型邮件必须有7bit（默认）的内容传输编码。特别的，即使在支持binary
+或者8bit传输的环境中，使用8bit或binary的内容传输编码对"message/partial"类型的MIME
+邮件来说是明确禁止的。这也就反过来意味着内部的报文决不能使用8bit或binary编码。
+因为一些报文传输代理选择自动地把大的报文分段，并且因为这些代理使用不同的分
+段极限，所以部分的报文片段在重新组装以后，可以看出他们是由部分的报文组成的，这是
+明确允许的。
+在"message/partial"类型的内容类型字段必须规定三个参数：首先是ID，这是一个唯一
+的标志符，是使用来匹配所有的分段。（通常，标志符必须是一个message-id；如果放在双
+引号中，它可以是任何的message-id,与RFC 2045中给出的BNF参数是一致的。其次是
+number,一个整形，是分段号，它指示了每个分段的次序。最后是total，另一个整形，是分
+段的总数。在最后一个分段上必须由这个字段，在之前的分段上它是可选的（虽然最好写上）。
+同样注意：这些参数的顺序是任意的。
+这样，三部分报文的第二部分可以是下列报头字段的任一种：
+Content-Type: Message/Partial; number=2; total=3;
+                   id="oc=jpbe0M2Yt4s@thumper.bellcore.com"
+
+    Content-Type: Message/Partial;
+                   id="oc=jpbe0M2Yt4s@thumper.bellcore.com";
+                   number=2
+但是第三部分必须指定总的分段数：
+Content-Type: Message/Partial; number=3; total=3;
+                   id=oc=jpbe0M2Yt4s@thumper.bellcore.com
+请注意：分段编号从1而非0开始。
+当一个邮件以这种方式被分解成的片段组合在一起，结果总是一个完整的MIME邮件，
+它可能有自己的内容类型报头字段，因此可能含有任何其它的数据类型。
+5. 2. 2. 1报文分段和重组
+重组分段报文的语义必须是"inner"报文的语义，而不是包含内部报文的报文语义。这就
+使得以单独的分组报文发送一个大的audio报文成为可能，而且对接受方与其说是一个包含
+一个audio报文的封装报文，不如说是一个简单的audio报文。那就是说，封装的报文是透
+明的。
+当产生和重组"message/partial"类型的报文片段时，被封装报文的报头必须与封装实体的
+报头合并。在这个过程中必须遵守下列规则：
+（1）分片代理必须只用边界线把报文分割。引入这条限制是因为在点上而非在行的末
+尾进行分割，反过来依靠报文传输能够保留不以CRLF序列结束的报文语义。许多传输是不
+能保留这种语义的。
+（2）除了那些以"Content-"或特定的报头字段"Subject"、 "Message-ID"、          
+"Encrypted"、 "MIME-Version"开始的报头外，其它所有来自初始嵌套报文的报头字段都必
+须按序复制到新的报文中去。
+（3）以"Content-"加上 "Subject"、 "Message-ID"、 "Encrypted"和 "MIME-Version"字
+段开始的嵌套报文头字段必须按序添加到新报文的报头字段。任何不以"Content-"开始的嵌
+套报文头字段将被忽视或丢弃。（除了"Subject"、 "Message-ID"、 "Encrypted"和"MIME-          
+Version" 字段）
+（4）第二或以后嵌套报文的所有报头字段都会被重组过程丢弃。
+5. 2. 2. 2  分割和重组实例
+如果一个audio报文被分割成两个部分，第一部分可以是这样：
+
+     X-Weird-Header-1: Foo
+     From: Bill@host.com
+     To: joe@otherhost.com
+     Date: Fri, 26 Mar 1993 12:59:38 -0500 (EST)
+     Subject: Audio mail (part 1 of 2)
+     Message-ID: <id1@host.com>
+     MIME-Version: 1.0
+     Content-type: message/partial; id="ABC@host.com";
+     number=1; total=2
+
+     X-Weird-Header-1: Bar
+     X-Weird-Header-2: Hello
+     Message-ID: <anotherid@foo.com>
+     Subject: Audio mail
+     MIME-Version: 1.0
+     Content-type: audio/basic
+     Content-transfer-encoding: base64
+
+       ... first half of encoded audio data goes here ...
+第二部分可以是这样：
+
+     From: Bill@host.com
+     To: joe@otherhost.com
+     Date: Fri, 26 Mar 1993 12:59:38 -0500 (EST)
+     Subject: Audio mail (part 2 of 2)
+     MIME-Version: 1.0
+     Message-ID: <id2@host.com>
+     Content-type: message/partial;
+                   id="ABC@host.com"; number=2; total=2
+
+       ... second half of encoded audio data goes here ...
+然后，当分割的报文重组后，显示给用户的结果报文应该是这样：
+
+     X-Weird-Header-1: Foo
+     From: Bill@host.com
+     To: joe@otherhost.com
+     Date: Fri, 26 Mar 1993 12:59:38 -0500 (EST)
+     Subject: Audio mail
+     Message-ID: <anotherid@foo.com>
+     MIME-Version: 1.0
+     Content-type: audio/basic
+     Content-transfer-encoding: base64
+
+       ... first half of encoded audio data goes here ...
+       ... second half of encoded audio data goes here ...
+分割报文第二和以后片段的报头中包括"References"字段，参考先前片段的Message-Id
+对邮件读者理解和跟踪参照来说有益的。然而，象参考字段这样的字段是完全可以任意选择
+的。
+5. 2. 3  External-Body(外部主体)子类型
+    External-Body(外部主体)子类型表明实际体数据仅仅是被引用,而不被包含在内.既然这
+样,参数就描述一种访问外部数据的机制.当一个MIME实体是 "message/external-body"类型,
+它包括一个报头,两个连续的CRLFs,以及用于被压缩报文的报头.如果出现另一对连续
+CRLFs,用于被压缩报文的报头就结束.然而由于被压缩的报文主体本身是外部的,它并不会
+出现在随后的区域内.以如下报文为例:
+        Content-type: message/external-body;
+                   access-type=local-file;
+                   name="/u/nsb/Me.jpeg"
+
+     Content-type: image/jpeg
+     Content-ID: <id42@guppylake.bellcore.com>
+     Content-Transfer-Encoding: binary
+
+     THIS IS NOT REALLY THE BODY!
+    称之为"影子主体(phantom body)"的结尾区域对大多数的外部主体报文来说是被忽略的.
+然而,当访问类型是"mail-server(邮件-服务)"时,它用于包含某些辅助信息.
+   在文档中定义的使用影子主体(phantom body)的唯一访问类型是"mail-server(邮件-服务)",
+但未来在其他规范中可能会定义另外一些使用这一区域的访问类型.
+   在所有"message/external-body(报文/外部主体类型)"实体中,这些被压缩的报头必须包含
+一个Content-ID(内容ID)字段作为唯一标识用来引用数据.当访问类型是"mail-server(邮件-服
+务)"时,这个标识被用于缓冲机制和数据接收的识别.
+  注:正如这儿所说明的,用于描述external-body(外部主体)数据的标记,例如文件名以及邮件
+服务命令在US-ASII字符集中是必须的.
+   如果在实际应用中存在问题,那么可能就需要一种新的机制作为MIME的未来扩充,要么
+为"message/external-body(报文/外部主体)"定义最新的访问类型,要么通过其他一些机制.
+  与"message/partial(报文/部分)"一样,类型"message/external- body(报文/外部主体)"的MIME
+实体必须一个7bit(缺省)的
+content-transfer-encoding(内容传送编码).特别的,对于"message/external- body(报文/外部主
+体)"类型的实体来说,即使在支持binary(二进制)和8bit传输的环境中,binary(二进制)和8bit
+的内容编码传送的使用也是被明确禁止的.
+5. 2. 3. 1. 普通external-body(外部主体)参数
+  可以和任何"message/external-body(报文/外部主体)"一起使用的参数是:
+  (1)ACCESS-TYPE--表示被支持的访问机制的命令,通过它可以获取文件和数据.这个命令
+不区分大小写.它的值包括但不限于"FTP", "ANON-FTP", "TFTP", 
+"LOCAL-FILE","MAIL-SERVER".
+如RFC 2048中描述的,除以"X-"开头的测试值以外,其他值都必须到IANA注册.这个参数不
+是无条件的命令,它必须出现在每个"message/external-body(报文/外部主体)"中.
+  (2)EXPIRATION--过了这个日期(在RFC822"date-time(日期-时间)中定义,RFC1123中得到
+扩充,允许在年字段有4个数字)之后,外部数据的存在将得不到保证.这个参数可以和任何
+access-type一起使用,并一直是可选的.
+  (3)SIZE --数据大小(八位字节).这个参数的目的是为了帮助接收方决定是否耗费必要的资
+源取回外部数据.注意这儿,它描述了数据在标准形式下的大小,标准形式就是在任何
+Content-Transfer-Encoding被应用之前,或者数据被解码之后.这个参数可以和任何access-type
+一起使用,并一直是可选的.
+  (4)PERMISSION --一个不区分大小写的字段,它表明客户试图修改数据是否是可以的.默认
+情况下,或者如果permission值"read",前提条件就是他们不允许"read",并且如果数据被重新得
+到过一次,它就不在需要了.如果permission值是"read-write",那么前提条件就是无效的,并且
+任何本地拷贝必须仅仅被看作一个高速缓冲器. "Read" 和 "Read-write"是唯一被定义的
+permission值.这个参数可以和任何access-type一起使用,并一直是可选的.
+  这里定义的access-types精确语义将在下面各节中描述.
+5. 2. 3. 2  'ftp' and 'tftp' Access-Types(访问类型)
+   FTP或者TFTP访问类型表明报文主体可以被作为分别使用 FTP [RFC-959] 或者 TFTP 
+[RFC- 783]的文件一样访问.对于这些访问类型来说,以下这些附加参数是强制需要的:
+  (1)   NAME -- 包含实际主体数据的文件名.
+  (2)   SITE --通过使用给定的协议,文件可以获取的机构.它必须是一个完整的经过资格认
+证的域名,而不是一个随便取的绰号.
+  (3) 通过使用FTP,任何数据在被重新得到之前,用户通常被要求为通过site参数命名机构提
+供登录id和密码.基于安全方面的原因,id和密码不被作为content-type(内容类型)指定,而必须
+从用户那里获得.
+  另外,以下一些参数是可选的:
+  (1)   DIRECTORY -- 通过NAME命名的数据可以被重新得到的目录.
+  (2)  MODE --一个不区分大小写的字符串,它表明找回信息时要用到的模式.跟TFTP协议 
+[RFC-783]中所说明一样,对于"TFTP"访问类型来说有效的值是"NETASCII", "OCTET"," 
+MAIL".
+对于 "FTP" 访问类型来说有效的值是"ASCII", "EBCDIC", "IMAGE",和 "LOCALn",其中的
+"n"是一个十进制整数,例如8.和FTP协议[RFC-959]中说明的一样,以"A" "E" "I" and "L n"代
+表相应的类型.注意,对MODE参数来说,"BINARY" 和"TENEX"是无效,应该以"OCTET"或者 
+"IMAGE"或者 "LOCAL8"代替.如果MODE参数没有被详细说明, 对TFTP来说,其缺省值 
+为"NETASCII" ,其他协议的缺省值为"ASCII".
+5. 2. 3. 3  'anon(匿名)-ftp'访问类型
+  除了指定位置不需要给出用户名和密码这一点以外,在其他方面,"anon-ftp"和"ftp"访问类
+型都是一样的.可以替换的是,ftp协议可以用"anonymous"和相对应的用户邮件地址作为密码
+登录.
+5. 2. 3. 4  'local-file(本地文件)'访问类型
+  "local-file"访问类型表明实际主体可以像本地机器上的文件一样被访问.针对这一访问类
+型,定义了两各附加参数:
+  (1)   NAME --包含实际主体数据的文件名.这个参数对于"local-file"访问类型来说是不可
+少的.
+  (2) SITE --已知有权访问数据文件的机器或机器集的指定域.这个选项参数用来描述数据
+引用的本地位置, 在那里那些文件是可见的.星形将被用来作为匹配一部分域名的通配符,例
+如"*.bellcore.com",它表明一组在其上数据直接可见的机器集,但单一的一个通配符将被用来
+表示一个完全可用的文件,例如通过一个全局文件系统.
+5. 2. 3. 5  'mail-server(邮件服务)'访问类型
+  'mail-server(邮件服务)'访问类型用于表示来自邮件服务器的实际主体是可用的.针对这一
+访问类型,定义了两个附加参数:
+  (1)   SERVER -- 从中可以获取实际主体数据的邮件服务器的指定地址.对于"mail-server"
+访问类型来说,这个参数是不可少的.
+  (2)   SUBJECT --用于获取数据的邮件所使用的主题.注意,不推荐在邮件服务器上键入主
+题,但这些服务器是已知存在的.这个参数是可选的.
+  由于邮件服务器所接收的语法是各种各样的,有些是多行,所以发送到邮件服务器的整个命
+令不会像content-type(类容类型)报头字段中的参数一样被包含在内.当媒体类型是
+"message/external-body(报文/外部主体)"和访问类型是mail-server(邮件服务)时,将以"phantom 
+body(影子主体)"作为替代提供.
+  注意,MIME本身并不定义邮件服务器的语法.而是允许在影子主体(phantom body)包含任
+意的邮件服务器命令.实现必须将影子主体(phantom body)包含在报文主体中,这个报文被发
+送到邮件服务器以获取获取相关数据.
+  和其他访问类型不同,mail-server(邮件服务)是异步的,它的发生是不可预知的.基于这个原
+因,拥有一种机制是非常重要的,通过它返回的数据能与最初的"message/external-body(报文/
+外部主体)"实体相匹配.为了有利于匹配,MIME邮件服务器必须在返回报文和原先的
+"message/external-body(报文/外部主体)"实体上使用相同的Content-ID(内容ID).
+5. 2. 3. 6  External-body(外部主体)安全问题
+  "Message/external-body(报文/外部主体)"实体产生两个重要的安全问题:
+  (1) 通过Message/external-body(报文/外部主体)引用访问数据能使报文接收者有效的执行
+一个报文创建者详细指定的操作.因此对于报文创建者,他可以欺骗报文接收者执行他们本不
+愿做的某种操作.例如,使接收者在不知情的情况下违反安全策略,创建者可以指定一种操作,
+试图获取某些未被接受者授权的信息.基于这一原因,有能力处理外部引用的用户代理必须描
+述他们准备让接受者执行的操作,并在执行它之前,请求得到明确的允许.
+  'mail-server(邮件服务)'访问类型特别容易受到攻击,导致接受者发送一个内容由原先报文
+发送者指定的新报文.在试图处理MIME "message/external-body(报文/外部主体)" 时,任何被
+创建的请求报文都必须包含一个自动产生的明显标记.
+  (2)有时MIME会在提供某些报文完整性和真实性保证的环境中被使用.如果是在当前,这
+种保证将只被用于报文的实际指示性内容-他们可能会也可能不会被应用到那些通过MIME
+的"message/external-body(报文/外部主体)"机制访问的数据上.特别的,即使报文系统本身是安
+全的,它也有可能破坏特定的访问机制.
+  值得注意的是,在MIME机制有效或无效这两者之一必定存在这个问题.和一个包含某个文
+档的FTP位置的临时引用也会带来类似的问题,这个文档本身包含在一个加密报文的文本中
+--唯一的不同是,MIME提供这类信息的自动获取,而用户可能会将未获得保证的信任放置在
+这些自动获取机制中.
+5. 2. 3. 7  实例与深入说明
+  当external-body(外部主体)机制被用于和"multipart/alternative"媒体类型相关联时, 他扩展
+"mutipart/alternative"的功能以包含下面这种情形,就是相同的实体以相同的格式提供 但通过
+不同的访问机制.这样做的话,报文的创建者必须首先按照先前的格式,再通过先前的访问机
+制定制这些部分.接收者的浏览器将根据其格式和访问机制验证这个列表.
+  由于每个广域文件系统都会产生新的可能性,因此预先知道某个文件从这个文件系统可以
+或不可以直接访问的机器集是非常困难的.所以提供直接使用的文件名和一个或多个这个文
+件可以被访问的位置是有意义的.某个操作可能会试着通过FTP或其他协议,使用匿名或提示
+用户输入必要的密码来获取远程文件.如果一个外部主体可以通过多重机制被访问,那么发送
+者可以在一个封装的"multipart/alternative"实体的主体内包含多个"message/external-body"实
+体主体.
+  然而,正如mail-server(邮件服务器)访问类型所表明的那样,external-body机制的目的不是用
+来限制文件的获取.除此之外,我们可以想象,例如通过一个视频服务器获取视频片断的外部
+引用.
+  由于外部主体没有报头字段用来声明它的类型,所以如果它是除无格式US-ASCII文本之
+外的其他格式的话,那么出现在"message/external-body"数据主体中内含的报文字段必须用来
+声明外部主体的媒体类型.类似的,除了"7bit"之外的任何Content-transge-encoding(内容传送
+编码)也必须在此声明.因此,对于附言格式中涉及的对象,完整的"message/external-body(报文/
+外部主体)"报文应该与下面类似:
+       From: Whomever
+     To: Someone
+     Date: Whenever
+     Subject: whatever
+     MIME-Version: 1.0
+     Message-ID: <id1@host.com>
+     Content-Type: multipart/alternative; boundary=42
+     Content-ID: <id001@guppylake.bellcore.com>
+
+     ontent-Type: message/external-body; name="BodyFormats.ps";
+                   site="thumper.bellcore.com"; mode="image";
+                   access-type=ANON-FTP; directory="pub";
+                   expiration="Fri, 14 Jun 1991 19:13:14 -0400 (EDT)"
+
+     Content-type: application/postscript
+     Content-ID: <id42@guppylake.bellcore.com>
+  
+     Content-Type: message/external-body; access-type=local-file;
+                   name="/u/nsb/writing/rfcs/RFC-MIME.ps";
+                   site="thumper.bellcore.com";
+                   expiration="Fri, 14 Jun 1991 19:13:14 -0400 (EDT)"
+
+     Content-type: application/postscript
+     Content-ID: <id42@guppylake.bellcore.com>
+
+      Content-Type: message/external-body;
+                   access-type=mail-server
+                   server="listserv@bogus.bitnet";
+                   expiration="Fri, 14 Jun 1991 19:13:14 -0400 (EDT)"
+
+     Content-type: application/postscript
+     Content-ID: <id42@guppylake.bellcore.com>
+
+     get RFC-MIME.DOC
+
+  注意上面的例子,"7bit"的缺省Content-transfer-encoding(内容传送编码)是假定用于外部附
+言数据的.
+  与"message/partial"类型相似,"message/external-body(报文/外部主体)"媒体类型是透明的,也
+就是在外部主体中传送数据,而不是那个类型的主体和数据一起传送.因此,对于
+"message/partial",外面和里面部分的报头必须按照同一规则合并.特别的,这意味着
+Content-type(内容类型)和Subject(主题)字段可以不用保护,但From字段必须得到保护.
+  注意,由于外部主体不和外部主体的引用一起传送,所以他们必不需要遵循应用于引用本身
+的传送限制.特别的,Internet邮件传送可能会附加上7bit和行长度限制,但这些不会自动作用
+在二进制外部主体引用上.因此一般来说,Content-Transfer-Encoding(内容传送编码)并不是必
+须的,尽管这是允许的.
+  注意,"message/external-body(报文/外部主体)"类型的报文主体遵循RFC822报文的基本语
+法.特别的,任何出现在第一对连续的CRLFs之前的都是报头信息,而之后的都是主体信息,这
+对于绝大多数访问类型来说都是被忽视的.
+5. 2. 4 其他message(报文)子类型
+  一般来说,MIME的实现必须将未得到承认得"message"子类型当作和
+"application/octet-stream"相等效.
+  未来试图与电子邮件一同使用的"message"子类型将被限制采用"7bit"编码.除了"message"
+类型之外,某个如果不可能被限于采用"7bit"编码的类型也是可以使用的.
+6.实验的媒体类型值 
+  为了被通过相互协商得到同意的系统使用,以字符"X-"开头的媒体类型值是一个私有值 .
+任何没有得到严格和公开定义的格式必须以'X-"作为前缀来命名,公开详细说明的值将不能
+以"X-"作为开头使用.(在Andrew系统中广泛使用的较老版本采用"X-BE2"名,所以新的系统
+可能选择采用不同的名字)
+  大体上来说,"X-"顶层类型的使用效果非常不好.不管何时,只要有可能,实现者应该发明已
+存在类型的子类型.在很多情况下,一个"application"的子类型将比一个新的顶层类型更合适.
+7. 总结
+  这五个离散的媒体类型为标签实体如"audio", "image"和其他各种数据提供了一个标准化
+的机制."multipart"和"message"的复合媒体类型允许在一个单一的报文中出现不同类型实体
+的混合和分等级结构.一个出色的参数语法允许数据格式细节的更深入说明,特别是交替的字
+符集的详细说明.附加的可选报头字段为特定的扩充提供各种机制,这些扩充被许多实现者承
+认是值得的.最后,一定数量的有用的媒体类型将通过承认用户代理为一般性使用提供定义,
+特别如""message/partial" 和"message/external-body".
+8. 安全性考虑
+  安全问题在"application/postscript"类型, "message/external-body" 类型, 和RFC 2048的上
+下文中讨论.实现者应特别注意任何媒体类型的安全性暗示,这些媒体类型会导致在接收者环
+境中任何操作的执行.在这种情况下,对"application/postscript"类型的讨论可能会被当作一种
+考虑其他媒体类型和远程执行能力的模型.
+9. 作者地址
+  需要更多的信息,可以通过以下的因特网邮件联系该文挡的作者：
+Ned Freed
+   Innosoft International, Inc.
+   1050 East Garvey Avenue South
+   West Covina, CA 91790
+   USA
+
+   电话: +1 818 919 3600
+   传真:   +1 818 919 3614
+   EMail: ned@innosoft.com
+
+   Nathaniel S. Borenstein
+   First Virtual Holdings
+   25 Washington Avenue
+   Morristown, NJ 07960
+   USA
+
+   电话: +1 201 540 8967
+   传真:   +1 201 993 3032
+   EMail: nsb@nsb.fv.com
+
+
+   多用途互联网邮件扩展协议是因特网工程任务工作小组对扩展RFC822工作的成果.你可
+以通过以下方式联系该小组主席Greg Vaudreuil:
+
+   Gregory M. Vaudreuil
+   Octel Network Services
+   17080 Dallas Parkway
+   Dallas, TX 75248-1905
+   USA
+
+   EMail: Greg.Vaudreuil@Octel.Com
+
+附录A：语法集
+  附录包含了本文档详细说明的所有语法地完整BNF语法。
+     然而，这个语法是不完整的。它通过名字和RFC822中定义的多个语法规则相关联。
+为了不在此重复这些定义和冒造成两者之间无心的差异的危险，本文档只是给读者简单的涉
+及RFC822中其余的定义。碰到未定义的术语，可查阅RFC822中的定义。
+     boundary := 0*69<bchars> bcharsnospace
+     bchars := bcharsnospace / " "
+     bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" /
+                      "+" / "_" / "," / "-" / "." /
+                      "/" / ":" / "=" / "?"
+     body-part := <"message" as defined in RFC 822, with all
+                   header fields optional, not starting with the
+                   specified dash-boundary, and with the
+                   delimiter not occurring anywhere in the
+                   body part.  Note that the semantics of a
+                   part differ from the semantics of a message,
+                   as described in the text.>
+     close-delimiter := delimiter "--"
+     dash-boundary := "--" boundary
+                      ; boundary taken from the value of
+                      ; boundary parameter of the
+                      ; Content-Type field.
+     delimiter := CRLF dash-boundary
+     discard-text := *(*text CRLF)
+                     ; May be ignored or discarded.
+     encapsulation := delimiter transport-padding
+                      CRLF body-part
+     epilogue := discard-text
+     multipart-body := [preamble CRLF]
+                       dash-boundary transport-padding CRLF
+                       body-part *encapsulation
+                     close-delimiter transport-padding
+                     [CRLF epilogue]
+     preamble := discard-text
+     transport-padding := *LWSP-char
+       ；创建者绝对不能产生非零长度的transport-padding，
+；但接收方必须能够处理由报文传输添加的padding。
+
+RFC2046—— Multipurpose Internet Mail Extensions (MIME) Part Two: Media Types
+MIME第二部分:媒体类型
+
+
+1
+RFC文档中文翻译计划

@@ -1,0 +1,559 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者： 李超（licc_li ，licc_li@sina.com）
+译文发布时间：2001-4-26
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                         Y. Kikuchi
+Request for Comments: 3016                                       Toshiba
+Category: Standards Track                                      T. Nomura
+                                                                     NEC
+                                                             S. Fukunaga
+                                                                     Oki
+                                                               Y. Matsui
+                                                              Matsushita
+                                                               H. Kimata
+                                                                     NTT
+                                                           November 2000
+
+用于MPEG-4视听流的RTP负载格式
+（RRC3016 RTP Payload Format for MPEG-4 Audio/Visual Streams）
+
+
+本备忘录的状态
+  本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建议以
+得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化程度
+和状态。本备忘录的发布不受任何限制。
+版权声明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+摘要
+   本文描述了在不使用MPEG-4系统的情况下携带MPEG-4音频和视觉码流的RTP负载格式。为了能
+直接将MPEG-4音频/视觉码流映射到RTP包上，它提供了RTP包头字段的使用规范和分片规则。同
+时文档中还规定了MIME类型注册和会话描述协议(SDP)的使用。
+目录
+本备忘录的状态	1
+版权声明	1
+摘要	1
+1. 介绍	2
+1.1 MPEG-4视觉RTP负载格式	3
+1.2 MPEG-4音频RTP负载格式	3
+2. 要求的术语	4
+3. MPEG-4视觉码流的RTP组包	4
+3.1 MPEG-4视觉中RTP头字段的使用	4
+3.2 MPEG-4视觉码流分片	5
+3.3 MPEG-4视觉码流组包示例	6
+4. MPEG-4音频码流的RTP组包	7
+4.1 RTP包格式	7
+4.2 MPEG-4音频中RTP头字段的使用	8
+4.3 MPEG-4音频码流分片	9
+5. MPEG-4视听流MIME类型注册	9
+5.1 MPEG-4视觉MIME类型注册	9
+5.2 MPEG-4视觉中SDP的用法	10
+5.3 MPEG-4音频MIME类型登记	11
+5.4 SDP usage of MPEG-4 Audio	12
+6. 安全性考虑	13
+7. 参考文献	13
+8. 作者地址	13
+9. 版权声明	14
+致谢	14
+
+1. 介绍
+本文描述的RTP负载格式规定了如何对MPEG-4音频流[3][5]和MPEG-4视觉流[2][4]进行分
+片并直接映射到RTP包中。
+	通过定义这些RTP负载格式，应用在不使用MPEG-4系统同步和流管理功能的情况下也能直接
+传输MPEG-4音频/视觉流。本文的RTP负载格式可应用于那些本身有流管理功能且不需要MPEG-4
+系统中类似功能的系统。例如H.323终端，其MPEG-4音/视频流的管理就不通过MPEG-4系统对象描
+述符进行管理，而是使用了H.245。流直接映射到RTP包中，并没有使用MPEG-4系统同步层。其它
+例子包括SIP和RTSP，它们使用了MIME和SDP。本文所述之RTP负载格式定义了MIME类型和SDP的用
+法，直接规定了不使用MPEG-4系统时的音/视觉流属性（如，媒体类型，打包格式和编码配置）。
+这样做明显的优点在于可以象对付那些非MPEG-4编码格式一样，采用一种通用的方法来对这些
+MPEG-4音频/视觉RTP负载格式进行处理。而缺点在于同基于MPEG-4系统环境的互操作可能会比较
+困难，其它负载格式则更适用于这些应用。
+	在此情况下，RTP包头的语义必须定义的非常清晰，其中包括MPEG-4音/视频数据元素的关
+系。此外，为了增强错误恢复能力，在MPEG-4视频流内部提供错误恢复工具，最好能为MPEG-4
+视频流定义好RTP包的分片规则。
+1.1 MPEG-4视觉RTP负载格式
+MPEG-4视觉是一种视觉编码标准，它具有如下新特征：高编码效率；高错误恢复性；基于
+多样的，任意形的对象编码；等等[2]。其速率范围介于数Kbps到几Mbps。并且它能适应从无差
+错网络到高错误率的移动网络等多种网络类型。
+针对本文中定义的MPEG-4视觉码流的分片规则我们应当注意到，由于MPEG-4视觉将用于多
+种网络类型，因此在分片方面不应有太多的限制。诸如“单个视频包需映射到单个RTP包”这样
+的分片规则是不合理的。另一方面，大意，以及未知媒体分片也可能导致错误恢复率和带宽利用
+率的下降。本文描述的分片规则十分灵活，但在应用MPEG-4视觉错误恢复功能时为了避免无意义
+的分片也要定义一个最小的规则集。
+分片规则建议不要在一个RTP包中映射多个VOP，这样可以保证RTP时间戳能唯一地表示VOP
+分帧时间。而相反地，由于MPEG-4视频可以产生非常小的VOP，如一个只包含VOP头的空VOP 
+(vop_coded=0)或者一个仅有少量码块的任意形VOP。为了减低开销，分片规则应允许将多个VOP
+连接到一个RTP包中。（参见3.2节分片规则(4)和3.1节标志位和时间戳）
+在H.261或MPEG-1/2等视频编码工具中往往通过所定义的额外媒体RTP包头来帮助在包丢失
+时恢复损坏的图片包头，而MPEG-4视觉已经为此提供了错误恢复功能，它们可用于RTP/IP网络，
+也可用于其它网络（H.223/Mobile,MPEG-2/TS等）。因此，无需在MPEG-4视觉RTP负载格式中定
+义额外的RTP包头。
+1.2 MPEG-4音频RTP负载格式
+   MPEG-4音频是一种集成了多种类型音频编码工具的新型音频标准。LATM(低负担MPEG-4音频传
+输复用)通过相当小的耗费来管理音频数据序列。对那些仅有音频的应用，不使用MPEG-4系统而
+采用直接将基于LATM的MPEG-4音频码流映射到RTP包的方式是很值得的。
+	LATM有如下几项复用特性：
+   -  在音频数据中携带配置信息，
+   -  将多个音频帧连接到一个音频流中，
+   -  多对象（程序）复用
+   -  可伸缩层的复用，
+	在RTP传输中不需要最后两项性质。因此，基于本文规定的RTP组包原则的应用程序不能使
+用这两个性质。由于LATM是为自然音频编码工具所开发，而非为合成工具开发，要用其来传输结
+构化音频(SA)数据和文语转换接口(TTSI)数据是很困难的。所以不能通过本文档的RTP组包方法
+传输SA数据和TTSI数据。
+	为了传输可伸缩流，每层的音频数据都应当打包到不同的RTP包，如此才可保证在IP层对不
+同层有不同的处理，比如通过一些区分服务。另一方面，可伸缩流的所有配置数据都包含于一个
+LATM配置数据"SteamMuxConfig"中，并且每一层共享该 StreamMuxConfig。层与其配置数据的映
+射是通过音频数据附带的LATM头信息来完成的。为了表示可缩放流的依赖信息，还针对负载类型
+(PT)值(见4.2节)的动态分配规则使用了一种限制措施。
+对于MPEG-4音频编码工具而言，如果负载为单个音频帧，则包的丢失不会影响邻近包的解
+码。这同样也适用于其它音频编码器。因此MPEG-4音频不需要附加的用于错误恢复的媒体特定头。
+可采用已经存在的一些RTP保护机制来提高错误恢复率，如通用前向纠错(RFC 2733)和冗余音频
+数据(RFC 2198)。
+2. 要求的术语
+本文中的关键字“必须”，“必须不”，“要求的”，“应该”，“不应该”，“会”，“不会”，
+“建议”，“或许”，“可选的”在 RFC 2119 中解释。   
+3. MPEG-4视觉码流的RTP组包
+	本节规定了MPEG-4视觉内容的RTP组包规则。一个MPEG-4视觉码流可直接映射到RTP包而不
+需要增加额外的头字段或者删除任何视觉语法元素。为了将基本流的配置信息在相同的RTP端口
+上传送，必须使用合并配置/基本流模式。（参见ISO/IEC 14496-2[2][9][4]中6.2.1"开始编码"）
+配置信息可以通过带外方式规定。对于H.323终端，必须使用H.245码
+点"decoderConfigurationInformation"。如果系统使用MIME内容类型和SDP参数，如SIP和RTSP，
+则必须用可选参数"config"来规定配置信息（参见5.1和5.2）。
+	当使用了短视频头模式时，应该H.263的RTP负载格式（建议使用RFC2429定义的格式，但也
+可使用RFC2190格式以实现同旧系统的兼容性）。
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|V=2|P|X|  CC   |M|     PT      |       sequence number         | RTP
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                           timestamp                           | Header
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           synchronization source (SSRC) identifier            |
++=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+|            contributing source (CSRC) identifiers             |
+|                             ....                              |
++=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+|                                                               | RTP
+|       MPEG-4 Visual stream (byte aligned)                     | Pay-
+|                                                               | load
+|                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               :...OPTIONAL RTP padding        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+     Figure 1 – 一个MPEG-4视觉流的RTP包
+3.1 MPEG-4视觉中RTP头字段的使用
+   负载类型(PT): 为新的包格式分配RTP负载类型超出了本文的范畴，不在此赘述。特定类
+型应用程序的RTP框架应该负责负载类型的分配，如若不能则应该通过带外信令协议（如，
+H.245,SIP等）在动态范围内选择一个负载类型。
+   扩展位(Extension-X bit): 由使用的RTP框架定义。
+   序列号（Sequence Number）: 为了安全从一个随机初始化值开始，每发送一个RTP数据包加1。
+   标志位（Marker-M） bit: 标志位设为1标志这是VOP的最后一个（或仅有一个）RTP包。若一
+个RTP包中携带有多个VOP则标志位也设为1。
+   时间戳（Timestamp）: 时间戳表示RTP包中的VOP采样时间。为了安全，加上了一个随机常数
+偏移。
+   -  当一个RTP包携带多个VOP时，时间戳表示其中最早的一个VOP的时间。其它VOP的时间戳信
+息通过VOP头的时间戳字段可得（modulo_time_base和vop_time_increment）。
+   -  如果RTP包只含有配置信息或Group_of_VideoObjectPlane()字段，使用编码队列中下一个
+VOP的时间戳。
+-	如果RTP包仅含有visual_object_sequence_end_code信息，使用编码队列中前一个VOP
+的时间戳。
+除非由带外方式规定，时间戳分辨率设为缺省值90KHz。
+   其它头字段的使用见RFC 1889 [8]。
+3.2 MPEG-4视觉码流分片
+   使用合并配置/基本流模式，经过分片的MPEG-4视觉码流直接映射到RTP负载而不用增加任何
+额外头字段或者删除视觉语法元素。分片时可应用如下规则。
+   下文中，头（Header）可能表示如下信息：
+   -  配置信息（视觉对象序列头，视觉对象头和视频对象层头）
+   -  visual_object_sequence_end_code
+   -  基本流的进入点函数头（Group_of_VideoObjectPlane(),
+      video_plane_with_short_header(), MeshObject()或FaceObject())
+   -  视频包头 (video_packet_header()，next_resync_marker()除外)
+   -  gob_layer()头
+      配置信息和进入点函数的定义参见ISO/IEC 14496-2 [2][9][4]的6.2.1 "开始编码"
+   (1) 配置信息和Group_of_VideoObjectPlane()字段应位于RTP负载的开始位置或在语法上的
+上层函数头之后。 
+   (2) 如果RTP负载中存在一个或多个头，则RTP负载应从语法上的最高函数头开始。
+   注意: visual_object_sequence_end_code作为最低函数。
+   (3) 一个头不应分到多个RTP包中。
+   (4) 不同的VOP应该分片为不同的RTP包，一个RTP包只包括与唯一VOP的时间相关的数据（在
+RTP包头的时间戳字段中指出）。例外情况是如果VOP很小，则单个RTP包携带多个按解码顺序连
+续的VOP。
+   注意：当一个RTP负载携带了多个VOP时，第一个VOP后的VOP时间戳在解码时通过计算得到。
+该操作仅当RTP包标志位为1且RTP负载开始符合起始码时才是必须的。 (见3.1节时间戳和标志
+位)
+   (5) 建议一个视频包组成一个RTP包进行发送。视频包的大小应该按如下方式来决定，即，结
+果RTP包大大小不得超过路径MTU的大小。
+   注意：规则(5)不适用于以下场合，编码器配置禁止视频包（通过将VOL头中的
+resync_marker_disable设置为1），或者编码工具不支持视频包。在此情况下，一个VOP可能得
+经过在任意字节位置进行分片后才能发送。
+   视频包从VOP头或视频包头开始，后面紧接着是motion_shape_texture()，以 
+next_resync_marker()或next_start_code()结束。
+3.3 MPEG-4视觉码流组包示例
+   Figure 2所示为按照3.2描述标准产生的RTP包的例子。
+   (a)例表示包含了配置信息的MPEG-4视觉码流中第一个RTP包或随机访问点。根据规则 (1)，
+视觉对象序列头应位于RTP负载的开始处，视觉对象头和视频对象层头(VO header, VOL header)
+之前。3.2中定义的分片规则保证了从visual_object_sequence_start_code开始的配置信息通常
+都位于RTP负载的开始位置，RTP接收端可通过检查RTP负载的头32位字段是否是
+visual_object_sequence_start_code来检测随机访问点。
+   (b)是另一个包含配置信息的RTP包例子。它同(1)的区别为该RTP包在VOP中的配置信息后还包
+含有视频包。由于配置信息长度很短（一般为数十字节），一个RTP包如果仅含有配置信息会造
+成系统开销的上升，因此配置信息和其后的GOV和/或(部分)VOP可以打包到同一个RTP包中，如此
+例中所示。
+   (c)是RTP包中包含了Group_of_VideoObjectPlane(GOV)的例子。根据规则(1)，GOV位于RTP
+负载的开始位置。一个仅有GOV字段的RTP包大小只有7个字节，这是对RTP/IP头开销的极大浪费。
+因此后续的VOP(或部分地)可以如本例所示打到同一个RTP包中。
+   (d)例中，一个视频包被打包到一个RTP包中。当网络中包丢失率很高时推荐采用该方法。甚
+至当包含有VOP头的RTP包被丢弃时其它RTP包还可通过使用视频包头中的HEC信息进行解码。无需
+任何额外的RTP头字段。
+   (e)例为多个视频包打在一个RTP包中的情况。 在底层网络速率很低时这种组包方式可高效地
+节约RTP/IP头开销。不过，由于一个RTP包的丢失会导致将多个视频包同时丢失，这种方法会降
+低丢包恢复率。一个RTP包中理想的视频包数目和RTP包长度可通过丢包率和底层网络传输的比特
+率来决定。
+   (f)示例为在VOL头中将resync_marker_disable设置为1从而禁止使用视频包。在此情况下，
+一个VOP可按照任意字节位置分为多个RTP包。比如将一个VOP按照固定长度进行分片。这种编码
+配置方法和RTP分片可应用于能提供极低错误率保证的网络。另一方面，由于它的丢包恢复率很
+差，建议不要在error-prone环境中使用。
+Figure 3 所示为按3.2规则建立的RTP包。
+按照(a)中将一个头分片到多个RTP包不仅造成RTP/IP头开销增加，也导致了错误恢复能力
+的下降。因此在规则(3)中禁止这样做。
+当将多个视频包串联到一个RTP包中时，VOP头或video_packet_header()不应放到RTP负载
+的中间。基于错误恢复的目的，(b)中的组包方法违反了规则(2)。比较该例同图2中的例6，尽管
+两者都是把两个视频包映射到两个RTP包中，其丢包恢复率却不一样。即是说，假设第二个RTP
+包丢失了，图3例(b)中两个视频包都将丢失，而在图2例(d)中仅丢失视频包2。
+    +------+------+------+------+
+(a) | RTP  |  VS  |  VO  | VOL  |
+    |header|header|header|header|
+    +------+------+------+------+
+
+    +------+------+------+------+------------+
+(b) | RTP  |  VS  |  VO  | VOL  |Video Packet|
+    |header|header|header|header|            |
+    +------+------+------+------+------------+
+
+    +------+-----+------------------+
+(c) | RTP  | GOV |Video Object Plane|
+    |header|     |                  |
+    +------+-----+------------------+
+
+    +------+------+------------+  +------+------+------------+
+(d) | RTP  | VOP  |Video Packet|  | RTP  |  VP  |Video Packet|
+    |header|header|    (1)     |  |header|header|    (2)     |
+    +------+------+------------+  +------+------+------------+
+
+    +------+------+------------+------+------------+------+------------+
+(e) | RTP  |  VP  |Video Packet|  VP  |Video Packet|  VP  |Video Packet|
+    |header|header|     (1)    |header|    (2)     |header|    (3)     |
+    +------+------+------------+------+------------+------+------------+
+
+    +------+------+------------+  +------+------------+
+(f) | RTP  | VOP  |VOP fragment|  | RTP  |VOP fragment|
+    |header|header|    (1)     |  |header|    (2)     | ___
+    +------+------+------------+  +------+------------+
+
+     图2 – RTP组包的MPEG-4视觉码流示例
+    +------+-------------+  +------+------------+------------+
+(a) | RTP  |First half of|  | RTP  |Last half of|Video Packet|
+    |header|  VP header  |  |header|  VP header |            |
+    +------+-------------+  +------+------------+------------+
+
+    +------+------+----------+  +------+---------+------+------------+
+(b) | RTP  | VOP  |First half|  | RTP  |Last half|  VP  |Video Packet|
+    |header|header| of VP(1) |  |header| of VP(1)|header|    (2)     |
+    +------+------+----------+  +------+---------+------+------------+
+
+   图3 – 禁止RTP组包的MPEG-4视觉码流示例
+
+4. MPEG-4音频码流的RTP组包
+本节规定了MPEG-4音频码流的RTP组包规则。MPEG-4音频流必须通过LATM工具进行格式化，
+然后基于LATM的流将按照下面三节的描述映射到RTP包上。
+4.1 RTP包格式
+基于LATM的流由一个包含了一个或多个音频帧的audioMuxElements序列组成。一个完整或
+部分完整的audioMuxElement可直接映射到一个RTP负载上，无需删除任何audioMuxElement语法
+元素 (见图4)。每个audioMuxElement的第一个字节应该位于RTP包第一个负载所在的位置。
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|V=2|P|X|  CC   |M|     PT      |       sequence number         |RTP
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                           timestamp                           |Header
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           synchronization source (SSRC) identifier            |
++=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+|            contributing source (CSRC) identifiers             |
+|                             ....                              |
++=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+|                                                               |RTP
+:                 audioMuxElement (byte aligned)                :Payload
+|                                                               |
+|                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               :...OPTIONAL RTP padding        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+             图4 – 一个MPEG-4音频RTP包
+为了对audioMuxElement进行解码，必需得在其后通过带外方法指明muxConfigPresent。当
+SDP用于此指示时，MIME参数"cpresent“就对应了muxConfigPresent信息。(见5.3节).
+muxConfigPresent: 如果该值为1(带内模式)，audioMuxElement应包括一个指示位
+"useSameStreamMux"并且可能包括一个音频压缩配置信息"StreamMuxConfig"。
+UseSameStreamMux位表示是否前一帧中的StreamMuxConfig元素也应用于本帧。如果
+useSameStreamMux位指示要使用前一帧的StreamMuxConfig，而前一帧已经丢失，则将无法对当
+前帧进行解码。因此，在带内模式下，StreamMuxConfig元素应根据网络条件重复传输。相反，
+如果muxConfigPresent设为0(带外模式)，StreamMuxConfig元素需要通过带外方式传输。如果是
+SDP，则要使用MIME参数"config" (见5.3节).
+4.2 MPEG-4音频中RTP头字段的使用
+   负载类型(PT): 为这种新的包格式分配RTP负载类型超出了本文的范畴，不在此赘述。特
+定类型应用程序的RTP框架应该负责为编码分配负载类型，如若不能则应该通过带外信令协
+议（如，H.245,SIP等）在动态范围内选择一个负载类型。在为可伸缩流动态分配RTP负载类
+型时，应该为每一层分配不同的值。这些值应按层依赖关系的强弱顺序进行分配，最基本的
+层拥有最小的值。
+   标志位(M): 标志位指出了audioMuxElement范围。置为1说明RTP包包含有完整的   
+audioMuxElement或audioMuxElement分片的最后一片。
+   时间戳: 时间戳表示RTP包中第一个音频帧的采样时间。从安全角度出发，建议时间戳从一个
+随机值开始。除非指定使用带外方式，时间戳的分辨率设为缺省值90KHz。
+   顺序号: 为了更加安全，顺序号应从一个随机初始化值开始，每发送一个RTP数据包加1。
+   其它头字段的使用遵照RFC 1889 [8]。
+4.3 MPEG-4音频码流分片
+	建议每个RTP包中只放一个audioMuxElement。如果audioMuxElement的大小保持得足够小，
+使得RTP包的大小不超过路径MTU的大小，则没有问题。否则就得将audioMuxElement分片到多个
+包中。
+5. MPEG-4视听流MIME类型注册
+   接下来的几节描述了MPEG-4视听流的MIME类型注册。MPEG-4视觉流的MIME类型注册和SDP使用
+在5.1和5.2节中描述，而MPEG-4音频流的MIME类型注册和SDP用法在5.3和5.4中描述。
+5.1 MPEG-4视觉MIME类型注册
+   MIME媒体类型名: video
+   MIME子类型名: MP4V-ES
+   必需的参数: none
+   可选参数:
+      rate(速率): 该参数仅用于RTP传输。表示RTP头时间戳字段的分辨率。如果未指定该参数
+则使用缺省值90000(90KHz)。
+      profile-level-id(框架级别ID): 一个表示Table G-1 of ISO/IEC 14496-2 [2][4]定义
+的MPEG-4视觉框架和级别值的十进制数 (profile_and_level_indication)。该参数可用于性能
+交换或事务建立过程中以表示MPEG-4视觉框架和MPEG-4视觉编码器能达到的级别组合。如未指定
+该参数，则采用缺省值1。
+      Config(配置): 该参数用于表示相应MPEG-4视觉流的配置。不应用于表示性能交换过程中
+的编码能力。它是一个16进制形式的8位字节串，可表示ISO/IEC14496-2 [2][4][9]6.2.1小节中
+定义的MPEG-4视觉配置信息。该配置信息可按照MSB（最高有效位）优先原则直接映射到8位字节
+串。配置信息的第一位应位于第一个8位组的MSB。该参数表示的配置信息应和相应的MPEG-4视觉
+流的配置信息相同，除了first_half_vbv_occupancy和latter_half_vbv_occupancy，如果存在，
+那么它在MPEG-4视觉流内重复的配置信息方面有所不同。(见ISO/IEC14496-2的6.2.1小节“开始
+编码”).
+      关于该参数的用法示例如下:
+        -  MPEG-4 Visual Simple Profile/Level 1:
+            Content-type: video/mp4v-es; profile-level-id=1
+        -  MPEG-4 Visual Core Profile/Level 2:
+            Content-type: video/mp4v-es; profile-level-id=34
+        -  MPEG-4 Visual Advanced Real Time Simple Profile/Level 1:
+            Content-type: video/mp4v-es; profile-level-id=145
+   已发行规范:
+      MPEG-4视觉流规范参见ISO/IEC 14469-2 [2][4][9]。RTP负载格式在RFC 3016中描述。
+   编码考虑:
+      视频位流必须参照MPEG-4视觉规范(ISO/IEC 14496-2)产生。一个视频位流是二进制数据，
+必须编码为可按非二进制传输(对于Email，Base64编码就已经足够了)。该类型也定义为通过RTP
+传输。RTP包必须遵照RFG 3016定义的MPEG-4视觉RTP负载格式进行组包。
+   安全性考虑:
+      参见RFC 3016第6节。
+   互操作考虑:
+      MPEG-4视觉为视觉对象编码提供了大量丰富的工具集。为了高效地实现标准，也为特定的
+应用提供了MPEG-4视觉工具子集。这些子集称做'Profiles',限制了实现一个编码器所需要的工
+具集的大小。为了控制计算复杂性，每个Profile分为若干级别。Profile@Level组合如下:
+?	一个编解码器开发者，负责实现所需的标准子集，维护和相同组合内其它MPEG-4设备
+的相互作用。
+?	检查MPEG-4设备是否符合标准 ('一致性测试')。
+      视觉流应同参数"profile-level-id"中规定的MPEG-4视觉Profile@Level兼容。
+      发送方与接收方的互操作性，通过在MIME内容中指定参数"profile-level-id"，或者通过
+协调性能交换/声明过程将该参数设为相同值来实现。
+   使用该媒体类型的应用:
+      视听流和会议工具，Internet消息和电子邮件应用。
+   附带信息: 无
+   联系人及其邮件地址：
+      RFC 3016作者(见第8节)。
+   预期用法: COMMON
+   作者或修订者:
+      RFC 3016作者(见第8节)。
+5.2 MPEG-4视觉中SDP的用法
+   MIME媒体类型video/MP4V-ES串可映射到SDP(RFC 2327)，如下：
+?	MIME类型(video)加入SDP "m="作为媒体名。
+?	MIME子类型加入SDP "a=rtpmap"作为编码名。
+?	可选参数"rate"加入"a=rtpmap"作为时钟速率
+?	可选参数"profile-level-id"和"config"加入"a=fmtp"行分别表示编码器能力和配
+置。这些参数以分号分隔，按照“参数=值”的成对形式表示为MIME媒体类型串。
+   下面是SDP中的媒体表示示例:
+Simple Profile/Level 1, rate=90000(90kHz), "profile-level-id"且"config"存在于 
+"a=fmtp"行:
+?	m=video 49170/2 RTP/AVP 98
+?	a=rtpmap:98 MP4V-ES/90000
+?	a=fmtp:98 
+profile-level-id=1;config=000001B001000001B5090000010000000120008440FA282C
+2090A21F
+Core Profile/Level 2, rate=90000(90kHz), "profile-level-id"存在于"a=fmtp"行:
+?	m=video 49170/2 RTP/AVP 98
+?	a=rtpmap:98 MP4V-ES/90000
+?	a=fmtp:98 profile-level-id=34
+Advance Real Time Simple Profile/Level 1, rate=90000(90kHz),"profile-level-id"存在于
+"a=fmtp"行:
+  m=video 49170/2 RTP/AVP 98
+  a=rtpmap:98 MP4V-ES/90000
+  a=fmtp:98 profile-level-id=145
+5.3 MPEG-4音频MIME类型登记
+   MIME媒体类型名: audio
+   MIME子类型名: MP4A-LATM
+   必需参数:
+      速率: 速率参数表示RTP时间戳的时钟速率。缺省值为90000。仅当该值设置为与音频
+采样频率（每秒钟采样数）相同值时也可指定其它非缺省速率。
+   可选参数:
+profile-level-id: 一个十进制形式的MPEG-4音频框架级别表示值，定义于
+ISO/IEC 14496-1 ([6]及其修订版本)。该参数表示解码器可以使用哪个MPEG-4音频工
+具子集。如果没有在性能交换或者事务建立过程中指定该参数，则使用缺省值30（自然
+音频Profile/Level 1）
+object: 一个十进制形式的MPEG-4音频对象类型值，定义于ISO/IEC 14496-3 [5]。
+该参数指定了编码器使用的工具。可用该参数来限制性能于规定的"profile-level-id"
+之下。
+bitrate: 音频数据流的数据传输率。
+cpresent: 一个布尔值参数，表示音频负载配置数据是否已经复用到一个RTP负载
+中（参见4.1）。0表示尚未复用，1表示已经复用。该参数的缺省值为1。
+config: 一个16进制形式的8位字节串，可表示ISO/IEC 14496-3 [5] (参见4.1)
+定义的MPEG-4音频负载配置数据"StreamMuxConfig"。该配置信息可按照MSB（最高有效
+位）优先原则直接映射到8位字节串。配置数据的第一位应位于第一个8位组的MSB。在
+最后一个8位组中,如果需要，应该在配置数据后跟随填充0。
+ptime: 推荐的包持续时间，单位毫秒。
+   已发行规范:
+      本文描述了负载格式规范。
+      编码规范遵照ISO/IEC 14496-3 [3][5]。
+   编码考虑:
+      该类型仅定义为用于通过RTP进行传输。
+   安全性考虑:
+      参见RFC 3016第6节。
+   互操作性考虑:
+      MPEG-4音频提供了大量而丰富的工具用于音频对象编码。为了更高效地实现标准，还
+提供了MPEG-4音频工具子集（类似于5.1中的MPEG-4视觉）。音频流工具应同
+"profile-level-id"参数指定的Profile@Level一致。发送方与接收方之间的互操作性可通
+过在MIME内容中指定参数"profile-level-id"，或在协商性能交换过程中，设置该参数为相
+同值来实现。此外参数"object"可用于在性能交换中将能力限制于指定的Profile@Level级
+别范围内。
+   使用该媒体类型的应用:
+      视听流与会议工具。
+   附加信息: 无
+   联系人:
+      参见RFC 3016第8节.
+   预期用法: COMMON
+   作者/修订者:
+      参见RFC 3016第8节.
+5.4 SDP usage of MPEG-4 Audio
+MIME媒体类型audio/MP4A-LATM串可以映射到SDP（RFC 2327）的字段上, 如下:
+?	MIME类型(audio)加入SDP"m="中作为媒体名。
+?	MIME子类型(MP4A-LATM)加入SDP"a=rtpmap"作为编码名称
+?	必需参数"rate"加入"a=rtpmap"的作为时钟速率。
+?	可选参数"ptime"加入SDP "a=ptime"属性
+?	可选参数"profile-level-id"加入"a=fmtp"行表示编码器能力。参数"object"
+加入"a=fmtp" 属性，负载格式相关参数"bitrate", "cpresent"和 "config"
+加入"a=fmtp"行。这些参数以分号分隔，按照“参数=值”的成对形式表示MIME
+媒体类型串。
+   下面是SDP中媒体表示的例子： 
+对于6 kb/s的CELP码流 (音频采样频率为8 kHz),
+?	m=audio 49230 RTP/AVP 96
+?	a=rtpmap:96 MP4A-LATM/8000
+?	a=fmtp:96 profile-level-id=9; object=8; cpresent=0; 
+config=9128B1071070
+?	a=ptime:20
+对于64 kb/s的AAC LC立体声码流(音频采样频率为24 kHz),
+?	m=audio 49230 RTP/AVP 96
+?	a=rtpmap:96 MP4A-LATM/24000
+?	a=fmtp:96 profile-level-id=1; bitrate=64000; cpresent=0;
+?	config=9122620000
+   在上面两个例子中，音频配置数据仅通过SDP进行了描述，并没有复用到RTP负载中去。
+此外，"时钟速率（clock rate）"也设置为音频采样速率。
+   如果时钟速率设置为缺省值，并且必须要取得音频采样速率，则可通过解析参数"config"
+来实现。举例如下：
+?	m=audio 49230 RTP/AVP 96
+?	a=rtpmap:96 MP4A-LATM/90000
+?	a=fmtp:96 object=8; cpresent=0; config=9128B1071070
+   下例显示RTP负载中的音频配置数据。      
+?	m=audio 49230 RTP/AVP 96
+?	a=rtpmap:96 MP4A-LATM/90000
+?	a=fmtp:96 object=2; cpresent=1
+6. 安全性考虑
+本规范中描述的RTP包负载格式从属于RTP规范[8]中讨论的安全性考虑。这意味着媒体
+流的机密性要通过加密来实现。由于负载格式中数据压缩是端到端的，加密也可在压缩数据
+上进行，两种操作间并无矛盾。
+	完整的MPEG-4系统允许传输各种类型的数据，包括Java小程序（MPEG-J）和脚本。本负
+载格式限定为音频和视频流，因而不能用于传输这些活动内容。
+7. 参考文献
+   1  Bradner, S., "The Internet Standards Process -- Revision 3", BCP
+      9, RFC 2026, October 1996.
+   2  ISO/IEC 14496-2:1999, "Information technology - Coding of audio-
+      visual objects - Part2: Visual".
+   3  ISO/IEC 14496-3:1999, "Information technology - Coding of audio-
+      visual objects - Part3: Audio".
+   4  ISO/IEC 14496-2:1999/Amd.1:2000, "Information technology - Coding
+      of audio-visual objects - Part 2: Visual, Amendment 1: Visual
+      extensions".
+   5  ISO/IEC 14496-3:1999/Amd.1:2000, "Information technology - Coding
+      of audio-visual objects - Part3: Audio, Amendment 1: Audio
+      extensions".
+   6  ISO/IEC 14496-1:1999, "Information technology - Coding of audio-
+      visual objects - Part1: Systems".
+   7  Bradner, S., "Key words for use in RFCs to Indicate Requirement
+      Levels", BCP 14, RFC 2119, March 1997.
+   8  Schulzrinne, H., Casner, S., Frederick, R. and V. Jacobson "RTP: A
+      Transport Protocol for Real Time Applications", RFC 1889, January
+      1996.
+   9  ISO/IEC 14496-2:1999/Cor.1:2000, "Information technology - Coding
+      of audio-visual objects - Part2: Visual, Technical corrigendum 1".
+8. 作者地址
+   Yoshihiro Kikuchi
+   Toshiba corporation
+   1, Komukai Toshiba-cho, Saiwai-ku, Kawasaki, 212-8582, Japan
+   EMail: yoshihiro.kikuchi@toshiba.co.jp
+   Yoshinori Matsui
+   Matsushita Electric Industrial Co., LTD.
+   1006, Kadoma, Kadoma-shi, Osaka, Japan
+   EMail: matsui@drl.mei.co.jp
+   Toshiyuki Nomura
+   NEC Corporation
+   4-1-1,Miyazaki,Miyamae-ku,Kawasaki,JAPAN
+   EMail: t-nomura@ccm.cl.nec.co.jp
+   Shigeru Fukunaga
+   Oki Electric Industry Co., Ltd.
+   1-2-27 Shiromi, Chuo-ku, Osaka 540-6025 Japan.
+   EMail: fukunaga444@oki.co.jp
+   Hideaki Kimata
+   Nippon Telegraph and Telephone Corporation
+   1-1, Hikari-no-oka, Yokosuka-shi, Kanagawa, Japan
+   EMail: kimata@nttvdt.hil.ntt.co.jp
+9. 版权声明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+致谢
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+RRC3016  RTP Payload Format for MPEG-4 Audio/Visual Streams
+用于MPEG-4视听流的RTP负载格式
+
+
+1
+RFC文档中文翻译计划

@@ -1,0 +1,2221 @@
+本RFC文档txt有问题，图形不能显示。
+
+
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：Hlp(hlp,huangliuqi@hotmail.com)
+译文发布时间：2001-4-20
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留
+本文档的翻译及版权信息。
+
+
+
+
+
+
+   Network Working Group                                     V. Jacobson/1/
+   Request for Comments: 1144                                           LBL
+                                                              February 1990
+
+低速串行链路上的TCP/IP头部压缩
+(RFC1144 Compressing TCP/IP Headers for Low-Speed Serial Links)
+
+
+
+
+
+
+
+
+
+
+文档现状
+ 本RFC建议作为Interne社区选用的协议，尚需讨论提高。描述了为提高低速串行链路的
+性能而对TCP/IP数据报进行压缩的方法。该方法的动机、实现以及性能本文档均予以讨
+论。文档后面给出一个C语言的实现例子供参考。本文档可随意分发。
+
+
+
+
+①	该工作由U.S. Department of Energy under Contract Number DE-AC03-76SF00098提供部
+分支持
+
+
+目录
+1 简介  …………………………………………………………………………………….. 1
+2 问题  …………………………………………………………………………………….. 1
+3 压缩算法 ………………………………………………………………………………… 4
+3.1.基本思想 ……………………………………………………………………………….. 4
+: : 3.2 细节 …………………………………………………………………………………..  6
+::: 3.2.1总述 ………………………………………………………………………………….. 6
+3.2.2 压缩数据包格式 ……………………………………………………………………  7
+3.2.3 压缩过程 …………………………………………………………………………….  9
+3.2.4 解压缩过程 ………………………………………………………………………… 12
+4 错误处理 ……………………………………………………………………………… 15
+4.1 错误检测 …………………………………………………………………………    15
+: :4.2 错误恢复 …………………………………………………………………………   16
+5 可配置参数及调节 …………………………………………………………………  19
+5.1 压缩配置   ………………………………………………………………………… 19
+: :5.2 选择MTU …………………………………………………………………………   20
+5.3域数据压缩的交互 …………………………………………………………………  21
+6性能评估 ……………………………………………………………………………..  25
+7 致谢   ……………………………………………………………………………….  26
+一个实现实例 ………………………………………………………………………… .  28
+A.1定义和状态数据 ……………………………………………………………………  29
+: :A.2 压缩 ………………………………………………………………………… … …  31
+A.3解压缩 …………………………………………………………………………… …. 36
+: :A.4 初始化 ……………………………………………………………………………… 39
+: :A.5 Berkeley Unix依赖 ………………………………………………………………….. 39
+B 以往错误的兼容性 …………………………………………………………………… 41
+B.1 没有帧'type'字节 …………………………………………………………………… 41
+B.2向后兼容的SLIP服务器 ……………………………………………………………… 41
+C 更主动的压缩 ……………………………………………………………………….… 42
+D 安全考虑  …………………………………………………………………………….. .43
+E 作者地址  ……………………………………………………………………………… 43
+y
+
+
+
+
+
+
+
+
+
+
+RFC 1144                        Compressing TCP/IP               Headers February 1990
+1 简介
+随着功能日益强大的计算机进入人们家庭，扩展这些计算机的功能使之与Internet
+连接成为日益迫切的要求。不幸的是，这个扩展在链路层帧（link level framing）、地址
+分配(address assignment)、路由选择、认证以及性能等方面暴露出很多很复杂的问题。
+在写本文档时所有这些领域的工作还在进行。本文档描述一种方法，这种方法已经被用
+来提高低速（300-900bps）串行链路上的TCP/IP的性能。
+这里推荐的压缩方法与Thinwire-II协议（参考文献[5]）描述的思想是相似的。但是
+本协议压缩的效率更高(压缩后TCP/IP头部为3个字节，而Thinwire-II为13个字节)，并且
+实现起来既高效又简单(Unix 实现需要250行C代码，在20MHz MC68020中压缩或者解
+压一个数据包平均需要90μs(_170指令集)。
+该压缩专门针对TCP/IP数据包（注1），作者研究了UDP/IP数据包的压缩但发现这
+种情况极少出现，并且没有足够的datagram-to-datagram一致性来进行很好的压缩（例如，
+名字服务器查询）或者高层协议头部淹没了UDP/IP头部的开销（例如，Sun's RPC/NFS）。
+作者还研究了分开压缩数据报的IP和TCP部分，但因为压缩后头部平均大小比原来增加
+50%，并且压缩和解压缩的代码加倍，因而被否决了。
+2 问题
+人们可能期望通过串行IP链路从家中访问从“终端”击键（type）类型连接(如telnet, 
+rlogin, xterm)到批量数据传输（例如ftp, smtp, nntp）的Internet服务。头部压缩的动机就
+是出于对良好的交互响应的需要求。也就是说协议的链路效率（line efficiency）为数据
+报中header占header+data的百分比。如果高效的批量数据传输是我们的目标，,通过把数
+据报的尺寸扩大到足够大总是可以使链路效率接近100%。
+对人的因素（Human-factor）的研究（参考文献[15]）结果表明交互操作在低层反
+馈(feed-back)（字符回显,character echo）花费超过100-200ms时被认为是“差的”。协议
+头部从以下几方面与这个极端交互：
+（1）如果链路速度太慢，也许不可能把头部和数据都放在一个200ms的窗口中：每敲
+击一个键产生一个字符就要导致发送一个41字节的TCP/IP数据包和接收一个41字节的
+反馈(echo)。链路速度至少达到 4000 bps 以便在200ms内能够处理这82 个字节的数据
+包。
+
+
+
+
+
+
+
+注1：与TCP的联系(tie)可能比明显的要强(deeper)。除了压缩“知道”TCP和IP的头部,TCP
+的某些特征已经被用来简化压缩协议。特别是，TCP的可靠传输以及字节流对话模型被本协
+议用来消除不必要的错误改正对话（见第4章）
+
+
+Jacobson                                                                     [Page 1]
+RFC 1144             Compressing TCP/IP Headers                      February 1990
+
+(2)即使由一条足够快的链路（大于等于4800bps）来处理击键反馈的数据包，可能
+在批量数据和交互流量上产生不想要(undisirable)的交互。为了合理的链路效率，要求批
+量数据包的大小要达到头部大小的10--20倍。也就是说，对于40字节的TCP/IP头部，链
+路的最大传输单元（MTU）应该为500到1000字节。即使服务类型(type-of-service)的排
+队认为交互式业务优先，一个telnet数据包还是得等待当前的批量传送的数据包传送结
+束，假设数据传输仅在一个方向上进行，等待时间为传输MTU的一半，对于MTU为1024
+字节9600 bps的链路来说，约为500ms。
+
+(3)任何通信介质都有一个最大信号传输速率 ，即香农极限（AT&T 研究结果，参
+考文献[2]）。对于典型的拨号电话线香农极限为22,000 bps左右。因为全双工的9600 bps
+的Modem已经达到了该极限的80% ，modem的制造商开始提供不对称（带宽）分配方
+案来提高有效带宽：既然一条链路链路的两个方向很少同时相同的数据量，就有可能通
+过对一条半双工链路进行时分多路复用(例如Telebit Trailblazer)，或者提供一条低速的
+“反向信道”(例如USR Courier HST)（注2）来给链路的一端分配大于11,000 bps的带宽。
+在两种情况下，modem通过假设对话的一方为人（也就是说带宽要求小于300bps,取决于
+击键的速度）动态地试图猜测对话的哪一端需要更高带宽。由于协议头部而导致带宽乘
+以40，从而欺骗这种带宽分配方案并引起modem“逆风而行”（thrash）。
+
+从上面的讨论来看，很明显，压缩算法的一个主要设计目标是限制击键（typing）
+和确认(ack)流量的带宽要求最多为300 bps。典型的最大击键速度大约为每秒钟5个字符
+（注3），对于每敲击一个键，留下30-5=25个字节给头部，或者说每敲击一个键就需要
+5个字节的头部（注4），5个字节的头部直接解决了问题(1)和(3)并间接解决问题(2)：长
+度为100-200字节的数据包将很容易偿还5个字节头部的代价并且把链路带宽的95-98%
+提供给用户用于数据部分。
+
+
+注2：见参考文献（[1]，11章）中关于双绞线拨号线路性能的讨论。特别是，对于
+“echo-canclling”modem的(诸如符合CCITT V.32 的Modem)性能有很广泛的误解：
+Echo-cancellation 能够提供给双绞线的每一端全部的链路带宽，但是，由于远程用户的信
+号增加了本地噪音，没有达到线路的全部链路性能。22kbs的香农极限是双绞线电话连
+接的数据速率的硬限制（hard-limit）。
+
+注3：见参考文献[13]。击键流或多字符击键如光标键将超过该平均速率（2-4倍）。但
+是带宽要求大致保持不变，因为TCP  Nagle算法（参考文献[8]）每隔不到200ms对流量
+进行统计，提高的头部/数据比补偿了增加的数据。
+
+注4：类似的分析可以得出本质上相同的批量数据传输确认（bulk data transfer ack）
+的头部大小限制。假设MTU已经被选来对“不客气的”（unobtrusive）后台文件传输（也
+就是说，选用数据包发送时间为200-400ms,见第5章），在“高带宽”方向每秒钟最多
+能传送5个数据包。合理的TCP实现将最多每隔一个数据包发送一个确认（ack），以便5
+字节的ack的反向信道的带宽为2.5_5_12.5字节/秒。
+Jacobson                                                                     [Page 2]
+RFC 1144           Compressing TCP/IP Headers                    February 1990
+ 
+
+
+
+这些小的数据包意味着在交互式及批量传输之间很少产生冲突（见章节5.2）。
+
+另一个设计目标是压缩协议仅仅建立在保证串行链路的两端都知道的信息基础上。
+考虑图1所示的拓扑结构，通信主机A和B在各自的本地网(黑线表示)上，两个网络通过
+两条串行链路连接（网关C和D之间，及E和F之间的空心线）(注5)。一种可能的压缩就
+是把每一个TCP/IP对话转变成语义上等价的另一个协议对话，这种协议的头部比TCP/IP
+头部更小，例如，X.25。但是因为路由的瞬变性（transient）和多路性(multipathing)，
+完全有可能是A-B的某些流量沿着A-C-D-B路径而某些流量沿着A-E-F-B路径。同样，有
+可能 A-B的流量沿着A-C-D-B ，B-A的流量沿着B-F-E-A。没有一个网关能指望在一个
+具体的TCP对话中看到该对话的所有数据包，图1的拓扑结构的压缩算法不能与TCP连接
+的语法联系起来。
+
+把一个物理信道视为两个独立的、（每一个方向上）单向的链路，对拓扑结构、路
+由选择、流水线操作的要求最小。单向链路每一端仅必须在该链路最近收到的数据包保
+持一致（agree on）。这样，虽然任意压缩方案涉及到共享状态，但状态在空间上是临
+时、局部的并且符合Dave Clark的fate sharing原则（参考文献[4]）：两端仅在它们之间
+的链路连接不可操作时(状态)才不一致，在这种情况下的不一致并无大碍（doesn't 
+matter）。
+
+
+
+
+注5：注意虽然TCP的端点为A和B，在本例中压缩/解压缩必须在网关之间的串行链路上
+进行，也就是说在C和D之间以及在E和F之间。因为A和B使用IP，它们不可能知道他们的
+通信路径中包含一段低速串行链路，一个很明显的要求是压缩不能破坏IP模型，也就是
+说压缩运行在中间系统（intermediate）中而不仅是在端点系统中。
+
+
+
+
+Jacobson                                                                   [Page 3]
+RFC 1144           Compressing TCP/IP Headers                    February 1990
+ 
+3 压缩算法
+3.1基本思想
+图2显示了典型的（最小长度的）TCP/IP数据报头部注6 ，头部为40字节：20字节
+的IP头部和20字节的TCP头部。不幸的是，因为TCP和IP并不是由一个委员会设计的，
+头部中所有这些域都各自用于某个目的，不可能因为效率的原因简单忽略掉某些域。
+但是，TCP建立起连接并且每个连接都进行着几十甚至几百个数据包的交换。在整
+个连接中每一个数据包有多少信息可能保持不变呢？一半——即图3中的阴影部分。因
+此如果发送者和接收者跟踪(keep track of)这些活动的连接注7，并且每个连接的接收者
+保留上次收到数据包的头部的拷贝，这样发送者通过发送一个很小的（≤8位）连接标
+识符（connetion identifier）和变化的20字节，让接收者从上次保存的头部中把另外20个
+保持不变的字节填入，就可以使数据包压缩为原来的1/2（a factor-of-two compression）。
+还可以从中提取其它几个字节。注意到任何合理的链路帧协议将告诉接收者所接收
+消息的长度，由此Total Length（第2、3字节）也是多余的；然后，header checksum域（第
+10和11字节）用来保护各跳（individual hops）不处理“脏的”（corrupted）IP头部,
+
+
+注6：TCP和IP协议议及协议头在参考文献[10]和[11]中描述。
+注7：96位的元组(src address, dst address, src port, dst port) 唯一定义了一个TCP连接。
+
+Jacobson                                                                   [Page 4]
+RFC 1144           Compressing TCP/IP Headers                    February 1990
+
+ 
+
+
+本质是正在发送的IP头部的唯一部分。对不是正在传送的信息的传送进行保护是可笑的。
+所以，接收者可以在头部被实际发送时检查header checksum(也就是说未压缩的数据包)，
+但是，对于压缩后的数据报文，在IP头部的其它部分被重构的同时，在本地重构header 
+checksum注8。
+
+这样要发送的头部信息有16字节。所有这些字节在对话的整个过程中都有可能发生
+变化但它们不会同时改变。例如在FTP数据传输过程中仅仅 packet ID, sequence number 
+和checksum 在发送者——>接收者方向变化，仅有packet ID, ack, checksum 可能还有
+window, 在接收者——〉发送者方向发生变化。有了每个方向上上一次发送的数据包的
+拷贝，发送者可以算出当前数据包中哪些域发生变化，然后发送一个比特掩码后跟变化
+
+
+
+
+
+
+
+注8：IP头部检验和并不是参考文献[14]意义上的端对端检验和：time-to-live的更新迫使每一次转发(hop)
+时都要重新计算IP检验和。作者曾有很不愉快的个人经历，因为违反了参考文献[14]中的端对端的讨论
+(argument)，本协议对端对端的TCP检验和未加改变地给予透传(pass through)。见第4章。
+
+Jacobson                                                                 [Page 5]
+RFC 1144              Compressing TCP/IP Headers               February 1990
+
+的域来表明变化的部分发生了哪些变化（注9）。
+如果发送者仅发送变化的域，上面的方案可得到平均10个字节左右的头部。但是，
+值得一看的是这些域的变化情况：典型地，数据包ID由每发送一个包就增加1的计数器
+得到，也就是说，当前数据包与前一个数据包的ID之差应该是一个很小的正整数，通常
+小于< 256 (一个字节)并且经常等于1。对于从发送方传来的数据包，当前数据包中的顺序
+号（sequence number）将等于前一个数据包的顺序号加上前一个数据包的数据量(假设
+数据包按顺序到达)。因为IP数据包最大为64K，顺序号的变化必须小于216(两个字节)。
+因此，如果传送的是变化的域之差(deference)而不是这些域自身，每一个数据包可以节
+省另外三四个字节。
+这就使我们向5个字节头部的目标迈进。考虑几个特殊情况可使我们得到两种最常
+见情形下的3个字节的头部——交互式击键流量和批量数据传输——但基本的压缩方案
+是上面的差分编码（differential coding）。如果这种智力练习表明可以得到5个字节的头
+部，似乎丢失某些细节的信息而真正实现了某些东西应该是合理的。
+3.2 大致细节
+3.2.1 综述
+图4显示了压缩软件的模块图。网络系统调用一个SLIP输出驱动程序（参数为一个
+要在该串行链路上发送的IP包）。数据包进入压缩程序（compressor），压缩程序检查
+数据包的协议是否TCP。非TCP数据包以及“不可压缩的”（“uncompressible”）TCP
+数据包(如后面所述) 仅被标记为TYPE IP并传送到成帧器(framer)。对于可压缩的TCP数
+据包，则在数据包头部阵列中查找（与之匹配的连接）。如果找到匹配的连接，则进来
+的(incoming)数据包被压缩,（未压缩之前的）数据包头部被拷贝到阵列中，类型为
+COMPRESSED TCP的数据包被送到framer。如果没有找到匹配的连接，阵列中最旧的
+（oldest）表项（entry）被废弃，数据包的头部被拷贝到该槽（slot）中，并且把一个类
+型为UNCOMPRESSED TCP的数据报送到成帧器。(UNCOMPRESSED TCP数据包与初始
+IP包相同，除了IP protocol域被一个到已保存的每个连接的数据包头部阵列的索引
+connection number取代之外。这就是发送者与接收者（重新）同步，并把它作为压缩数据
+包序列的第一个未压缩数据包的“种子”（seed）的方法。
+framer负责传送该数据包的数据，类型以及边界（boundary）(以便解压程序知道压
+缩程序产生的字节数)。因为编码是差分编码（differential coding,），不允许framer对数
+据包进行重新排序（在一个单独的串行链路上很少需要考虑）。framer必须提供良好的
+
+注9：这与Thinwire-I（参考文献[5]）大致相同。一个稍微的改变是增量编码（"delta encoding"），
+即发送者从当前数据包减去前一个数据包(每一个数据包视为16位整数的阵列),然后发送一
+个20-bit的掩码表明差（deference）为非0的各域（后跟变化内容）。如果分离不同的对话,
+这是一个非常有效的压缩方案(也就是说，典型的得到12-16字节的头部)，压缩方不涉及数据
+包的包格式细节。这种方案的多个变种已经被成功使用了很多年(例如Proteon路由器的串行
+链路协议，参考文献[3])。
+Jacobson                                                                     [Page 6]
+RFC 1144               Compressing TCP/IP Headers                       February 1990
+ 
+错误检测能力并且如果connection number被压缩，它还必须向解压程序提供错误暗示
+（error indication，见第4章）（注10）。
+解压程序在进来的(incoming)数据包的类型来一个'switch'：对于TYPE IP,数据包被
+简单地透传（pass through）；对于UNCOMPRESSED TCP，连接号（connection number）
+从IP  protocol域中提取（extracted），IPPROTO TCP 被存储，然后连接号被用来作为接
+收方所保存的TCP/IP头部阵列的索引值，数据包的头部被拷贝到该索引所对应的槽中。
+对于COMPRESSED TCP, 连接号用来作为得到该连接上一个数据包的TCP/IP头部的索
+引值，压缩数据包中的信息用来更新（上一个数据包的）头部，然后构建一个新的数据
+包（包含从阵列中得到的头部，连接从压缩数据包中取得的数据。）
+注意通信是单向的——解压程序到压缩程序的方向上没有信息流。特别地，隐含着
+解压程序依赖TCP的重传来在发生链路错误（line errors）时改正已保存的状态(见4)。
+
+
+
+3.2.2压缩数据包格式
+图5显示了压缩后TCP/IP数据包的格式。其中change mask标识了预期变化的哪些域
+发生了变化，connection number 使得接收方能够定位该TCP连接的上一个数据包的拷贝
+
+
+
+
+
+注10：链路帧超出本文档的范围。任何帧只要提供了本段中列出的功能(facility)，对于本压
+缩协议应该是足够的。但是作者鼓励实现者参照参考文献[9]的一个推荐的标准的SLIP帧。
+
+
+Jacobson                                                                     [Page 7]
+RFC 1144            Compressing TCP/IP Headers                 February 1990
+
+ 
+ 
+所存放的位置，不变的TCP检验和使得端到端的完整性检查依然有效，对于change mask
+中设置的位，相关域的变化量(可选的域，由改变掩码控制，在图中用虚线表示)。所有
+情况下，如果相关的域出现时该位设置为1，如果相关的域不出现则该位为0注11。
+因为sequence number等的改变量一般都很小，特别是遵循第5章的调节（tuning）原
+则时，所有的数字实际上按一个可变长度方案编码，该方案用8位控制大部分的业务：1
+—255的改变量用一个字节来表示，0是不可能出现的（改变量为0则不发送），所以为0
+的字节表明一种扩展：接下去的两个字节为16位值的MSB和LSB。大于16位的值强迫发
+送为未压缩包。例如15（十进制）编码为0f(十六进制)，255编码为ff, 65534为00 ff fe,
+而0编码为00 00 00。这种方案的压缩和解码效率很高：通常情况下在MC680x0上编
+码和解码都需要执行3条指令。
+作为TCP序列号以及ack发送的数值为当前数据包与前一个数据包中的值之差（如
+果差为负或大于64K则发送未压缩数据包）注12。作为window发送的值也是当前值与前
+
+
+
+
+注11：图中“P”位与其它位不同：它是TCP头部的"PUSH" 位的拷贝。"PUSH"曾被Internet
+协会中的某些人认为是必不可少的。因为PUSH能（实际上也）在任何数据包中改变，
+因此保留信息的压缩方案必须显式的传送（pass）PUSH。
+注12：所有的差使用2's complement arithmetic计算。
+
+
+
+Jacobson                                                                  [Page 8]
+RFC 1144                    Compressing TCP/IP Headers               February 1990
+
+一个值之差，但是正负值都允许，因为window域为16位。在设置URG时发送数据包的紧
+急事件指针(如果紧急事件指针发生改变而没有设置URG位时发送未压缩数据包)。对于 
+packet ID, 发送的值为当前值与前一个值之差。但与域中其它部分不同，当清除I位时假
+定的变化值为1，而不是0。
+有两种很重要的特殊情况：
+(1) sequencenumber和ack都改变（改变值为上个数据包的数据量）；window和URG
+均不变。
+(2)sequence number 改变（改变值为上个数据包的数据量）；ack，window和URG
+均不变。
+（1）就是终端反馈流量（echoed terminal traffic）的情况。(2)是非终端反馈流量或单向
+数据传输的情况。S,A,W,U的组合用来表明这些特殊情形。 'U' (urgent data)很少出现，
+所以两种不太可能的组合是S WU (情形1)和S A WU (情形case 2)。为避免二义性，如果
+实际改变值是S*WU,则发送未压缩数据包。
+因为“活动的”（'active'）连接很少改变(也就是说用户在换到另一个窗口前将在
+一个telnet窗口击键几分钟)，C位允许连接号被忽略掉。如果清除了C位，则假设与上一
+个压缩或未压缩的数据包是一样的连接；如果设置了C位，则连接号就是紧跟在change 
+mask后面的那一个字节注13。
+从上面的讨论得知，很明显压缩后的终端流量通常看起来像(十六进制)： 0B c c 
+d, 0B表明情形(1), c c是两个字节的TCP检验和，d 是所敲击的键。命令vir 或 emacs, 或
+者FTP“put”或“get”数据传输方向的数据包看起来为0F c c d. . . ,该FTP的ack看起
+来为04 c c a ，其中a 为被确认的数据量注14。
+3.2.3 压缩过程（Compressor processing）
+由待压缩IP数据包和输出串行线的“压缩状态结构”调用压缩程序。它返回的是最
+终成帧（framing）的数据包以及该数据包的链路层“类型”。
+
+
+注13：连接号限制为一个字节，即同时最多能有256个活动的TCP连接。在将近两年的操作
+中，作者从没有看到超过16个连接状态的情形有什么用处(即使在SLIP链路用于一个
+很繁忙的64-port的终端复用器的网关时也是如此)。这样看来这个限制没有多大意义，
+这就允许UNCOMPRESSED TCP数据包使用protocol域作为连接号，以简化这些数据
+包的处理过程。
+注14：也很明显change mask很少改变，经常可被忽略。实际上，可以通过保存上一个压缩
+数据包(最多为16字节，因此this isn't much additionalstate) 并检查 (除了TCP 检验和) 是否
+发生变化，而得到更好的结果。如果没有变化,发送一个意思为"压缩TCP,与上次相同" 的数
+据包和一个仅包含检验和和数据的数据包。但是，由于改进最多为25%，增加的复杂性和状
+态结构好像并不可行（justified）。见附录C。
+
+
+
+Jacobson                                                                   [Page 9]
+RFC 1144                      Compressing TCP/IP Headers                February 1990
+
+正如上一节提到的那样，压缩程序把进来的每一个数据包转换成TYPE IP, 
+UNCOMPRESSED TCP或者COMPRESSED TCP数据包。TYPE IP数据包是输入数据包未
+加修改的拷贝注15，处理它不会改变压缩程序的状态。
+UNCOMPRESSED TCP数据包除了IP Protocol（第9个字节）从‘6’（TCP协议）改
+为连接号connection number外与输入数据包相同。另外，与连接号关联的状态槽被输入
+数据包的IP和TCP头部更新，连接号记为本串行链路的last connection sent （对下面的C
+压缩程序而言）。
+COMPRESSED TCP 数据包包含初始数据包的数据（如果初始数据包有数据的话），
+但是IP和TCP头部已完全被一个新的经过压缩的头部取代，连接状态槽和last connection sent 
+被输入数据包中像UNCOMPRESSED TCP那样更新。
+压缩程序的决定过程为：
+●	如果数据包的协议不是TCP,把它作为一个TYPE_IP数据包发送。
+●	如果数据包是一个IP分片(即fragment offset 域不为0或设置more fragments位),
+把它作为TYPE IP数据包发送。注16
+●  如果设置了TCP控制位SYN, FIN or RST 或者ACK 为0，把该数据包视为不可压
+缩，把它作为TYPE_IP发送。注17
+
+如果数据包通过了上述检查,它将被作为UNCOMPRESSED TCP或COMPRESSED 
+TCP发送。
+●	如果没有找到与数据包的源地址、目的IP地址及TCP端口号匹配的连接状态，
+将收回某状态（可能为最近最少使用的），发送一个UNCOMPRESSED TCP。
+
+.
+注15  实际上不必要（也不想）为三种输出数据包中的任一种复制输入数据包。注意压缩器
+不能增加一个数据报的大小。正如附录A中的代码显示的那样，本协议能“就地”（in 
+place，取代式地）完成头部的修改。
+注16  仅仅第一个分片包含TCP 头部所以分片偏移量的检查是必要的。第一个分片可能包
+含一个完整的TCP头部,因而，可以被压缩。但是检查一个完整的TCP头部增加很多代
+码, 按照参考文献[6]中的讨论, 未经压缩地发送所有IP分片似乎是合理的。
+注17	ACK检查是多余的，因为符合标准的实现必须在所有数据包中设置ACK ，除了初
+始的SYN数据包以外。但是,该检查不花任何代价并且避免把一个假（bogus）的数据包
+变成一个有效的数据包。
+SYN 数据包不压缩是因为仅有一半包含有效的ACK域并且他们通常包含一个TCP
+选项(最大分段大小，the max segment size)，而在以后的数据包中没有该选项。这样下
+一个数据包将不经压缩便发送，因为TCP头部长度已经改变，而发送SYN 为
+UNCOMPRESSED TCP，而不是TYPE IP，将不花任何代价（would buy nothing）。
+决定不对FIN数据包进行压缩值得质疑。对附录B.1中的技巧打一下折扣，头部中有
+一个空闲位可用来传送FIN标志。但是，因为连接过程中传送很多数据包，把一个
+比特赋予在连接的生存期仅出现一次的标志似乎不太合理。
+
+
+Jacobson                                                                  [Page 10]
+RFC 1144                       Compressing TCP/IP Headers              February 1990
+
+●	如果找到一个连接状态,则比较其所包含的数据包头部与当前的数据包头部以确保
+没有出现实现没有预料的变化(举例说来，图3中所有的阴影域都一样)。检查IP 
+protocol, fragment offset, more fragments,SYN, FIN以及RST域，检查源、
+目的地址及端口号以定位状态结构所处的位置。所以剩下要检查的域是
+protocol version, header length, type of service, don't fragment, 
+time-to-live,data offset, IP选项(如果有)和TCP选项(如果有)。如果两者头
+部中任一个域不同，则发送UNCOMPRESSED TCP数据包。
+
+如果所有的“不改变"域匹配,将试图对当前数据包进行压缩:
+——如果设置了URG标志,urgent data域被编码（注意可能为0），设置改变掩码中
+的U位。不幸的是,如果URG被清除,urgent data域必须与前一个数据包进行比
+较，如果发生改变，则发送UNCOMPRESSED TCP 数据包。(“Urgent data”在
+URG被清除时不应该改变，但参考文献[11]不作这样的要求)。
+——计算当前数据包与前一个数据包中window域之差，如果非0，差被编码并且设置
+change mask中的W位。
+——计算ack 域之差，如果结果小于0或者大于216-1, 发送一个UNCOMPRESSED TCP 
+数据包注18。否则，如果结果为非0，差被编码，设置change mask中的A位。
+——计算sequence number域之差。如果结果小于0或大于216-1，发送UNCOMPRESSED 
+TCP数据包注19。否则如果结果为非0，被编码且设置change mask中的S位。
+
+一旦判断出U, W, A 和S发生改变,检查特殊情形的编码：
+--如果设置了U, S 和W ,改变量符合特殊编码的一种情形。发送一个
+UNCOMPRESSED TCP数据包。
+--如果仅设置S ,比较改变量是否等于最后一个数据包中的用户数据。即从
+上一个数据包中的total length中减去TCP和IP头部长度，将结果与S的改
+变量进行比较。如果它们相同,设置change mask为SAWU(“单向数据传输”
+的特殊情形)，并丢弃编码后的sequence number改变(压缩程序可以重建
+它，因为它知道最后一个数据包的总长度和头部长度)。
+
+
+
+
+
+
+
+注18．这两个比较（test）可以合并为最高有效16位的差是否为非0。
+注19．改变量为负的sequence number暗示着可能是一次重传。因为这有可能是因为压缩程序
+丢失了一个数据包，所以发送一个未压缩数据包以对解压器进行重同步（re-sync，见4）。
+
+
+
+Jacobson                                                               [Page 11]
+RFC 1144              Compressing TCP/IP Headers                     February 1990
+
+——如果仅设置了S和A ,检查是否它们的改变量是否相同，并且该变量是否
+等于最后的数据包中的用户数据量。如果这样，设置change mask为
+SWU(“回显交互式”流量的特殊情形)，并丢弃已编码的改变量。
+——如果什么都没有改变，检查是否该数据包没有用户数据(这种情况可能
+是一个重复的确认或窗口检测window probe)，或者前一个数据包是否包
+含用户数据(意味着该数据包是非流水线连接上重传数据包
+retransmission on a connection with no pipelining)。在这两种情况下，发
+送一个UNCOMPRESSED TCP数据包。
+
+最后，输出数据包的TCP/IP头部被(压缩程序产生的)压缩头部取代。
+——计算packet ID的变化，如果不是1 注20，差被编码（注意可能为0或负数）并
+设置改变掩码的 I 位。
+——如果最初数据包中设置PUSH 位，设置改变掩码中的P位。
+——数据包的TCP和IP头部被拷贝到连接状态槽（connection state slot）中。
+——（最初）数据包的头部被丢弃，新的头部被添加到前面（prepended）。包括（以
+倒序）：
+– 累积的变化量编码。
+– TCP checksum (如果新的头部“就地”（in place，取代式地）创建, checksum
+有可能已经被覆盖，必须从最初的头部被丢弃之前拷贝到连接状态结构中或
+者临时保存的拷贝中获取。
+– connection number (如果与该串行链路上最后一次发送的不同)。这也意味着
+该链路的last connection sent 必须设为connection number 并在改变掩码中设
+置C 位。
+– 改变掩码（change mask）
+这时候，压缩的TCP 数据包传到成帧器(framer)以待发送。
+3.2.4 解压过程
+因为这是一个单向通信模型，解压程序的处理过程比压缩程序的处理过程要简单的
+多——所有的判断（decisions）已经决定好了，解压程序只要简单地按照压缩程序叫它
+做的工作。
+
+
+
+注20．注意是与1而不是与0进行比较。packet ID典型的是每发送一个数据包增1，所以该变
+量为0的情况是不太可能出现的。改变量为1的情况是可能的：在系统仅在一个连接上有活动
+时发生。
+
+
+
+
+Jacobson                                                               [Page 12]
+RFC 1144                  Compressing TCP/IP Headers             February 1990
+
+解压程序由输入数据包注21，数据包的类型以及输入串行链路的压缩状态结构调
+用。返回一个（可能被重新构建的）IP数据包。
+解压器可接收4种类型的数据包：由压缩程序产生的三种包以及当帧接收器检测到
+错误（注22）时所产生的一个TYPE_ERROR 假（pseudo-）数据包。第一步是对这些数据
+包类型来一个“switch”：
+●	如果数据包为TYPE ERROR 或者未知的类型， 状态结构中设置一个“丢弃”
+（'toss'）标志以迫使COMPRESSED_TCP数据包被丢弃，直到收到设置C位的数
+据包或者一个UNCOMPRESSED TCP数据包 。不返回任何东西（空数据包）。
+●	如果数据包为TYPE _IP，不加改变地返回它的拷贝并且状态结构不改变.
+●	如果数据包为UNCOMPRESSED TCP, 检查IP Protocol域的状态索引（注23）。如
+果非法,设置“丢弃”标志，不返回任何值。否则，清除“丢弃”标志,索引被拷
+贝到状态结构的last connection received 域，创建输入数据包的一份拷贝（注
+24）。TCP protocol 号被恢复（restore）到IP protocol 域，数据包头部被拷贝到
+（索引）表明的状态槽中 ，返回数据包的拷贝。
+
+如果数据包类型不在上面讨论之中，它就是COMPRESSED TCP ，必须由数据包的
+信息和状态槽中上一个数据包头部合成一个新的TCP/IP头部。首先，显式或隐式的
+connection number用来定位状态槽：
+——如果改变掩码中设置了C位，那么检查状态索引。如果非法，设置“丢弃位”
+标志，不返回任何值。否则，last connection received 设为该数据包的状态索
+引值，清除“丢弃”位。
+——如果C位被清除（为0），并且设置了“丢弃”位标志，该数据包被忽略，不
+返回任何值。
+此时，last connection received 是适当的状态槽的索引，压缩数据包的第一个（头
+几个）字节（改变掩码，可能还有连接索引connection index）已经被消化掉（consumed）。
+
+
+注21．假设链路层framing此时已被去除，数据包和length不包括type或framing字节数。
+注22．TYPE ERROR 数据包不需与任何数据相关。它之所以存在是为了使帧接收器能告诉
+解压程序数据流中可能有断点(gap)。解压器使用TYPE_ERROR通知（signal）解压程序：数
+据包应该被丢弃直到一个有显式连接号(connection number)的数据包（即设置了C位）到达。
+这样做的必要性见4.1节最后的讨论。
+注23．状态索引遵循C 语言的习惯，从0到N-1,0<N≤256是可用状态槽的索引。
+注24．对于压缩程序来说，可以对代码进行结构化(structured)以便不需要拷贝，所有的修改
+都是“取代式”（in place）的。但是，因为输出数据包可能比输入数据包大，必须在输入
+数据包缓冲区的前部保留128个字节的空间以允许放入TCP/IP头部。
+
+
+
+
+
+Jacobson                                                           [Page 13]
+RFC 1144                   Compressing TCP/IP Headers              February 1990
+
+因为状态槽中的TCP/IP 头部必须终结以反映新到来的数据包，把这些数据包的改变量
+应用于头部，然后由头部连接（concatenate）输入数据包的数据从而构建出输出数据包
+是最简单的。(在下面的描述中“已保存头部”用作“保存在状态槽中的TCP/IP头部”
+的缩略语)
+——输入数据包中接下来两个字节是TCP检验和。它们被拷贝到“已保存头部”中。
+——如果改变掩码中设置了P位，“已保存头部”中设置TCP PUSH 位。否则清除
+PUSH位。
+——如果改变掩码的低4位(S, A, W和U) 都设置为1(“单向数据”的特殊情形)，上
+一个数据包的用户数据量通过从“已保存头部”中的IP total length中减去TCP
+和IP头部长度计算得到。该用户数据量（计算的结果）被加到“已保存头部”
+的TCP sequence number中。
+——如果设置了S, W和U ，但清除了A (“终端流量”特殊情形)，上一个数据包的
+用户数据量被计算并被加到“已保存头部”中TCP sequence number和ack域中。
+——否则,改变掩码的各位按压缩程序设置的顺序解释：
+— 如果设置了U位，在“已保存头部”中设置TCP URG位，输入数据包接下
+来的字节被解码并填充到到TCP Urgent Pointer中。如果清除了U位，则清
+除TCP URG位。
+— 如果设置了W位，输入数据包中接下来的字节被解码并被添加到“已保存
+头部”中的TCP window 域。
+— 如果设置了A位,输入数据包接下来的字节被解码并被添加到“已保存头部”
+的TCP ack 域中。
+— 如果设置了S位，输入数据包中接下来的字节被解码并被加到“已保存头部”
+的TCP sequence number域中。
+
+——如果改变掩码设置了I 位，输入数据包接下来的字节被解码并被加到已保存数
+据包的IP ID 域。否则IP ID.加1。
+
+至此，输入数据包中的所有头部信息被消耗（consumed）完毕，仅剩下数据部分。
+剩下的数据部分的长度与已保存TCP和IP头部的长度相加，结果放入已保存IP total 
+length域中。已保存IP头部现已被更新，故其检验和被重新计算并被保存到IP checksum
+域中。最后，包括“已保存头部”与剩下的输入数据的输出数据报被构建并返回。
+
+
+
+
+
+
+
+
+
+
+Jacobson                                                              [Page 14]
+RFC 1144                 Compressing TCP/IP Headers               February 1990
+4 错误处理
+4.1错误检测
+根据作者的经验，拨号连接特别容易出现数据错误。这些错误与压缩从两方面交互：
+首先是已压缩数据包中的错误的局部（local）影响。所有的错误检测建立在数据冗
+余基础上，但压缩几乎挤出了TCP和IP头部中的全部冗余数据。也就是说，解压程序将
+很乐意把随机的链路噪音变成一个有效的TCP/IP包（注25）。人们可以根据TCP检验和
+检测“脏的”（“corrupted”）的压缩数据包，但是不幸的是，某些很有可能发生的错
+误不会被检测到。例如，TCP 检验和经常不会检测到被16位分开的2个单独的比特的错
+误。对于V.32 modem 以2400波特率，4 bits/baud发送信号， 任意持续超过40us的链路
+瞬时干扰(line hit)将破坏16 比特。按照参考文献[2], 住宅电话的链路瞬时干扰有可能达
+到2ms。
+处理这个问题的正确方法是在链路层提供错误检测。因为framing(至少在理论上) 
+可以处理使之符合特定链路上的某些特性，检测可以根据该链路作为轻权或重权（注
+26）。因为数据包错误检测是在帧级别上进行，解压程序简单的假设它会收到当前接收
+的数据包有错误的暗示(解压器总是忽略（丢弃）有错误的数据包，但是，需要有暗示
+来防止错误被进一步传播——见下面)。
+“丢掉错误的数据包”策略引起错误和压缩的第二种交互。考虑下面的对话：
+    Orignal
+         Sent
+  Recived
+  reconstucted
+1 ：A
+2：BC
+4 ：DE
+6：F
+7：GH
+1：A
+Δ1，BC
+Δ2，DE
+Δ2，F
+Δ1，GH
+1：A
+Δ1，BC
+——
+Δ2，F
+Δ1，GH
+   1：A
+   2：BC
+——
+4：F
+5：GH
+ (上面的每个表项都有“starting  sequence number：data sent”或“Δ_ sequence number 
+change，data sent”的格式)。发送的第一个数据包是一个未压缩数据包，跟着的是四个
+压缩数据包。第三个数据包出现一个错误并被丢弃。为重构第4个数据包，接收者把输
+入的压缩数据包中的sequence number变化量应用到上一个正确接收的数据包（即第2个
+数据包）的sequence number上，产生第4个数据包的不正确的sequence number。在错误
+
+
+
+注25：模(modula)TCP检验和。
+注26：虽然合适的错误检测方法依赖于链路，参考文献[9]中使用的CCITT CRC 在很多链路
+上取得了计算的简易性和错误检测的健壮性（robust）之间的完美的平衡，尤其是为了好的
+交互响应而需要相对小的数据包时。这样，由于互操作性的原因，除非有强有力的原因以外，
+应该使用参考文献[9]中的帧（格式）。
+Jacobson                                                                  [Page 15]
+RFC 1144               Compressing TCP/IP Headers                      February 1990
+
+出现之后，所有重建数据包的sequence number将都是错误的，均比正确值减小所丢失数
+据包的数据量（注27）。
+如果没有某种类型的检查，前述错误将导致接收者在传输过程中看不见丢失了的两
+个字节(因为解压器重新产生sequence number，包含F和GH的数据包到达接收者时将有
+正确的sequence number，如果DE数据包不曾存在)。虽然TCP对话可以在丢失数据后继
+续存活（注28），但是不鼓励这么做。幸运的是，由于TCP检验和是一个数据包内容（包
+括sequence number）的简单和（single sum），它可以百分之百地检测到这种错误。例
+如，上面的接收方计算出的最后两个数据包的检验和，总是与数据包的检验和相差2。
+不幸的是，如果输入压缩数据包（incoming compressed packet）的变化量被应用到
+错误的对话时，总是有办法令上面所讲的的TCP检验和失效：考虑两个活动对话C1和C2,
+一个从C 1来的数据包后面跟着两个来自C2的数据包。因为连接号没有改变，则连接号
+被C2的第二个数据包省略（omitted）掉。但是，如果C2的第一个数据包接收时发生CRC
+错误，则C2的第二个数据包将被错误的当成C1的第二个数据包。因为对于C1的sequence 
+number来说，C2的检验和是一个随机数，至少有2-16 的概率使得该数据包被C1 的TCP
+接收方接收（注29）。为防止这种情况发生，在收到来自成帧器（framer）的CRC错误
+暗示后，接受方丢弃数据包直到收到一个设置了C位的COMPRESSED TCP数据包或者是
+一个UNCOMPRESSED TCP数据包。也就是说，数据包被丢弃直到接收到带显式
+connection number 的数据包。
+总结本节，有两种不同的错误类型：数据包的“变质”（corruption），和会话同步
+的丧失（loss-of-sync）。第一种类型解压器方通过链路层CRC错误检测到，第二种在TCP
+接收方通过一个（保证）有效的TCP检验和检测到。这两种独立机制的联合使用确保了
+错误数据包被丢弃。
+4.2错误恢复
+前面章节提到，在CRC错误之后解压器将在每一个未压缩数据包中引进TCP检验和
+错误。虽然检验和错误防止了数据流的变质（corruption），在解压器产生出一个有效的
+数据包之前该TCP对话将不可用。这是怎样发生的呢？
+解压器产生无效的数据包是因为其状态结构（已保存的“上一个数据包头部”）与
+压缩器的状态结构不一致。一个UNCOMPRESSED TCP数据包将修正解压器的状态。这样，
+错误恢复等于在解压器在感到混乱（confused）时迫使压缩器发送一个未压缩数据包。
+
+
+
+
+
+注27 ：这是使用差分编码或增量编码时一个普遍的问题的一个实例，称为"losing DC"。
+注28．很多系统管理员声称NNTP数据流中的漏洞（holes）比数据更有价值（more valuable）。
+注29．在最差情况下的流量下，该概率理解为一条9600波特率，错误率为30%的链路上每3
+个小时就有一个错误没有被检测出来。
+
+Jacobson                                                                [Page 16]
+RFC 1144                Compressing TCP/IP Headers                February 1990
+
+ 
+
+
+首先要考虑的是利用全双工通信链路，让解压器请求压缩器发送一个非压缩数据
+包。很显然这是我们不想要的，因为它包含的拓扑结构比第2章中建议的最小拓扑结构
+复杂得多，并且要求给解压器和压缩器增加很多协议。稍加考虑就可以知道这种选择不
+仅仅是我们不想要的，它简直就无法工作（奏效）：压缩数据包很小，以至于链路瞬时
+干扰（line hit）可能把它完全淹没，最终解压器什么也没收到。这样数据包被错误地重
+构(因为压缩包的丢失)，但是仅有TCP 端（end）知道数据包是错误的，解压器根本不
+知道。
+但是，既然TCP端知道该错误，而TCP设计为运行在不可靠介质上的可靠协议，这
+就意味着TCP两端必须最终采取某种错误恢复措施，压缩器必须有明显的触发器以对解
+压器进行重新同步：TCP进行错误恢复时发送一个非压缩包。
+但是压缩器怎样才能认出这是TCP错误恢复呢？考虑图6中的TCP数据传输示意图。
+感觉到混乱的（confused）解压器处于TCP对话的前向部分（即数据传输部分）。TCP
+接收方丢掉数据包而不是对它们进行确认（因为检验和出错），TCP发送方最终超时并
+重发数据包，前向中的压缩器发现重传数据包的sequence number和它所看到的上一个数
+据包的sequence number之差为负数（如果有几个数据包通过）或者0(只有一个数据包通
+
+
+Jacobson                                                           [Page 17]
+RFC 1144                Compressing TCP/IP Headers                February 1990
+
+
+
+ 
+
+过)。第一种情况在压缩阶段计算序列号之差的步骤检测到。第二种情况在检查“特殊
+情形”编码阶段检测，但还要求另一个检查：交互式对话中经常先发送一个无数据的ack
+再发送一个包含数据的数据包，ack和包含数据的数据包有相同的sequence number但是
+数据包却不是（该ack的）重传。为防止发送一个不必要的未压缩数据包，应该检查前
+一个数据包的长度，如果它包含数据，sequence number变化量为0则肯定（must）意味
+着重传。
+图7中会话的反向部分链路（即确认方向）上感到混乱的解压器也很容易检测到： 
+TCP发送方丢掉ack(因为它们包含检验和错误)，最终超时，然后重传某数据包。这样TCP
+接收方就收到重复的数据包，它必须发送一个ack以指明期望的下一个sequence number。
+值产生一个ack（参考文献[11]，p. 69）。该ack重复了TCP接收方产生的上一个ack，所
+以反向的压缩器将发现ack, seq number, window 或urg没有改变。如果这发生在不包含数
+据部分的数据包上，压缩器就会假设它是对应于重传而发送的重复的ack，因而发送一
+个UNCOMPLESSED TCP数据包（注30）。
+
+
+
+
+
+注30：该数据包可以为一个0-窗口检测而不是重传ack，但窗口检测不应太频繁，未压缩便
+发送它们没有坏处
+
+Jacobson                                                                   [Page 18]
+RFC 1144                   Compressing TCP/IP Headers                   February 1990
+
+5 可配置参数及调节
+5.1压缩配置
+与头部压缩有关的配置参数有两个：特定链路上是否应该发送压缩数据包，如果发
+送，要预留（reserve）多少个状态槽（即要保存的数据包头部的数量）。还有一个链路
+层配置参数，即数据包最大长度或者MTU，一个前端（front-end）配置参数，与头部压
+缩(header compression)一起作用的数据部分的压缩（data compression）。压缩配置在本
+章节讨论。MTU和数据压缩在后两个章节介绍。
+有些主机（例如low-end PC）可能没有足够的处理器和内存资源来实现这种压缩。
+也有极少数链路或应用程序特征使得头部压缩成为不必要或不希望的。很多现有的SLIP
+链路当前不使用这种头部压缩方法。基于互操作性的考虑，允许头部压缩的串行链路IP 
+driver应该包含某种用户可配置以禁止这种头部压缩的标志(见附录B.2)（注31）。
+如果允许压缩，则压缩器必须确保不发送可能被解压器丢掉的connection number(状
+态结构的索引)，例如，如果解压器有16个状态槽而压缩器使用20个就会产生一个“黑
+洞”（black hole，注32）；同样，如果解压器允许压缩器使用的槽太少，LRU分配器将
+崩溃（thrash），大多数的数据包将被作为UNCOMPRESSED TCP发送。太多的槽和内存
+又造成浪费。
+过去这些年在对不同的槽的大小进行研究后，作者发现，当多窗口工作站上的多个
+窗口同时使用或者工作站作为其它3台或更多机器的网关时，8个槽将崩溃(thrash，也就
+是说，性能大大降级)。16个槽出现崩溃情况还没碰到过(这可能仅仅是因为9600 bps的
+链路分成多于16路已经超负荷（overloaded）以至于槽的循环导致的性能降级可被忽略
+不计了)。
+每一个槽必须足够大以容纳128字节的最大TCP/IP头部（注33），所以16个槽占用
+2KB内存。对于当前的4 MB的内存条中，2KB似乎只是很小的一部分，所以作者建议使
+用下面的配置规则：
+(1)	如果帧协议不允许协商，压缩器和解压器应该提供16个槽，即从0到15。
+
+注31．PPP协议（参考文献[9]）允许端协商压缩协议，所以不存在互操作的问题。但是，应
+该允许系统管理程序在各端控制协商压缩协议是“on”还是“off”。显然，压缩协议缺省
+应该为'off'，直到协商为'on'。
+注32．严格说来，把连接号作为阵列的索引没有站得住脚的原因。如果解压器的状态保存在
+一个散列表或相关结构中，连接号将作为关键字（key），而不是索引，解压器的槽太少将
+使性能只是严重下降并不会崩溃（failing altogether）。但是，联合的（associative）结构本
+质上将花费更多的代码，CPU时间代价更高，如果给定每个槽的很小的代价(128字节的内
+存)，似乎在解压器方设计槽阵列和（可能是隐式地）传输阵列的大小是合理的。
+注33．最大头部长度，即64字节的IP和64字节的TCP，协议设计时就固定了的。
+
+Jacobson                                                               [Page 19]
+RFC 1144                       Compressing TCP/IP Headers              February 1990
+
+(2)如果帧协议允许协商，应该协商从1到256的双方都感到合适的槽数（注34）。如果没
+有协商槽数，或者直到协商完毕之前，双方都应假设是16。
+(3)如果你对两端所有机器的所有链路进行完全的控制，并且任何机器和链路都不会在你
+的控制之外与其他机器通信，你就可以随便对它们进行配置，而忽略上面的限制。但
+是当你的东方专政崩溃（eastern-block dictatorship collapses，就像它们最终的结果那
+样），注意一个巨大的，嘈杂的而且不是特别仁慈的因特网社会将很乐意向想倾听的
+人指出你已经错误地配置了你的系统，它现在不可操作。
+5.2 选择最大传输单元（MTU）
+从第二章的讨论中我们看到，似乎很有必要对有可能存在交互式流量和多个活动连
+接的链路的数据包的最大长度（MTU）进行限制。(以保持竞争该链路的不同连接得到
+良好的交互响应)。一个很自然的问题是“这会对吞吐量产生多少影响?”回答是它不会
+影响。
+图8显示了使用（实线表示）和不使用头部压缩（虚线表示）的MTU与吞吐量的关
+系（注35）。 点划线（垂直方向）显示了2400,9600和19200bps的200ms数据包所对应的
+MTU。注意如果使用头部压缩，2400bps的链路还有合理的响应时间并有合理的吞吐量
+(83%)（注36）。
+图9显示了链路效率随着链路速度上升时的关系，假设总是选用200ms的MTU(注
+37)。性能曲线的拐点大约为2400bps。速度小于该点时，效率对速度（或者MTU，因为
+两者线性相关）的微小变化很敏感，好的效率以牺牲好的响应时间来作为代价。速度高
+于2400bps，曲线平滑，效率与速度和MTU相对无关。也就是说，同时得到较好的响应
+时间和较高的链路效率是可能的。
+为了说明问题，注意对于一条9600 bps链路使用头部压缩，MTU超过200字节将不
+会带来任何好处：如果MTU 提高到576，平均延迟提高188% ，而吞吐量才提高了3% (从
+96%-99%)。
+
+
+
+
+
+注34：仅允许一个槽将可能使压缩器的代码更复杂。实现应该尽量避免仅提供一个槽，并且
+如果协商仅用一个槽，压缩器实现可以禁止（disable）压缩。
+注35：竖轴是链路速度的百分比。例如，“95”表示链路带宽的95%分给了用户数据，也就
+是说，在9600bps的链路上用户将看到数据传输的速率为 9120 bps。在计算相对吞吐量时包
+含了封装时加到TCP/IP的压缩头部的链路层（帧）的四个字节。采用200ms的数据包是假设
+链路是异步的，每个字符使用10个比特（8个数据位，1个开始，1个停止，无奇偶校验）。
+注36．但是，2400bps链路所要求的40字节的TCP MSS可能强迫检查（stress-test）你的TCP
+实现。
+注37．对于一个典型的异步链路来说,为200ms。MTU仅是链路速度的0.02倍（以位/秒为单
+位）。
+Jacobson                                                             [Page 20]
+RFC 1144                Compressing TCP/IP Headers                February 1990
+
+ 
+5.3与数据压缩的交互
+自20世纪80年代以来，快速、有效的数据压缩算法如Lempel-Ziv（参考文献[7]）以
+及其程序如Berkeley Unix中的compress程序，得到广泛的应用。在使用低速线路或距离
+很长的线路时，通常在发送数据前对数据进行压缩。对于拨号连接，压缩一般在modem
+中进行,而独立于通信主机。由一些很有趣的问题是： (1)如果给定一个很好的数据压缩
+器，头部压缩是否还有必要？(2)头部压缩能与数据压缩一起发生作用？(3)数据压缩是
+在头部压缩之前还是之后进行？（注38）
+为了研究(1)， 对典型的telnet对话中用户一方出现的446个TCP/IP包进行Lempel-Ziv
+压缩。因为数据包由击键获得，大多数数据包仅包含一个字节的数据再加上40字节的头
+部。也就是说，该实验本质上对TCP/IP头部进行L-Z 压缩的结果进行了评估(measured)。
+压缩率(未压缩数据与压缩后数据之比)为2.6。换句话说，头部平均从40字节减少到16字
+
+
+
+
+
+注38：问题的答案是，对于想跳过本章其余部分的读者，分别回答'yes', 'no' 或者'either'。
+
+
+Jacobson                                                            [Page 21]
+RFC 1144                 Compressing TCP/IP Headers                February 1990
+
+ 
+
+节。虽然这是个很好的压缩，但距离对相同数据进行头部压缩所产生的具有良好响应时
+间的5字节和3字节(压缩率为13.3)而言还差的很远。
+第二和第三个问题更复杂一些。为了研究这两个问题，对FTP的几个数据包有和没
+有头部压缩以及有和没有L-Z压缩进行了分析（注39）。L-Z压缩在输出数据流的两个地
+方进行（如图10所示）：(1)在数据被提交给TCP进行封装前（与在“应用”层完成的压
+缩相似），(2) 在数据封装之后(与modem中的数据压缩相似)，表1综述了按前面章节原
+理（256字节MTU或216字节MSS；共368个数据包）传输78，776个字节的ASCII文本文
+件（Unix csh.l用户手册入口）的结果（注40）。以下10个测试的压缩率列在表中（从左 
+
+
+
+
+
+
+注39：telnet用户一方的数据量太少，从数据压缩中受益不大，相反被压缩算法所增加的（必
+需的）延时所影响。telnet计算机一方的统计和容量和（ASCII）FTP的相似，所以下面得出
+的通用结果适用于所有的10个文件。
+注40：这里描述的十个实验各自对十个ASCII文件（4个长的e-mail消息，3个Unix C源程序
+和3个Unix用户手册入口），不同文件得出的结果惊人地相似，下面给出的结论适用于所有
+的10个文件。
+
+
+Jacobson                                                                  [Page 22]
+RFC 1144                   Compressing TCP/IP Headers                February 1990
+
+ 
+
+ 到右，从上到下）：
+●	数据文件(无压缩或封装)
+●	数据→L–Z 压缩
+●	数据→TCP/IP封装
+●	数据→L–Z压缩→TCP/IP
+●	数据→TCP/IP →L–Z
+●	数据→L–Z→TCP/IP →L–Z
+●	数据→TCP/IP→头部压缩
+●	数据→L–Z →TCP/IP→头部压缩
+●	数据→TCP/IP→头部压缩→L–Z
+●	数据→L–Z →TCP/IP →头部压缩→L–Z
+
+
+
+无数据压缩
+ LZ on data
+LZ on wire
+L-Z on both
+原始数据
++TCP封装
+W/头部压缩
+    1.00
+0.83
+    0.98
+  2.44
+  2.03
+  2.39
+——
+1.97
+  2.26
+——
+1.58
+1.66
+
+表1：ASCII文本文件压缩率
+
+表1的第一列表明数据封装在TCP/IP中时数据“膨胀”（expand）了19%（压缩了0.83），
+而封装在头部压缩后的TCP/IP时“膨胀”了2%。（注41）
+
+
+
+
+
+
+注41．这可从相关头部大小中得到：TCP/IP为256/216，头部压缩为219/216。
+
+
+Jacobson                                                               [Page 23]
+RFC 1144           Compressing TCP/IP Headers                         February 1990
+
+
+
+第一行表明L–Z压缩对这种数据很有效，把其压缩为原始大小的一半不到。第4列解释了
+众所周知的事实：对于压缩后的数据进行L–Z压缩是错误的。第二、第三行的第二、第
+三列有很感兴趣的信息。这两列表明数据压缩的好处盖过（overwhelm）了封装的代价，
+即使是对直接的TCP/IP(straight TCP/IP)进行压缩。它们还表明在封装数据之前进行压缩
+比在帧/modem层压缩要稍微好一点。但是差别很小——对TCP/IP和头部压缩的封装，
+分别为3%和6%（注42）。
+
+
+表2显示了对122，880字节二进制文件（即Sun-3 ps可执行文件）进行同一个实验的
+结果。虽然原始数据几乎没有压缩，结果从质量上看与ASCII数据相同。一个明显的变
+化在第2行中：如果进行TCP/IP封装，在modem中进行压缩比在源（source）进行压缩要
+好3%(显然，Sun二进制文件和TCP/IP头部有相似的统计结果)。但是如果有头部压缩（第
+3行），结果与ASCII数据相似——在modem中压缩比在源头压缩要差3% （注43）。
+
+
+
+
+无数据压缩
+ L-Z on data
+L-Z on wire
+L-Z on both
+原始数据
+  1.00
+  1.72
+——
+——
+ +TCP封装
+  0.83
+  1.43 
+1.48
+ 1.21
+ W/头部封装 
+  0.98
+  1.69
+  1.64
+ 1.28
+
+                  表2：二进制文件的压缩率
+
+
+
+
+
+
+
+注42：差别是由于TCP/IP数据包与ASCII文本非常不同的的字节样式（byte pattern）。任何
+使用Markov源文件模型的压缩方案，如Lempel-Ziv，在完全不同源文件交叉存取时将变得更
+糟糕。如果这两个源的相对比例改变，也就是说提高MTU，两处压缩器的性能差异将减小。
+但是减小的速度非常慢— MTU提高400% (从256到1024)仅使数据和Modem L-Z之间的差从
+2.5% 降到1.3%。
+注43．在源进行压缩还有其他原因：使更少的数据包被封装，更少的字符被送到modem。作
+者认为“在Modem中压缩数据”的选择应该避免，除非遇到很难处理的某些厂商专有的操
+作系统中。
+
+
+Jacobson                                                           [Page 24]
+RFC 1144                  Compressing TCP/IP Headers               February 1990
+
+
+      机器
+              每个包的平均处理时间 (μs)
+
+   压缩
+  解压缩
+Sparcstation-1
+Sun4/260
+Sun3/60
+Sun3/50
+HP9000/370
+HP9000/360
+DEC3100
+Vax780
+Vax750
+CCI Tahoe
+24
+46
+90
+130
+42
+68
+27
+430
+800
+110
+          18
+          20
+          90
+          150
+          33
+          70
+          25
+300
+500
+140
+
+
+                    表3：压缩代码的执行时间
+6 性能评估
+压缩代码的一个实现目标，是力求足够简单以能在典型的1989工作站上以ISDN
+速度（64Kbps）运行。64Kbps即每个字节122μs，所以随意地把120μs作为压缩/解压
+缩程序执行时间的目标（注44）。
+
+作为压缩代码的一部分，开发了一个“记录跟踪驱动” 的实验程序（trace-driven 
+exerciser）。最初用它来比较不同的压缩协议选项，然后在不同结构的计算机上测试代
+码运行的结果，以及在性能“提高”后进行回归测试（regression tests）。 对该测试程
+序进行小小的改动便可得到一个有用的评估工具（注45）。表3显示了作者所能用到的
+所有机器上压缩代码运行的时间(这些时间通过一个混合的telnet/ftp流量跟踪取得)。除
+了 被(a)错误的字节序(b)糟糕的编译器(lousy Unix pcc)影响)的Vax结构计算机之外，所
+有的机器本质上都达到了120μs的目标
+.
+
+注44：时间选择并不是完全随意的：解压缩一般在各帧之间的“标志”字符（inter-frame 'flag' 
+character）时间进行，所以在压缩运行于与串行链路输入中断相同的优先级的系统中，选用
+比一个字符时间长得多的时间将导致接收方来不及接收（overrun）。并且，使用当前平均5
+个字节的帧(指线路上的帧，包括压缩后的头部和帧)，花费1个字节时间的压缩/解压缩最多
+能使用可用时间的20% ，这似乎是一件很划算的事情。
+注45：测试程序和测量时间的程序在附录A的可通过ftp获得的数据包中，文件为tester.c 和 
+timer.c。
+Jacobson                                                           [Page 25]
+RFC 1144                  Compressing TCP/IP Headers                  February 1990
+7 致谢
+作者非常感谢由Phill Gross担任主席的Internet Engineering Task Force（因特网工程
+任务攻坚组）的成员，他们给予作者很多鼓励并认真审阅本手稿。几个耐心的beta测试
+员，尤其是Sam Leffler和Craig Leres，记录并修改了最初的实现中的问题。Cynthia 
+Livingston和Craig Partridge仔细阅读本文档的部分草案并提出很多改进意见。最后当然
+还不止，Telebit modem公司，尤其是Mike Ballard，从一开始便鼓励作者写这篇文档，
+已经并且现在还是串行线和拨号IP的支持者  
+
+参考文献
+[1] BINGHAM,J.A.C. Modem设计的理论和实践（Theory and Practice of Modem Design）
+John Wiley & Sons, 1988.
+[2] CAREY, M. B., CHAN, H.-T., DESCLOUX, A., INGLE,J.F.,AND PARK, K. I. 1982/83 end office
+connection study: Analog voice and voiceband data transmission performance characterization
+of the public switched network. Bell System Technical Journal 63, 9 (Nov. 1984).
+[3] CHIAPPA, N., 1988. Private communication.
+[4] CLARK, D. D. The design philosophy of the DARPA Internet protocols. In Proceedings of
+SIGCOMM '88 (Stanford, CA, Aug. 1988), ACM.
+[5] FARBER, D. J., DELP,G.S.,AND CONTE,T.M. A Thinwire Protocol for connecting personal
+computers to the Internet.ARPANET Working Group Requests for Comment, DDN Network
+Information Center, SRI International, Menlo Park, CA, Sept. 1984. RFC-914.
+[6] KENT, C. A., ANDMOGUL, J. Fragmentation considered harmful. In Proceedings of SIGCOMM
+'87 (Aug. 1987), ACM.
+[7] LEMPEL, A., AND ZIV, J. Compression of individual sequences via variable-rate encoding.
+IEEE Transactions on Information Theory IT-24, 5 (June 1978).
+[8] NAGLE,J.Congestion Control in IP/TCP Internetworks.ARPANET Working Group Requests
+for Comment, DDN Network Information Center, SRI International, Menlo Park, CA, Jan.
+1984. RFC-896.
+[9] PERKINS,D. Point-to-Point Protocol: A proposal for multi-protocol transmission of datagrams
+over point-to-point links.ARPANET Working Group Requests for Comment, DDN Network
+Information Center, SRI International, Menlo Park, CA, Nov. 1989. RFC-1134.
+[10] POSTEL, J., Ed. Internet Protocol Specification. SRI International, Menlo Park, CA, Sept.
+1981. RFC-791.
+[11] POSTEL, J., Ed. Transmission Control Protocol Specification. SRI International, Menlo Park,
+CA, Sept. 1981. RFC-793.
+[12] ROMKEY,J. A Nonstandard for Transmission of IP Datagrams Over Serial Lines: Slip.
+ARPANET Working Group Requests for Comment, DDN Network Information Center, SRI
+International, Menlo Park, CA, June 1988. RFC-1055.
+[13] SALTHOUSE, T. A. The skill of typing. Scientific American 250, 2 (Feb. 1984), 128–135.
+Jacobson [Page 26]
+RFC 1144 Compressing TCP/IP Headers February 1990
+[14] SALTZER, J. H., REED,D.P.,AND CLARK, D. D. End-to-end arguments in system design. ACM
+Transactions on Computer Systems 2, 4 (Nov. 1984).
+[15] SHNEIDERMAN,B.Designing the User Interface. Addison-Wesley, 1987.
+Jacobson [Page 27]
+RFC 1144 Compressing TCP/IP Headers February 1990
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+附录A: 一个实现示例 
+下面是本文档中描述的协议的一个实现例子。
+因为很多可能处理这些代码的人很熟悉Berkeley Unix内核及其编码风格（被亲切地称为
+“内核规范格式”），这些代码正是遵循该风格。使用了Berkeley“子程序”（subroutines，
+实际上就是宏和/或内联汇编的扩展）来转换网络字节序（network byte order）以及拷贝
+/比较字节串。这些例行程序在A.5中为那些不熟悉它们的读者作简要介绍。
+这些代码在25页列出的所有机器上运行通过。作者希望没有字节序或对齐方面的问
+题(但是其中嵌入了假设的对Berkeley Unix有效的对齐方式，这种对齐方式对于其他IP
+实现可能不正确。见sl_compress_tcp和sl_decompress_tcp中提到的关于对齐的注释)。
+曾试图尝试使这些代码更高效，不幸的是可能会使其中的一部分不可理解。作者为
+此感到抱歉(老实说，我的C语言风格被认为是晦涩的，并且借口就是“效率”)。
+该实例代码以及完整的Berkeley Unix实现（机器可读的）通过匿名ftp从
+ftp.ee.lbl.gov（128.3.254.68）上得到，即文件cslip.tar.Z。这是一个压缩的Unix 
+tar文件，必须以二进制模式进行ftp。附录中所有代码均包含下面的版权通告：/*
+
+    * Copyright (c) 1989 Regents of the University of California.
+    * All rights reserved.
+    *
+    * Redistribution and use in source and binary forms are
+    * permitted provided that the above copyright notice and this
+    * paragraph are duplicated in all such forms and that any
+    * documentation, advertising materials, and other materials
+    * related to such distribution and use acknowledge that the
+    * software was developed by the University of California,
+    * Berkeley.  The name of the University may not be used to
+    * endorse or promote products derived from this software
+    * without specific prior written permission.
+    * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS
+    * OR IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE
+    * IMPLIED WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A
+    * PARTICULAR PURPOSE.
+    */
+
+
+
+
+
+
+
+
+
+
+   Jacobson                                                       [Page 27]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   A.1  Definitions and State Data
+
+   #define MAX_STATES 16   /* must be >2 and <255 */
+   #define MAX_HDR 128     /* max TCP+IP hdr length (by protocol def) */
+
+   /* packet types */
+   #define TYPE_IP 0x40
+   #define TYPE_UNCOMPRESSED_TCP 0x70
+   #define TYPE_COMPRESSED_TCP 0x80
+   #define TYPE_ERROR 0x00 /* this is not a type that ever appears on
+                            * the wire.  The receive framer uses it to
+                            * tell the decompressor there was a packet
+                            * transmission error. */
+   
+/* Bits in first octet of compressed packet    */
+  #define NEW_C  0x40   /* flag bits for what changed in a packet */
+   #define NEW_I  0x20   
+   #define TCP_PUSH_BIT 0x10
+
+   #define NEW_S  0x08
+   #define NEW_A  0x04
+   #define NEW_W  0x02
+   #define NEW_U  0x01
+
+   /* reserved, special-case values of above */
+   #define SPECIAL_I (NEW_S|NEW_W|NEW_U)        /* echoed interactive traffic */
+   #define SPECIAL_D (NEW_S|NEW_A|NEW_W|NEW_U)  /* unidirectional data */
+   #define SPECIALS_MASK (NEW_S|NEW_A|NEW_W|NEW_U)
+
+
+   /* "state" data for each active tcp conversation on the wire.  This is
+    * basically a copy of the entire IP/TCP header from the last packet together
+    * with a small identifier the transmit & receive ends of the line use to
+    * locate saved header.  */
+
+   struct cstate {
+        struct cstate *cs_next;  /* next most recently used cstate (xmit only) */
+        u_short cs_hlen;         /* size of hdr (receive only) */
+        u_char cs_id;            /* connection # associated with this state */
+        u_char cs_filler;
+        union {
+             char hdr[MAX_HDR];
+             struct ip csu_ip;   /* ip/tcp hdr from most recent packet */
+        } slcs_u;
+   };
+   #define cs_ip  slcs_u.csu_ip
+
+
+
+
+
+   Jacobson                                                       [Page 28]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+   #define cs_hdr slcs_u.csu_hdr
+
+   /*
+    * all the state data for one serial line (we need one of these per line).
+    */
+   struct slcompress {
+        struct cstate *last_cs;            /* most recently used tstate */
+        u_char last_recv;                  /* last rcvd conn. id */
+        u_char last_xmit;                  /* last sent conn. id */
+        u_short flags;
+        struct cstate tstate[MAX_STATES];  /* xmit connection states */
+        struct cstate rstate[MAX_STATES];  /* receive connection states */
+   };
+
+   /* flag values */
+   #define SLF_TOSS 1       /* tossing rcvd frames because of input err */
+
+   /*
+    * The following macros are used to encode and decode numbers.  They all
+    * assume that `cp' points to a buffer where the next byte encoded (decoded)
+    * is to be stored (retrieved).  Since the decode routines do arithmetic,
+    * they have to convert from and to network byte order.
+    */
+
+   /*
+    * ENCODE encodes a number that is known to be non-zero.  ENCODEZ checks for
+    * zero (zero has to be encoded in the long, 3 byte form).
+    */
+   #define ENCODE(n) { \
+        if ((u_short)(n) >= 256) { \
+             *cp++ = 0; \
+             cp[1] = (n); \
+             cp[0] = (n) >> 8; \
+             cp += 2; \
+        } else { \
+             *cp++ = (n); \
+        } \
+   }
+   #define ENCODEZ(n) { \
+        if ((u_short)(n) >= 256 || (u_short)(n) == 0) { \
+             *cp++ = 0; \
+             cp[1] = (n); \
+             cp[0] = (n) >> 8; \
+             cp += 2; \
+        } else { \
+             *cp++ = (n); \
+        } \
+   }
+
+   /*
+    * DECODEL takes the (compressed) change at byte cp and adds it to the
+
+
+   Jacobson                                                       [Page 29]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+    * current value of packet field 'f' (which must be a 4-byte (long) integer
+    * in network byte order).  DECODES does the same for a 2-byte (short) field.
+    * DECODEU takes the change at cp and stuffs it into the (short) field f.
+    * 'cp' is updated to point to the next field in the compressed header.
+    */
+   #define DECODEL(f) { \
+        if (*cp == 0) {\
+             (f) = htonl(ntohl(f) + ((cp[1] << 8) | cp[2])); \
+             cp += 3; \
+        } else { \
+             (f) = htonl(ntohl(f) + (u_long)*cp++); \
+        } \
+   }
+   #define DECODES(f) { \
+        if (*cp == 0) {\
+             (f) = htons(ntohs(f) + ((cp[1] << 8) | cp[2])); \
+             cp += 3; \
+        } else { \
+             (f) = htons(ntohs(f) + (u_long)*cp++); \
+        } \
+   }
+   #define DECODEU(f) { \
+        if (*cp == 0) {\
+             (f) = htons((cp[1] << 8) | cp[2]); \
+             cp += 3; \
+        } else { \
+             (f) = htons((u_long)*cp++); \
+        } \
+   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   Jacobson                                                       [Page 30]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   A.2 压缩
+
+   该子程序看起来令人生畏，其实并非如此。代码分为大小大致相等的四块：第一块管理
+一个最近最少使用的活动TCP连接循环链表（注46） ，第二块计算sequence/ack/window/urg
+变化量并确定压缩数据包的大致结构（bulk），第三部分处理特殊情形的编码，第四块进行
+数据包ID和connection number的编码并且用压缩后的头部代替初始数据包的头部。
+   该子程序的参数为一个指向待压缩数据包的指针，一个指向串行链路压缩状态结构的指
+针，一个允许/禁止对connection进行压缩的标志（即C位）。
+
+  压缩是“取代式”（in place）的，所以每产生一个压缩数据包，输入数据包的开始地址
+和长度（m中的off和len域）以反映出初始数据包头部已被移除并被经过压缩的头部所取
+代。不管产生压缩数据包还是未压缩数据包，压缩状态结构都要更新。该子程序返回帧传输
+器（transit framer）传送的数据包类型(TYPE_IP, TYPE_UNCOMPRESSED_TCP或者 
+TYPE_COMPRESSED_TCP)。
+   由于头部各种域中有16位和32位，所以输入IP数据包必须做好对齐(例如，在SPARC
+上,IP头部在32位边界对齐)。如果不是这样的话，必须对下面的代码进行彻底修改(先把
+输入头部按字节拷贝到某个地方然后再转变可能代价会小一些)。
+
+   注意输出数据包可以可按任意方式对齐（也就是说，它可以很容易的从奇字节边界开始）。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+注46：注意对连接表的两个最常见的操作是终止于第一个入口的查找（最近使用连接的一
+个新的数据包）以及把表的最后一个入口移到表的头部（新连接来的第一个数据包）。一个
+循环表可以有效的处理这两个操作。
+
+   Jacobson                                                       [Page 31]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   u_char
+   sl_compress_tcp(m, comp, compress_cid)
+        struct mbuf *m;
+        struct slcompress *comp;
+        int compress_cid;
+   {
+        register struct cstate *cs = comp->last_cs->cs_next;
+        register struct ip *ip = mtod(m, struct ip *);
+        register u_int hlen = ip->ip_hl;
+        register struct tcphdr *oth;       /* last TCP header */
+        register struct tcphdr *th;        /* current TCP header */
+        register u_int deltaS, deltaA;     /* general purpose temporaries */
+        register u_int changes = 0;        /* change mask */
+        u_char new_seq[16];                /* changes from last to current */
+        register u_char *cp = new_seq;
+
+        /* Bail if this is an IP fragment or if the TCP packet isn't
+         * `compressible' (i.e., ACK isn't set or some other control bit is
+         * set).  (We assume that the caller has already made sure the packet
+         * is IP proto TCP).*/
+        if ((ip->ip_off & htons(0x3fff)) || m->m_len < 40)
+             return (TYPE_IP);
+
+        th = (struct tcphdr *) & ((int *) ip)[hlen];
+        if ((th->th_flags & (TH_SYN | TH_FIN | TH_RST | TH_ACK)) != TH_ACK)
+             return (TYPE_IP);
+
+        /*Packet is compressible -- we're going to send either a
+         * COMPRESSED_TCP or UNCOMPRESSED_TCP packet.  Either way we need to
+         * locate (or create) the connection state.  Special case the most
+         * recently used connection since it's most likely to be used again &
+         * we don't have to do any reordering if it's used. */
+        if (ip->ip_src.s_addr != cs->cs_ip.ip_src.s_addr ||
+            ip->ip_dst.s_addr != cs->cs_ip.ip_dst.s_addr ||
+            *(int *) th != ((int *) &cs->cs_ip)[cs->cs_ip.ip_hl]) {
+
+             /* Wasn't the first -- search for it.
+              * States are kept in a circularly linked list with last_cs
+              * pointing to the end of the list.  The list is kept in lru
+              * order by moving a state to the head of the list whenever
+              * it is referenced.  Since the list is short and,
+              * empirically, the connection we want is almost always near
+              * the front, we locate states via linear search.  If we
+              * don't find a state for the datagram, the oldest state is
+              * (re-)used.  */
+             register struct cstate *lcs;
+             register struct cstate *lastcs = comp->last_cs;
+             do {
+                  lcs = cs;
+                  cs = cs->cs_next;
+                  if (ip->ip_src.s_addr == cs->cs_ip.ip_src.s_addr
+                      && ip->ip_dst.s_addr == cs->cs_ip.ip_dst.s_addr
+                      && *(int *) th == ((int *) &cs->cs_ip)[cs->cs_ip.ip_hl])
+                       goto found;
+   Jacobson                                                       [Page 32]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+             } while (cs != lastcs);
+
+             /* Didn't find it -- re-use oldest cstate.  Send an
+              * uncompressed packet that tells the other side what
+              * connection number we're using for this conversation. Note
+              * that since the state list is circular, the oldest state
+              * points to the newest and we only need to set last_cs to
+              * update the lru linkage.  */
+             comp->last_cs = lcs;
+             hlen += th->th_off;
+             hlen <<= 2;
+             goto uncompressed;
+
+   found:
+             /* Found it -- move to the front on the connection list. */
+             if (lastcs == cs)
+                  comp->last_cs = lcs;
+             else {
+                  lcs->cs_next = cs->cs_next;
+                  cs->cs_next = lastcs->cs_next;
+                  lastcs->cs_next = cs;
+             }
+        }
+        /*
+         * Make sure that only what we expect to change changed. The first
+         * line of the `if' checks the IP protocol version, header length &
+         * type of service.  The 2nd line checks the "Don't fragment" bit.
+         * The 3rd line checks the time-to-live and protocol (the protocol
+         * check is unnecessary but costless).  The 4th line checks the TCP
+         * header length.  The 5th line checks IP options, if any.  The 6th
+         * line checks TCP options, if any.  If any of these things are
+         * different between the previous & current datagram, we send the
+         * current datagram `uncompressed'.
+         */
+        oth = (struct tcphdr *) & ((int *) &cs->cs_ip)[hlen];
+        deltaS = hlen;
+        hlen += th->th_off;
+        hlen <<= 2;
+
+        if (((u_short *) ip)[0] != ((u_short *) &cs->cs_ip)[0] ||
+            ((u_short *) ip)[3] != ((u_short *) &cs->cs_ip)[3] ||
+            ((u_short *) ip)[4] != ((u_short *) &cs->cs_ip)[4] ||
+            th->th_off != oth->th_off ||
+            (deltaS > 5 && BCMP(ip + 1, &cs->cs_ip + 1, (deltaS - 5) << 2)) ||
+            (th->th_off > 5 && BCMP(th + 1, oth + 1, (th->th_off - 5) << 2)))
+             goto uncompressed;
+
+        /*
+         * Figure out which of the changing fields changed.  The receiver
+
+
+
+
+   Jacobson                                                       [Page 33]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+         * expects changes in the order: urgent, window, ack, seq.
+         */
+        if (th->th_flags & TH_URG) {
+             deltaS = ntohs(th->th_urp);
+             ENCODEZ(deltaS);
+             changes |= NEW_U;
+        } else if (th->th_urp != oth->th_urp)
+             /*
+              * argh! URG not set but urp changed -- a sensible
+              * implementation should never do this but RFC793 doesn't
+              * prohibit the change so we have to deal with it.
+              */
+             goto uncompressed;
+
+        if (deltaS = (u_short) (ntohs(th->th_win) - ntohs(oth->th_win))) {
+             ENCODE(deltaS);
+             changes |= NEW_W;
+        }
+        if (deltaA = ntohl(th->th_ack) - ntohl(oth->th_ack)) {
+             if (deltaA > 0xffff)
+                  goto uncompressed;
+             ENCODE(deltaA);
+             changes |= NEW_A;
+        }
+        if (deltaS = ntohl(th->th_seq) - ntohl(oth->th_seq)) {
+             if (deltaS > 0xffff)
+                  goto uncompressed;
+             ENCODE(deltaS);
+             changes |= NEW_S;
+        }
+        /*
+         * Look for the special-case encodings.
+         */
+        switch (changes) {
+
+        case 0:
+             /*
+              * Nothing changed. If this packet contains data and the last
+              * one didn't, this is probably a data packet following an
+              * ack (normal on an interactive connection) and we send it
+              * compressed.  Otherwise it's probably a retransmit,
+              * retransmitted ack or window probe.  Send it uncompressed
+              * in case the other side missed the compressed version.
+              */
+             if (ip->ip_len != cs->cs_ip.ip_len &&
+                 ntohs(cs->cs_ip.ip_len) == hlen)
+                  break;
+
+             /* (fall through) */
+
+        case SPECIAL_I:
+
+
+   Jacobson                                                       [Page 34]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+        case SPECIAL_D:
+             /*
+              * Actual changes match one of our special case encodings --
+              * send packet uncompressed.
+              */
+             goto uncompressed;
+
+        case NEW_S | NEW_A:
+             if (deltaS == deltaA &&
+                 deltaS == ntohs(cs->cs_ip.ip_len) - hlen) {
+                  /* special case for echoed terminal traffic */
+                  changes = SPECIAL_I;
+                  cp = new_seq;
+             }
+             break;
+
+        case NEW_S:
+             if (deltaS == ntohs(cs->cs_ip.ip_len) - hlen) {
+                  /* special case for data xfer */
+                  changes = SPECIAL_D;
+                  cp = new_seq;
+             }
+             break;
+        }
+        deltaS = ntohs(ip->ip_id) - ntohs(cs->cs_ip.ip_id);
+        if (deltaS != 1) {
+             ENCODEZ(deltaS);
+             changes |= NEW_I;
+        }
+        if (th->th_flags & TH_PUSH)
+             changes |= TCP_PUSH_BIT;
+        /*
+         * Grab the cksum before we overwrite it below.  Then update our
+         * state with this packet's header.
+         */
+        deltaA = ntohs(th->th_sum);
+        BCOPY(ip, &cs->cs_ip, hlen);
+
+        /*
+         * We want to use the original packet as our compressed packet. (cp -
+         * new_seq) is the number of bytes we need for compressed sequence
+         * numbers.  In addition we need one byte for the change mask, one
+         * for the connection id and two for the tcp checksum. So, (cp -
+         * new_seq) + 4 bytes of header are needed.  hlen is how many bytes
+         * of the original packet to toss so subtract the two to get the new
+         * packet size.
+         */
+        deltaS = cp - new_seq;
+        cp = (u_char *) ip;
+        if (compress_cid == 0 || comp->last_xmit != cs->cs_id) {
+             comp->last_xmit = cs->cs_id;
+
+
+   Jacobson                                                       [Page 35]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+             hlen -= deltaS + 4;
+             cp += hlen;
+             *cp++ = changes | NEW_C;
+             *cp++ = cs->cs_id;
+        } else {
+             hlen -= deltaS + 3;
+             cp += hlen;
+             *cp++ = changes;
+        }
+        m->m_len -= hlen;
+        m->m_off += hlen;
+        *cp++ = deltaA >> 8;
+        *cp++ = deltaA;
+        BCOPY(new_seq, cp, deltaS);
+        return (TYPE_COMPRESSED_TCP);
+
+   uncompressed:
+        /*
+         * Update connection state cs & send uncompressed packet
+         * ('uncompressed' means a regular ip/tcp packet but with the
+         * 'conversation id' we hope to use on future compressed packets in
+         * the protocol field).
+         */
+        BCOPY(ip, &cs->cs_ip, hlen);
+        ip->ip_p = cs->cs_id;
+        comp->last_xmit = cs->cs_id;
+        return (TYPE_UNCOMPRESSED_TCP);
+   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   Jacobson                                                       [Page 36]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   A.3解压缩
+   该子程序对一个收到的数据包进行解压。调用参数是一个指向待解压数据包的指针，数
+据包的长度和类型，以及一个指向输入串行线路的压缩状态结构的指针。如果正确则返回指
+向结果数据包的指针，如果输入数据包中有错误，返回0，如果数据包类型为COMPRESSED_TCP 
+或UNCOMPRESSED_TCP,压缩状态将被更新。
+
+   新的数据包“取代式”地构建得到。这意味着在bufp前必须由128字节的空间以重新构
+建IP和TCP头部。重新构建后的数据包将在32位边界处对齐。
+
+   u_char *
+   sl_uncompress_tcp(bufp, len, type, comp)
+        u_char *bufp;
+        int len;
+        u_int type;
+        struct slcompress *comp;
+   {
+        register u_char *cp;
+        register u_int hlen, changes;
+        register struct tcphdr *th;
+        register struct cstate *cs;
+        register struct ip *ip;
+
+        switch (type) {
+
+        case TYPE_ERROR:
+        default:
+             goto bad;
+
+        case TYPE_IP:
+             return (bufp);
+
+        case TYPE_UNCOMPRESSED_TCP:
+             /*
+              * Locate the saved state for this connection.  If the state
+              * index is legal, clear the 'discard' flag.
+              */
+             ip = (struct ip *) bufp;
+             if (ip->ip_p >= MAX_STATES)
+                  goto bad;
+
+             cs = &comp->rstate[comp->last_recv = ip->ip_p];
+             comp->flags &= ~SLF_TOSS;
+             /*
+              * Restore the IP protocol field then save a copy of this
+              * packet header.  (The checksum is zeroed in the copy so we
+              * don't have to zero it each time we process a compressed
+
+
+   Jacobson                                                       [Page 37]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+              * packet.
+              */
+             ip->ip_p = IPPROTO_TCP;
+             hlen = ip->ip_hl;
+             hlen += ((struct tcphdr *) & ((int *) ip)[hlen])->th_off;
+             hlen <<= 2;
+             BCOPY(ip, &cs->cs_ip, hlen);
+             cs->cs_ip.ip_sum = 0;
+             cs->cs_hlen = hlen;
+             return (bufp);
+
+        case TYPE_COMPRESSED_TCP:
+             break;
+        }
+        /* We've got a compressed packet. */
+        cp = bufp;
+        changes = *cp++;
+        if (changes & NEW_C) {
+             /*
+              * Make sure the state index is in range, then grab the
+              * state. If we have a good state index, clear the 'discard'
+              * flag.
+              */
+             if (*cp >= MAX_STATES)
+                  goto bad;
+
+             comp->flags &= ~SLF_TOSS;
+             comp->last_recv = *cp++;
+        } else {
+             /*
+              * This packet has an implicit state index.  If we've had a
+              * line error since the last time we got an explicit state
+              * index, we have to toss the packet.
+              */
+             if (comp->flags & SLF_TOSS)
+                  return ((u_char *) 0);
+        }
+        /*
+         * Find the state then fill in the TCP checksum and PUSH bit.
+         */
+        cs = &comp->rstate[comp->last_recv];
+        hlen = cs->cs_ip.ip_hl << 2;
+        th = (struct tcphdr *) & ((u_char *) &cs->cs_ip)[hlen];
+        th->th_sum = htons((*cp << 8) | cp[1]);
+        cp += 2;
+        if (changes & TCP_PUSH_BIT)
+             th->th_flags |= TH_PUSH;
+        else
+             th->th_flags &= ~TH_PUSH;
+
+        /*
+
+
+   Jacobson                                                       [Page 38]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+         * Fix up the state's ack, seq, urg and win fields based on the
+         * changemask.
+         */
+        switch (changes & SPECIALS_MASK) {
+        case SPECIAL_I:
+             {
+             register u_int i = ntohs(cs->cs_ip.ip_len) - cs->cs_hlen;
+             th->th_ack = htonl(ntohl(th->th_ack) + i);
+             th->th_seq = htonl(ntohl(th->th_seq) + i);
+             }
+             break;
+
+        case SPECIAL_D:
+             th->th_seq = htonl(ntohl(th->th_seq) + ntohs(cs->cs_ip.ip_len)
+                          - cs->cs_hlen);
+             break;
+
+        default:
+             if (changes & NEW_U) {
+                  th->th_flags |= TH_URG;
+                  DECODEU(th->th_urp)
+             } else
+                  th->th_flags &= ~TH_URG;
+             if (changes & NEW_W)
+                  DECODES(th->th_win)
+             if (changes & NEW_A)
+                  DECODEL(th->th_ack)
+             if (changes & NEW_S)
+                  DECODEL(th->th_seq)
+             break;
+        }
+        /* Update the IP ID */
+        if (changes & NEW_I)
+             DECODES(cs->cs_ip.ip_id)
+        else
+             cs->cs_ip.ip_id = htons(ntohs(cs->cs_ip.ip_id) + 1);
+
+        /*
+         * At this point, cp points to the first byte of data in the packet.
+         * If we're not aligned on a 4-byte boundary, copy the data down so
+         * the IP & TCP headers will be aligned.  Then back up cp by the
+         * TCP/IP header length to make room for the reconstructed header (we
+         * assume the packet we were handed has enough space to prepend 128
+         * bytes of header).  Adjust the lenth to account for the new header
+         * & fill in the IP total length.
+         */
+        len -= (cp - bufp);
+        if (len < 0)
+             /*
+              * we must have dropped some characters (crc should detect
+              * this but the old slip framing won't)
+
+
+   Jacobson                                                       [Page 39]
+
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+              */
+             goto bad;
+
+        if ((int) cp & 3) {
+             if (len > 0)
+                  OVBCOPY(cp, (int) cp & ~3, len);
+             cp = (u_char *) ((int) cp & ~3);
+        }
+        cp -= cs->cs_hlen;
+        len += cs->cs_hlen;
+        cs->cs_ip.ip_len = htons(len);
+        BCOPY(&cs->cs_ip, cp, cs->cs_hlen);
+
+        /* recompute the ip header checksum */
+        {
+             register u_short *bp = (u_short *) cp;
+             for (changes = 0; hlen > 0; hlen -= 2)
+                  changes += *bp++;
+             changes = (changes & 0xffff) + (changes >> 16);
+             changes = (changes & 0xffff) + (changes >> 16);
+             ((struct ip *) cp)->ip_sum = ~changes;
+        }
+        return (cp);
+
+   bad:
+        comp->flags |= SLF_TOSS;
+        return ((u_char *) 0);
+   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   Jacobson                                                       [Page 40]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   A.4 初始化
+
+本子程序对某条串行链路的传输方和接收方的状态结构都进行初始化。它在每一条
+链路建立时被调用。
+
+   void
+   sl_compress_init(comp)
+        struct slcompress *comp;
+   {
+        register u_int i;
+        register struct cstate *tstate = comp->tstate;
+
+        /*
+         * Clean out any junk left from the last time line was used.
+         */
+        bzero((char *) comp, sizeof(*comp));
+        /*
+         * Link the transmit states into a circular list.
+         */
+        for (i = MAX_STATES - 1; i > 0; --i) {
+             tstate[i].cs_id = i;
+             tstate[i].cs_next = &tstate[i - 1];
+        }
+        tstate[0].cs_next = &tstate[MAX_STATES - 1];
+        tstate[0].cs_id = 0;
+        comp->last_cs = &tstate[0];
+        /*
+         * Make sure we don't accidentally do CID compression
+         * (assumes MAX_STATES < 255).
+         */
+        comp->last_recv = 255;
+        comp->last_xmit = 255;
+   }
+
+
+
+
+
+   A.5  Berkeley Unix的依赖关系
+
+   注意:  如果在你想把该例子代码运行于不是4BSD(Berkley Unix)的系统上时才有用。
+
+   这里的代码使用了规范的Berkeley Unix头文件(位于/usr/include/netinet)来定义IP
+和TCP头部。结构标志（structure tags）遵循RFC的协议，即使你没有访问4BSD系统，
+也应该是能看懂（注47）。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+注48. 如果不能看懂,这些头文件（和所有的Berkeley 网络代码）可以通过匿名ftp从主
+机ucbarpa.berkeley.edu获取,文件分别为pub/4.3/tcp.tar以及pub/4.3/inet.tar.
+
+
+   Jacobson                                                       [Page 41]
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+    宏BCOPY(src, dst, amt)调用来从src拷贝amt个字节到dst。在BSD中,它被转化为
+bcopy调用。如果你不幸运行于System-V Unix环境下,它将被转化为memcpy调用。宏
+OVBCOPY(src, dst, amt)用来在当src和dst覆盖（overlap）时的拷贝(也就是说，在做
+4-字节对齐的拷贝时)。在BSD内核中,它转化为一个ovbcopy调用。 因为 AT&T修补了
+memcpy的定义,可能应该转化为一个System-V下的copy循环。
+   宏BCMP(src, dst, amt)调用来比较src和dst的amt个字节是否相等。在BSD中,它被
+转化为bcmp调用。在 System-V中,它被转化为memcmp调用，你也可以自己写一个子程序
+来完成这些比较。子程序在src和dst所有的字节都相等时返回0，否则返回非0值。
+   子程序ntohl(dat)把（4个字节）的long数据从网络字节序（network byte  order）
+转化为主机字节序（host byte order）。在一个合理的cpu中，这可能是“什么都不做的”
+宏定义:
+                           #define ntohl(dat) (dat)
+
+   在一个Vax或者IBM PC(或者任何Intel字节序的系统)中,你将必须定义一个宏或者子
+程序来重新安排这些字节。
+
+   子程序ntohs(dat)与ntohl相似，但是转化的是(2个字节的)short而不是long。子程
+序htonl(dat)和htons(dat)完成long和short的相反的转换(主机字节序到网络字节序) 。
+
+   结构mbuf在调用 sl_compress_tcp时使用，因为该子程序在如果输入数据包是压缩数
+据包时需要修改start address和length。在BSD中,mbuf是内核的缓冲管理结构（buffer   
+management structure）。如果是其它的系统,下面的定义应该足够了:
+
+            struct mbuf {
+                    u_char  *m_off; /* pointer to start of data */
+                    int     m_len;  /* length of data */
+            };
+
+            #define mtod(m, t) ((t)(m->m_off))
+
+
+
+
+
+
+
+
+
+
+
+   Jacobson                                                       [Page 42]
+
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+   附录B 与过去错误的兼容性
+
+在与现代的PPP串行链路协议（参考文献[9]）联合使用时,头部压缩自动进行对用户
+来说是不可见的。不幸的是,很多站点还有使用参考文献[12]中定义的SLIP的用户，该协议
+没有顾及到不同的协议类型来区分头部经过压缩的数据包和IP数据包，也没有顾及到版本
+号，也没有顾及到用来自动协商头部压缩的选项。
+   作者已经使用下面的技巧来允许头部经过压缩的SLIP与现存的服务器和客户端实现互
+操作。注意这是用来与过去错误兼容的手段，思维正确（right thinking）的人应该把它视
+为具有攻击性的。在这里提供出来只是为了减小在运行SLIP时用户等待vendors释放PPP
+的痛苦。
+   B.1  没有“type”字节照样存活
+
+        选用A.1中奇怪的数据包类型号是为了允许在不想或者不可能增加一个显式type
+字节时链路上发送数据包的类型。注意IP数据包的第一个字节的头4位总是包含“4”(即
+IP 协议版本号)。同时压缩数据包头部第一个字节的最高有效位（the most significant 
+bit）总是被忽略。使用A.1中的数据包类型,则type可以使用下面的代码编码到输出数据
+包的那几个最高有效位中：
+
+                    p->dat[0] |= sl_compress_tcp(p, comp);
+
+    在接收方的解码为
+
+                  if (p->dat[0] & 0x80)
+                          type = TYPE_COMPRESSED_TCP;
+                  else if (p->dat[0] >= 0x70) {
+                          type = TYPE_UNCOMPRESSED_TCP;
+                          p->dat[0] &=~ 0x30;
+                  } else
+                          type = TYPE_IP;
+                  status = sl_uncompress_tcp(p, type, comp);
+
+
+
+
+
+   B.2  向后兼容SLIP服务器
+参考文献[12]中描述的SLIP不包括能用来自动协商头部压缩的机制。允许这种SLIP
+的用户使用头部压缩是件好事，但是，如果这两种类型的SLIP用户使用同一个服务器，手
+动配置每一个连接的两端使之能够使用本压缩将是一件很烦人的事情。下面的过程用来避免
+手动配置。
+
+   因为有两种类型的拨号客户端（dial-in clients）即使用压缩的和不使用压缩的，而同
+一个服务器要为这两种类型的客户端服务。很明显服务器将要重新配置每一个新的客户端会
+话，但客户端就是更改也很少改变配置。如果必须手动配置，它应该在不经常改动的一方进
+行——即客户端。这就暗示着服务器应该以某种方式从客户端得知是否使用头部压缩。假设
+由于对称性（也就是说,如果使用则应该在两个方向上都使用压缩）服务器可以通过来自客
+户端的压缩数据包来暗示着它可以向客户端发送压缩数据包。这就导致了下面的算法:
+
+   每一条链路用两位来控制头部压缩:  allowed和on。如果设置了on位,发送的是压缩数
+据包,否则不发送压缩数据包。如果设置了allowed位,可以接收压缩数据包，如果收到的
+UNCOMPRESSED_TCP数据包没有设置on位,则设置on位（注49）。如果收到压缩数据包并且
+没有设置allowed位,数据包将被忽略。
+
+   客户端配置为两位都设置(如果设置了on则总是设置allowed)，服务器开始每一个会话
+时设置allowed位，清除on位。客户端来的第一个压缩数据包(一定是一个   
+UNCOMPRESSED_TCP数据包)将为服务器打开压缩功能。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+注49： 因为参考文献[12]中的帧不包括错误检测,必须注意千万别把服务器的压缩开关设
+置为false。在压缩被使能之前，UNCOMPRESSED_TCP数据包应该检查连续性(例如,IP检验
+和的正确性)。COMPRESSED_TCP数据包的到达不应该用来使能压缩。
+
+
+   Jacobson                                                       [Page 44]
+
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+   C  更主动的压缩
+
+
+      如3.2.2中指出的那样,压缩头部中存在很容易检测到的特征,表明可以进行进一步
+的压缩。这有价值么?
+
+   压缩后的数据包的头部仅有7个比特（注50）。帧必须至少为一个比特(已表明“type”)，
+更可能的情况是2到3个字节。在大多数有趣的场合，将至少有一个字节的数据。最后，端
+到端的检查——TCP checksum——必须未加修改地加以传递（注51）。
+
+    帧,数据和checksum将保留即使头部完全地压缩，所以数据包的平均大小最多从4个字
+节降到三个字节加一个比特——大约把延迟性能提高25%（注52）。这个提高可能看起来很
+大，在一条2400 bps的链路上，它意味着击键回显的响应时间为25毫秒而不是29毫秒。
+在当前人类进化阶段，这个差别根本无法感觉出来（detectable）。
+ 
+但是,作者坦率地承认把该压缩方案曲解为一种非常特殊情形数据获取问题：我们有漂
+浮与200KV之上的工具和控制包，通过遥测系统与地面通信。由于很多原因(多路复用通信，
+流水线操作,错误恢复,精心检测过的实现的可用性等等),跟这个包使用TCP/IP通信是很方
+便的 。但是,因为遥感链路的基本用处就是获取数据,设计成为上传信道<下传信道容量的
+0.5% 。为了满足应用延迟性要求,数据包为100个字节,并且，因为TCP 每隔一个数据包确
+认一次,相关的上传信道的确认（ack）带宽为a/200，其中a为确认数据包的总长度。如果
+使用本文档的方案，最小的ack为4个字节，意味着上传链路的带宽未下传链路带宽的2%。
+
+
+
+注50：已经对几百万个固定流量负载的数据包进行测试(也就是说，统计了以年之内从我家
+到工作地之间的流量)表明80%的数据包使用两种特殊情形编码之一,这样,唯一的头部就是
+change mask。
+注51.如果某人试图向你出售压缩TCP检验和的方案，一定不要买。（Just say “no”）。某
+些可怜的傻瓜仍然要继续伤心的经历来展示端到端的讨论是真理。更坏的是，因为这个傻瓜
+正在捣乱你的端到端的错误检查,你可能为这个教训付出学费，他们一点也不聪明。得到两
+个字节时间的延迟但丢失内心的平静有什么好处？
+ 注52. 再次注意在讨论时我们必须关心交互延迟时间:批量数据传输的性能主要由发送数
+据的时间决定，包含成百上千个字节数据的数据报文中三个字节和四个字节头部的差异实际
+上没有差别。
+
+
+   Jacobson                                                       [Page 45]
+
+
+
+   RFC 1144               Compressing TCP/IP Headers          February 1990
+
+
+这是不可能的，所以我们使用注15中描述的方案:如果帧中第一个比特位为1，意味着压缩
+数据包头部与上一次的相同。否则接下去的两个比特位将给出3.2中描述的类型之一。因为
+链路有很多转发错误（forward error），流量仅做一次跳跃（hop）,TCP checksum已经被
+相同头部的数据包类型压缩出去(惭愧!)（注53），所以这些数据包的头部总长度就是一个
+比特。在几个月的操作中,超个99%的40个字节的TCP/IP 头部都压缩降为一个比特（注54）。
+   D  安全方面的考虑
+   本文档不讨论安全方面的问题。
+
+
+   E  作者地址
+
+
+       Address:  Van Jacobson
+                 Real Time Systems Group
+                 Mail Stop 46A
+                 Lawrence Berkeley Laboratory
+                 Berkeley, CA 94720
+
+       Phone:    Use email (author ignores his phone)
+
+       EMail:    van@helios.ee.lbl.gov
+
+
+注53：检验和在解压器方已经重新产生,当然,“丢弃”（“toss”）逻辑被设计成更加主动以
+防止错误的传播。
+注54：我们已经听到建议，认为出于实时的需要要求放弃TCP/IP而赞成使用具有更小头部
+的轻权协议（light-weight' protocol）。很难想象头部平均只有一个比特的协议。
+
+
+
+
+
+   Jacobson                                                       [Page 46]
+
+
+
+
+
+RFC1144  低速串行链路上的TCP/IP头部压缩 Compressing TCP/IP Headers for Low-Speed Serial Links
+
+
+1
+RFC 中文翻译计划

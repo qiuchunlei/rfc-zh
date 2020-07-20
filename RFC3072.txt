@@ -1,0 +1,806 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：王安鹏（anpengwang    anpengwang@263.net）
+译文发布时间：2001-12-19
+版权：本翻译文档可以用于非商业用途自由转载，但必须保留本文档的翻译及组织信息。
+
+Network Working Group                                       M. Wildgrube
+Request for Comments: 3072                                    March 2001
+Category: Informational
+
+结构化数据交换格式
+（RFC3072——Structured Data Exchange Format (SDXF)）
+
+本备忘录的状态
+本备忘录为Internet社区提供信息，没有定义任何类型的标准。被备忘录的发布没有限
+制。
+版权信息
+  Copyright (C) The Internet Society (2001).  All Rights Reserved.
+
+IESG说明
+本文档规定了一种数据交换格式，和用于创建于解析这种格式的部分API。IESG认为
+IETF通常使用的ASN.1和XML格式也可解决同样的问题。强烈建议本文读者在放弃ASN.1
+或XML改用SDXF之前认真阅读第13部分。另外，如果以SDXF格式保存文本，建议用
+户按照第2.5节的要求采用UTF-8的数据类型。
+
+摘要
+本规范描述的通用交换格式既可用于文件格式，也可用于网络。数据被组织成数据块，
+数据块按照层次结构排列。本格式是自描述的，与硬件无关。
+
+目录
+1. 简介	2
+2. SDFX数据格式规范	3
+2.1 数据块	3
+2.2 结构化块	3
+2.3 块元素内部表示的几点要求：	4
+2.4 内容部分的字符值同样也是经过改写的对象，参见第4章。	4
+2.5 标志位的含义：	4
+2.6 短块	5
+2.7 压缩块和加密块	5
+2.8 数组	5
+2.9 UTF-8的处理	5
+2.10 某些位不能同时出现：	5
+3. SDFX函数介绍	5
+3.1 一般事项	5
+3.2 写入一个SDXF缓冲区	6
+3.3 从SDXF缓冲区中读出，可以使用下列函数：	6
+3.4 例子：	6
+4. 平台独立性	8
+5. 压缩	8
+6. 加密	9
+7. 数组	9
+8. SDXF函数描述	10
+8.1 简介	10
+8.2 基本定义	10
+8.3 C++定义	12
+8.4 公共定义：	13
+8.5 专用函数	14
+9. 对UTF-8的支持	15
+10. 安全问题	16
+11. 几点提示	16
+12. 关于IANA	16
+12.1 压缩方法	17
+12.2 加密方法	17
+12.3 关于方法编号的分配	17
+13. 讨论	17
+13.1 SDXF与ASN.1	17
+13.2 SDXF 与XML	18
+14. 作者地址	19
+15. 鸣谢	19
+16. 参考	19
+17.  版权声明	20
+
+1. 简介
+结构化数据交换格式（Structured Data eXchange Format）的目的是实现各种不同类型数
+据（数字、文本、位串）组成的任意结构化数据块的交换。由于数据被规格化为一种独立于
+“网络格式”的抽象计算机体系结构，因此SDXF可作为网络交换数据格式使用。
+本数据格式可用于任何应用程序，在设计本格式时，目的就是使它既可以作为文字处理
+程序的文本格式，也可以作为图象、声音文件格式，还可以是带有复杂参数的远程过程调用，
+同样也适用于文档格式和商业数据交换等等。
+SDXF是自描述的，任何程序无需了解每个数据元素的含义就可以解析出任何SDXF数
+据。
+在描述数据格式的同时，本文还将介绍一些函数，通过这些函数可以创建和访问SDXF
+格式的数据。这样做是希望让程序员不需要处理底层的数据结构，只要简单地使用这些函数
+就可以了。（用面向对象编程的术语来讲，这些函数就是作为给定SDXF数据块句柄的某个
+对象的方法。）
+SDFX没有规定特定的平台，由于SDFX函数的精心设计，SDFX数据可以跨越不同的
+体系结构进行交换（具体就字符编码而言，如ASCII、ANSI、EBCDIC以及二进制数据的
+字节流）。也可以对SDXF数据整块或部分进行压缩或加密。
+
+2. SDFX数据格式规范
+2.1 数据块
+首先介绍数据块的概念，块是由一组固定成分组成的数据结构，块可以是“原子性”的
+也可以是“结构性”的，结构块内部还可以包含其它的块。
+块由头部和数据体（内容）组成：
+名称
+位置
+长度
+说明
+块ID
+1
+2
+数据块的ID号，无符号整数
+Flags
+3
+1
+块的类型和属性
+长度length
+4
+3
+后续数据的长度
+内容content
+7
+*
+纯数据或块列表
+内容的长度由头部字段length指定，整个块的长度为length+6。块ID号是一个正整数。
+其存储的格式如下：
+   +----+----+----+----+----+----+----+----+----+-...
+   | chunkID | fl | length       |  content
+   +----+----+----+----+----+----+----+----+----+-...
+用ASN.1语法描述如下：
+
+   chunk  ::=  SEQUENCE
+   {
+     chunkID INTEGER (1..65535),
+     flags   BIT STRING,
+     length  OCTET STRING SIZE 3, -- or: INTEGER (0..16777215)
+     content OCTET STRING
+   }
+
+2.2 结构化块
+结构化块由标志字节指明（参见2.5节）。与原子块不同的是，结构化块的内容部分包
+含一个块列表（可以是原子块或者结构块）。
+   +----+-+---+-------+-------+-------+-----+-------+
+   | id |f|len| chunk | chunk | chunk | ... | chunk |
+   +----+-+---+-------+-------+-------+-----+-------+
+根据这个概念，可以在SDXF块内构造任何层次化的结构数据。
+
+2.3 块元素内部表示的几点要求：
+类似于IP头部的二进制值，块中的二进制数据也采用高位在前的顺序（big endian）。
+比方说某个块的内容长为300（=256+32+12），其存储格式用十六进制表示为：
+   +----+----+----+----+----+----+----+----+----+--
+   |         |    | 00   01   2C |  content
+   +----+----+----+----+----+----+----+----+----+--
+这一规定同样适用于块ID。
+
+2.4 内容部分的字符值同样也是经过改写的对象，参见第4章。
+2.5 标志位的含义：
+     +-+-+-+-+-+-+-+-+
+     |0|1|2|3|4|5|6|7|
+     +-+-+-+-+-+-+-+-+
+      | | | | | | | |
+      | | | | | | | +-- 保留
+      | | | | | | +---- 数组
+      | | | | | +------ 短块
+      | | | | +-------- 加密块
+      | | | +---------- 压缩块
+      | | |
+      +-+-+------------ 数据类型(0..7)
+数据类型为：
+   0 – 不定数据 (块格式不正确,，参见11.1)
+   1 – 结构
+   2 – 位串
+   3 – 数字
+   4 – 字符
+   5 – 浮点数 (ANSI/IEEE 754-1985)
+   6 -- UTF-8
+   7 – 保留
+
+2.6 短块
+不含数据体的块称为短块，3个字节的长度字段用来表示数据类型，这样做是为了在使
+用大量短块时节省空间。
+2.7 压缩块和加密块
+参见第5章和第6章。
+2.8 数组
+参见第7章
+2.9 UTF-8的处理
+参见第9章。
+2.10 某些位不能同时出现：
+   -  “数组”和“短块”标识不能同时出现
+   -  “短块”标志不能用于“结构”和“浮点”数据类型
+-	“数组”标志不能用于“结构”数据类型
+
+3. SDFX函数介绍
+
+3.1 一般事项
+SDFX的函数概念不依赖于特定的编程语言，但函数本身必须用某种程序语言实现。这
+里使用C和C++讨论这些函数，因为目前这些语言可在多数平台上使用。 这些读写SDXF
+数据块的函数只含一个参数结构。在C++中，这一参数结构是“SDXF”类的一部分，SDXF
+函数都是这个类的方法。关于这一接口的详细描述参见第8章。
+
+3.2 写入一个SDXF缓冲区
+要写入一个SDXF块，可以使用下述函数：
+   init    -- 初始化参数块
+   create  -- 创建新块
+   leave   -- “关闭”结构化块
+
+3.3 从SDXF缓冲区中读出，可以使用下列函数：
+   init    -- 初始化参数块
+   enter   -- “进入”一个结构化块
+   next    -- “移动”达奥一个结构化块内的下一个块
+   extract – 把原子块的内容读取到用户数据区
+   leave   -- “离开”某个结构块
+
+3.4 例子：
+
+3.4.1 写：
+为了说明方便，我们采用这些具有多态定义的函数的简化的C++形式：
+   void create (short chunkID); // 打开一个新的结构,
+   void create (short chunkID, char *string);  //创建一个字符数据类型的新块
+下述语句：
+   SDXF x(new); // create the SDXF object "x" for a new chunk
+                // includes the "init"
+   x.create (3301);   // opens a new structure
+   x.create (3302, "first chunk");
+   x.create (3303, "second chunk");
+   x.create (3304);   // opens a new structure
+   x.create (3305, "chunk in a structure");
+   x.create (3306, "next chunk in a structure");
+   x.leave ();        // closes the inner structure
+   x.create (3307, "third chunk");
+   x.leave ();        // closes the outer structure
+创建了一个如下所示的块：
+   3301
+    |
+    +--- 3302 = "first chunk"
+    |
+    +--- 3303 = "second chunk"
+    |
+    +--- 3304
+    |      |
+    |      +--- 3305 = "chunk in a structure"
+    |      |
+    |      +--- 3306 = "next chunk in a structure"
+    |
+    +--- 3307 = "last chunk"
+
+3.4.2读
+对SDXF数据块的访问通常是在一个循环内完成的：
+   SDXF x(old); // defines a SDXF object "x" for an old chunk
+   x.enter ();  // enters the structure
+
+   while (x.rc == 0) // 0 == ok, rc will set by the SDXF functions
+   {
+     switch (x.chunkID)
+     {
+       case 3302:
+         x.extract (data1, maxLength1);
+                   // extr. 1st chunk into data1
+         break;
+
+       case 3303:
+         x.extract (data2, maxLength2);
+                   // extr. 2nd chunk into data2
+         break;
+
+       case 3304:  // we know this is a structure
+         x.enter (); // enters the inner structure
+
+         while (x.rc == 0) // inner loop
+         {
+           switch (x.chunkID)
+           {
+             case 3305:
+               x.extract (data3, maxLength3);
+                         // extr. the chunk inside struct.
+
+               break;
+             case 3306:
+               x.extract (data4, maxLength4);
+                         // extr. 2nd chunk inside struct.
+               break;
+           }
+           x.next (); // returns x.rc == 1 at end of structure
+         } // end-while
+         break;
+
+       case 3307:
+         x.extract (data5, maxLength5);
+                   // extract last chunk into data
+         break;
+       // default: none - ignore unknown chunks !!!
+
+     } // end-switch
+     x.next (); // returns x.rc = 1 at end of structure
+   } // end-while
+
+4. 平台独立性
+现在大多数计算机平台都具有8位的字节结构，这是不同的平台之间交换数据的基础，
+但是在两点上不同平台可能采取不同的方法：一是二进制数字（整数和浮点数）的表示，二
+是字符数据的表示（ASCII/ANSI还是EBCDIC）。前者造成字节换位的问题，比方说某个短
+整数259=0x0103=X'0103'在地址4402上是如何存储的呢？有两种可能的方法：
+   4402 4403
+   01   03    先高后低还是
+   03   01    先低后高。
+后者则用一个表来表示，表中把256个值分配给打印字符和控制字符。（在ASCII中，
+字母“A”的值是0x41=65，而在EBCDIC中则是0xC1=193。）解决这些问题的方法是对数
+据标准化。我们规定：二进制数值的内部表示采用高位在前的双补码表示，字符的内部表示
+采用ISO 8859-1（也称为拉丁-1）。这其中的第二条还有待于推敲，因为在某些环境中，8859-1
+似乎并不是最好的选择，比如在希腊和俄国也许8859-5和8859-7更合适一些。无论如何，
+在特定的应用环境中如果不同的应用程序之间需要按照某种协议交换信息（不论是通过网络
+还是磁盘或者别的什么），就必须规定唯一的内部字符表。因此应该给出定义变换表（和逆
+转换表）的可能性。重要的是，构造的SDXF块虽然没有限定应用的地域，但是必须把数
+据转化到一种标准化的格式（或网络格式）。这中间的变换不是由程序员完成的，而是由create
+和extract函数完成的。管理员必须小心定义适当的转换表。
+
+5. 压缩
+在前面提到有一个标志位用于表明后续数据（原子或结构）是压缩的。这些数据在解压
+缩之前不进行其它的处理，压缩由SDXF函数自动完成，对用户是透明的。“create”完成原
+子块的压缩，“leave”处理结构块的压缩，“extract”对原子块解压缩，“enter”则对结构块
+解压缩。透明意味着程序要只要告诉SDXF函数希望对后续数据块进行压缩就足够了。
+如果要控制压缩的方法或者解压缩部分的（原始）长度，可以使用下面的附加定义：在
+压缩块的头部后面加上一个压缩头，结构如下：
+   +-----------------------+---------------+---------------->
+   |      chunk header     | compr. header | compressed data
+   +---+---+---+---+---+---+---+---+---+---+---------------->
+   |chunkID|flg|   length  |md | orglength |
+   +---+---+---+---+---+---+---+---+---+---+---------------->
+
+   -  “orglength”是原始数据（解压后）的长度；
+   -  “md”是压缩的方法，这里介绍两种方法：
+方法01：采用简单但效率不高的“游程1”或“字节游程1”算法，即连续多个相同的
+字符使用字符个数和该字符来代替。具体地讲，压缩数据有一些长度不同的小节组成，每个
+小节的都开始于一个“计数”字节，这是一个8位的小整数，包含长度信息。假设这个字节
+的值是n，如果n是一个大于等于0小于128的整数，则后面的n+1个字节不变，如果n小
+于0大于-128，后面的字节则重复-n+1次，如果n=-128则忽略。后面填充的空格一般被截
+掉，但如果需要保留，可以在解压缩时把参数中的“filler”字段（参见8.2.1节）设为空格。
+方法02：表示“deflate”压缩方法，来自zip压缩算法，参见[DEFLATE]。
+压缩方法的编号由IANA负责维护，参见第12章。
+
+6. 加密
+在前面提到有一个标志位用于表明后续数据（原子或结构）是加密的。这些数据在解密
+之前不进行其它的处理，解密由SDXF函数自动完成，对用户是透明的。“create”完成原子
+块的加密，“leave”处理结构块的加密，“extract”对原子块解密，“enter”则对结构块解密。
+对于特定范围的应用可以采取的加密方法有多种。某些加密方法采用成块加密算法，这意味
+着加密数据的长度必须是加密块长度的倍数，在mode =3时块大小（0表示非成块加密）由
+加密接口例程提供（参见第8.5节中可选字段encryptProc）。如果采用成块加密，至少要增
+加一个字节，长度数据的最后一个字节表示增加的字节数减一。解密接口例程可以据此计算
+实际数据的长度。
+如果程序（或者网络连接握手协议）需要协商加密的方法，应该使用IANA所负责维护
+的方法编号。尽管加解密对用户是透明的，但是必须把密码交给SDXF函数。加密在数据
+转换成内部格式之后进行，解密则在内部格式上进行。
+如果要同时对一个数据块进行压缩和加密，先进行压缩，因为经过良好加密的数据压缩
+率很低。
+
+7. 数组
+数组是由块ID、长度和数据类型都相同的块组成的序列。第一点提示：从原理上来讲
+没有必要为SDXF单独定义数组。并没有限制在同一个结构块中不能包含多个ID相同的块。
+因此，只要反复调用SDX_next/SDX_extract就可以建立目标数组。如果反复出现ID相同的
+（相对而言长度较短的）块，块包的开销可能变得很大。于是引入了数组标志位，数组块只
+有一个整个原子块序列共用的头部，在数组块的头部之后跟着一个数组头。
+数组头是一个短整数，包含数组元素的个数（CT），每个元素的长度都是固定的（EL），
+所以整个块的长度就是CL=EL*CT+2。数据元素直接跟在数组头后面。整个数组可以通过
+SDX_create来构造，使用SDX_extract读取各个元素。SDFX函数“extract”和“create”需
+要使用“dataLength”和“count”参数字段。前者是数组元素的共同长度，后者是“create”
+（输入）数组的实际维数。对于“extract”函数“count”同时作为输入和输出参数，在输入
+时表示允许的最大维数，输出时则表示数组的实际维数。如果输出值大于输入值，则会提示
+“数据剪切”的警告信息，数组填满后剩余的数据被截掉。
+
+8. SDXF函数描述
+
+8.1 简介
+按照面向对象编程的原理，在描述数据本身的同时，还要描述操作数据的函数——“方
+法”。对于程序员而言，了解方法比了解数据结构更重要，方法必须明确数据的详细规范并
+保证所创建数据的一致性。SDXF对象是一个参数结构的实例，它编程的接口。具体来讲，
+它指向具体的SDXF数据块，在处理该数据块时，有一个指针指向下一步要操作的真正的
+内部块。使用严格的接口描述，像标准C++库一样，有利于保证平台独立性。
+
+8.2 基本定义
+
+8.2.1 SDXF参数结构
+所有的SDXF访问函数都只需要一个参数——指向SDXF参数结构的一个指针。首先
+需要定义三个基本结构：
+   typedef short int      ChunkID;
+   typedef unsigned char  Byte;
+
+   typedef struct Chunk
+   {
+     ChunkID    chunkID;
+     Byte       flags;
+     char       length [3];
+     Byte       data;
+   } Chunk;
+然后定义参数结构：
+   typedef struct
+   {
+     ChunkID  chunkID;       // name (ID) of Chunk
+     Byte    *container;     // pointer to the whole Chunk
+     long     bufferSize;    // size of container
+     Chunk   *currChunk;     // pointer to actual Chunk
+     long     dataLength;    // length of data in Chunk
+     long     maxLength;     // max. length of Chunk for SDX_extract
+     long     remainingSize; // rem. size in cont. after SDX_create
+     long     value;         // for data type numeric
+     double   fvalue;        // for data type float
+     char    *function;      // name of the executed SDXF function
+     Byte    *data;          // pointer to Data
+     Byte    *cryptkey;      // pointer to Crypt Key
+     short    count;         // (max.) number of elements in an array
+     short    dataType;      // Chunk data type / init open type
+     short    ec;            // extended return-code
+
+     short    rc;            // return-code
+     short    level;         // level of hierarchy
+     char     filler;        // filler char for SDX_extract
+     Byte     encrypt;       // Indication if data to encrypt (0 / 1)
+     Byte     compression;   // compression method
+                             //   (00=none, 01=RL1, 02=zip/deflate)
+   } SDX_obj, *SDX_handle;
+参数结构中只有这里定义的“公开”字段能够被SDFX函数访问，具体的实现可以在
+本结构中增加“私有”字段。
+
+8.2.2 基本函数
+所有的函数都是用SDX_handle作为唯一的形式参数，返回ec和rc说明函数是否成功
+执行。关于ec、rc和dataType的取值详见第8.4节。
+1、SDX_init：初始化参数结构。
+输入：container、dataType、bufferSize (仅用于dataType = SDX_NEW only)。
+输出：currChunk、dataLength (仅用于dataType = SDX_OLD )、ec、rc，同时初始
+化其它字段。
+2、SDX_enter：输入一个结构块，可以访问结构块内的第一个内部块。
+	输入：无。
+	输出：currChunk、chunkID、dataLength、level、dataType、ec、rc。
+3. SDX_leave：离开实际操作的结构块。
+	输入：无。
+	输出：currChunk、chunkID、dataLength、level、dataType、ec、rc。
+4. SDX_next : 移动到结构块内部的下一个块。
+	输入：无。
+	输出：currChunk、chunkID、dataLength、dataType、count、ec、rc。
+到达结构块的尾部时，SDX_next返回rc = SDX_RC_failed和ec = SDX_EC_eoc (块尾)，
+并自动调用SDX_leave。
+5. SDX_extract：提取块中的数据（如果是结构块，仅仅复制一份，否则转化成主机识
+别格式，输入和输出依赖于具体的数据类型：
+如果dataType是结构、二进制或字符，则：
+	输入：data、maxLength、count、filler
+	输出：dataLength、count、ec、rc
+如果数据类型是数字（主要是浮点数），则：
+	输入：无。
+	输出：值、rc、ec。
+6. SDX_select：移动到ID指定的（下一个）块。
+	输入：chunkID。
+	输出：currChunk、dataLength、dataType、ec、rc。
+7. SDX_create：（在处理的结构块的尾部）创建新块。
+	输入：chunkID、dataLength、data、(f)value、dataType、compression、encrypt、count。
+	更新：remainingSize、level。
+	输出：currChunk、dataLength、ec、rc。
+8. SDX_append：在处理的结构块的尾部增加一个完整的块。
+	输入：data、maxLength、currChunk
+	更新：remainingSize、level
+	输出：chunkID、chunkLength、maxLength、dataType、ec、rc
+
+8.3 C++定义
+下面是SDXF类用C++语言描述的定义（注意，此处类型“Byte”表示无符号字符，用
+于位串，与用于字符串的有符号字符不同）。
+
+   class C_SDXF
+   {
+     public:
+
+     // constructors and destructor:
+     C_SDXF  ();                          // dummy
+     C_SDXF  (Byte *cont);                // old container
+     C_SDXF  (Byte *cont, long size);     // new container
+     C_SDXF  (long size);                 // new container
+     ~C_SDXF ();
+     // methods:
+
+     void init  (void);                   // old container
+     void init  (Byte *cont);             // old container
+     void init  (Byte *cont, long size);  // new container
+     void init  (long size);              // new container
+
+     void enter   (void);
+     void leave   (void);
+     void next    (void);
+     long extract (Byte *data, long length);    // chars, bits
+     long extract (void);                       // numeric data
+     void create  (ChunkID);                    // structured
+     void create  (ChunkID, long value);        // numeric
+     void create  (ChunkID, double fvalue);     // float
+     void create  (ChunkID, Byte *data, long length);// binary
+     void create  (ChunkID, char *data);             // chars
+     void set_compression (Byte compression_method);
+     void set_encryption  (Byte *encryption_key);
+
+     // interface:
+
+     ChunkID  id;        // see 8.4.1
+     short    dataType;  // see 8.4.2
+     long     length;    // length of data or chunk
+
+     long     value;
+     double   fvalue;
+     short    rc;  // the raw return code       see 8.4.3
+     short    ec;  // the extended return code  see 8.4.4
+
+     protected:
+     // implementation dependent ...
+
+   };
+
+8.4 公共定义：
+
+8.4.1 ChunkID的定义：
+   typedef short ChunkID;
+
+8.4.2 dataType的取值：
+   SDX_DT_inconsistent     = 0
+   SDX_DT_structured       = 1
+   SDX_DT_binary           = 2
+   SDX_DT_numeric          = 3
+   SDX_DT_char             = 4
+   SDX_DT_float            = 5
+   SDX_DT_UTF8             = 6
+
+用于SDX_init的数据类型：
+   SDX_OLD                 = 1
+   SDX_NEW                 = 2
+
+8.4.3  rc的取值：
+   SDX_RC_ok               = 0
+   SDX_RC_failed           = 1
+   SDX_RC_warning          = 1
+   SDX_RC_illegalOperation = 2
+   SDX_RC_dataError        = 3
+   SDX_RC_parameterError   = 4
+   SDX_RC_programError     = 5
+   SDX_RC_noMemory         = 6
+
+8.4.4  ec的取值：
+   SDX_EC_ok              =  0
+   SDX_EC_eoc             =  1 // end of chunk
+   SDX_EC_notFound        =  2
+   SDX_EC_dataCutted      =  3
+   SDX_EC_overflow        =  4
+   SDX_EC_wrongInitType   =  5
+   SDX_EC_comprerr        =  6 // compression error
+   SDX_EC_forbidden       =  7
+   SDX_EC_unknown         =  8
+   SDX_EC_levelOvflw      =  9
+   SDX_EC_paramMissing    = 10
+   SDX_EC_magicError      = 11
+   SDX_EC_not_consistent  = 12
+   SDX_EC_wrongDataType   = 13
+   SDX_EC_noMemory        = 14
+   SDX_EC_error           = 99 // rc is sufficiently
+
+8.5 专用函数
+除了上述基本定义外，还有一个全局函数（SDX_getOptions）可以返回指向全局性选项
+表的指针。通过这些选项可以改变SDXF的行为方式，比方说可以定义自己的转换表或者
+从外部资源（比如磁盘）上读取转换表的函数。在这个选项表内还包含用于加解密的函数指
+针，因此通过设定该指针可以安装自己的加密函数。选项表指针可以通过下述命令取得：
+   SDX_TOptions *opt = SDX_getOptions ();
+结构如下：
+   typedef struct
+   {
+    Byte            *toHost;        // Trans tab net -> host
+    Byte            *toNet;         // Trans tab host -> net
+    int              maxlevel;      // highest possible level
+    int              translation;   // translation net <-> host
+                                    // is in effect=1 or not=0
+    TEncryptProc    *encryptProc;   // alternate encryption routine
+    TGetTablesProc  *getTablesProc; // alternate routine defining
+                                    // translation Tables
+    TcvtUTF8Proc    *convertUTF8;   // routine to convert to/from UTF-8
+   }  SDX_TOptions;
+
+   typedef long TencryptProc (
+     int   mode,   // 1= to encrypt, 2= to decrypt, 3= encrypted length
+     Byte *buffer, // data to en/decrypt
+     long  len,    // len: length of buffer
+     char *passw); // Password
+
+    // returns length of en/de-crypted data
+    // (parameter buffer and passw are ignored for mode=3)
+    // returns blocksize for mode=3 and len=0.
+    // blocksize is zero for non-blocking algorithms
+
+   typedef int TGetTablesProc (Byte **toNet, Byte **toHost);
+    // toNet, toHost: pointer to output params.  Both params
+    // points to translation tables of 256 Bytes.
+    // returns success: 1 = ok, 0 = error.
+
+   typedef int TcvtUTF8Proc
+   ( int   mode,     // 1 = to UTF-8, 2 = from UTF-8
+     Byte *target, int *targetlength,  // output
+     Byte *source, int sourcelength);  // input
+   // targetlength contains maximal size as input param.
+   // returns success: 1 = ok, 0 = no conversion
+
+9. 对UTF-8的支持
+许多系统支持UTF-8作为交换数据的字符格式，这种格式的最大好处是不需要为特定
+的程序指定固定的字符集，因为它囊括了所有的字符集，使用双字节编码按照“同一字符集”
+UCS-2表示字符。SDXF本身并不处理UTF-8，对一个UTF-8序列可能有多种解释，程序可
+以：
+?	重新构成UCS-2序列；
+?	仅仅接受纯粹的ASCII字符而把非ASCII字符映射成非打印字符；
+?	以ASCII为目标字符集，非ASCII字符作适当的变换（比如把法语中带有重音号
+的元音去掉重音号）；
+?	以ASCII作为目标字符集，非ASCII字符映射成其他的字符，但不一定是非打印
+字符。
+?	等等。
+不过SDXF为函数“extract”和“create”提供了接口，为了实现这些处理可以在属性
+表内指定相应的函数指针。默认情况下该指针为空，就是说SDXF不再作进一步的转换，
+仅仅把数据作为“二进制”位串简单的复制一份。如果指定了函数，则在“toUTF8”模式
+调用create和在“fromUTF8”模式调用extract时就要执行该函数，由SDXF负责激活，对
+用户是透明的。如果函数返回0，则SDXF没有作任何转换而仅仅复制数据。
+
+10. 安全问题
+只要数据块头部中的任何数据错误，则整个数据块无效。经过加密或压缩的SDXF结
+构任何数据错误都会导致该数据块无法使用，在解密或解压缩后应该由“enter”函数进行完
+整性检查。如果使用TCP/IP（更精确地讲是IP）作为传输媒介，可以信赖该协议在传输层
+上的CRC校验。
+
+11. 几点提示
+1、	只要在“create”结构块时同时使用“leave”，就可以保证SDXF结构的一致性
+构造。在结构块创建时，其数据类型被设为0，就是说这个块还不完整，
+SDX_leave把数据类型设为“structured”。
+2、	在原子块创建时要把依赖于平台的格式转换为平台无关的格式，在构造结束要
+转存缓冲区内的数据时进行，除此之外不作其它的处理。
+3、	应用程序不需要构造特殊的SDXF结构，只要调用前面定义的函数就可以动态
+地创建数据。
+4、	基于SDXF可以定义客户端/服务器应用的专门协议，只要根据以下两条原则就
+可以保证扩展协议的向后兼容性：一是忽略无法识别的块，二是不能依赖于块
+的顺序。
+
+12. 关于IANA 
+SDXF作为一种开放性的标准，其压缩和加密算法不是固定的，可以采用任何不同的算
+法，因此必须对压缩和加密算法的方法号进行统一管理。（加密方法本身并非SDXF语义的
+一部分，但可用于连接协议协商采用的加密方法。）以下两项由IANA注册。
+
+12.1 压缩方法
+压缩SDXF块包含一个“压缩头”，其中用一个单字节无符号整数（1-255）表示采用的
+压缩方法，这个列表由IANA负责维护：
+压缩方法
+说明
+备注
+01
+RUN-LENGTH算法
+参见第5章
+02
+DEFLATE（zip）
+参见[DEFLATE]
+03-239
+IANA分配
+
+240-255
+专用方法
+
+
+12.2 加密方法
+既可以采用固定的加密方法，也可以在握手协议中协商加密方法。对于后者必须为每种
+可能用到的加密方法分配一个编号，该列表由IANA负责维护：
+加密方法
+说明
+01-239
+IANA分配
+240-255
+专用方法
+
+12.3 关于方法编号的分配
+如果希望为SDXF注册新的压缩或加密方法，应该与IANA联系取得方法号。“编号分
+配”文档包含一系列的方法号与相应的协议，参见[IANA]。新的方法必须作为RFC正式公
+布，或者由标准化组织（如OSI）公布。
+
+13. 讨论
+关于Internet数据交换已经有许多标准可用，IETF推荐使用ASN.1和XML，因此需要
+就建立新的数据格式的必要性进行讨论。
+
+13.1 SDXF与ASN.1
+制定ASN.1的目的是提供一种独立于程序语言的定义数据结构的方法，但是它并没有
+定义实际用于发送的数据格式，而一般采用BER或PER（以及某些派生类型如CER和DER），
+参见[BER]和[PER]。隐藏在ASN.1背后的理念是：在任何平台上开发指定的应用程序都可
+以用ASN.1的符号表示程序的数据结构。除了这些之外，还可以通过ASN.1编译器的帮助
+生成实际的程序语言定义。这个编译器同时还生成把数据结构包装成BER格式或者对BER
+格式解包的转换函数。
+直接把ASN.1与SDXF相比可能不太合适，SDXF的数据格式更接近于BER（相对而
+言），是用ASN.1定义数据结构与SDXF并没有矛盾。但是SDXF并不需要一个完整的数据
+结构构造发送的信息，接收到的信息也不包含完整的数据结构。其中的主要差别在于消息构
+造和解释的概念，我把它称为“动态”和“静态”：ASN.1采用静态的方法，在消息创建之
+前必须存在完整的数据结构；SDXF则采用动态的方法，通过调用SDXF函数渐近地组装和
+分解消息。静态结构对某些应用可能是适宜的，但是对于复杂的任务要完整地定义消息往往
+是不可能的。ASN.1尝试解决复杂结构文本文档的一个努力是XML，XML文档包含一系列
+章节、段落和文本元素，这些元素又可以递归地包含其它的章节，个元素可以带有特定的文
+本属性。
+
+13.2 SDXF 与XML
+另一方面，SDXF与XML非常类似，都可以处理递归定义的复杂的数据流，主要的差
+别在于可以处理的数据类型。XML仅处理纯文本数据（另外还要注意XML并没有规定字
+符数据的标准格式），XML文档的所有标签都是可以阅读的，不能直接包含图像之类的二进
+制数据，但是可以通过HTML之类的外部链接引用二进制数据。在XML中，信息数据和
+控制数据之间没有明显的区别，仅仅使用转义字符（比如“<”和“&”）和<![CDATA[…]]>
+结构来区分。SDXF处理机器可读的数据，而不是用于人类阅读，也不能用文本编辑器编辑
+SDXF数据（使用压缩和加密时尤其如此）。通过SDXF函数可以方便快捷的访问所有的数
+据元素，标准的SXDF数据结构解析器只有一个简单的框架，“while-switch-case ID –enter / 
+extract”，参见第3.4.2节。
+由于XML和SDXF（以及ASN.1）背后完全不同的原理，直接对其进行比较不是很明
+智的，XML自有其存在的价值。SDXF同样如此。但是不管怎样，我们可以把XML数据流
+转化成SDXF结构。首先把所有的XML标签都转化成块ID，元素序列<tag>纯文本</tag>
+可以转换成类型为“字符”的原子（非结构）块。带有属性的标签和嵌套标签转换成结构块。
+由于XML允许在文本流任何位置出现标签，必须引入一个人为的“简单文本”标签。比如
+用<t>表示文本元素标签，则序列：<t>this is a text <attr value='bold'>with</attr> attributes</t>
+应该想象成：
+   <t><et>this is a text </et><attr value='bold'><et>with</et></attr>
+   <et> attributes</et></t>
+其中“et”表示“简单文本”标签，，则转换成如下的SDXF结构：
+   ID_t
+   |
+   +-- ID_et = " this is a text "
+   |
+   +-- ID_attr
+   |   |
+   |   +-- ID_value = "bold"
+   |   |
+   |   +-- ID_et = "with"
+   |
+   +-- ID_et = " attributes"
+ID_t和ID_et可以用同一个ID表示，只能根据数据类型来区分（结构块用<t>，纯字符
+用<et>）。图像之类的二进制数据可以直接嵌入SDXF结构而无需使用HTML或其他的外部
+链接。
+
+14. 作者地址
+   Max Wildgrube
+   Schlossstrasse 120
+   60486 Frankfurt
+   Germany
+
+   EMail: max@wildgrube.com
+
+15. 鸣谢
+感谢Michael J. Slifcak (mslifcak@iss.net)的积极探讨。
+
+16. 参考
+
+   [ASN.1]   Information processing systems - Open Systems
+             Interconnection, "Specification of Abstract Syntax Notation
+             One (ASN.1)", International Organization for
+             Standardization, International Standard 8824, December
+             1987.
+
+   [BER]     Information Processing Systems - Open Systems
+             Interconnection - "Specification of Basic Encoding Rules
+             for Abstract Notation One (ASN.1)", International
+             Organization for Standardization, International Standard
+             8825-1, December 1987.
+
+   [DEFLATE] Deutsch, P., "DEFLATE Compressed Data Format Specification
+             version 1.3", RFC 1951, May 1996.
+
+   [IANA]    Internet Assigned Numbers Authority,
+             http://www.iana.org/numbers.htm
+
+   [PER]     Information Processing Systems  - Open Systems
+             Interconnection -"Specification of Packed Encoding Rules
+             for Abstract Syntax Notation One (ASN.1)", International
+             Organization for Standardization, International Standard
+             8825-2.
+
+   [UCS]     ISO/IEC 10646-1:1993. International Standard -- Information
+             technology -- Universal Multiple-Octet Coded Character Set
+             (UCS)
+
+   [UTF8]    Yergeau, F., "UTF-8, a transformation format of ISO 10646",
+             RFC 2279, January 1998.
+
+17.  版权声明
+   Copyright (C) The Internet Society (2001).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, 
+INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE 
+INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES 
+OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+致谢
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC3072——Structured Data Exchange Format (SDXF)                  结构化数据交换格式
+
+
+3
+RFC文档中文翻译计划
+
+

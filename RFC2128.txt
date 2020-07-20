@@ -1,0 +1,1336 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：毕峰（bifeng   bi_feng@263.net）
+译文发布时间：2001-7-14
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                 G. Roeck, Editor
+Request for Comments: 2128                               cisco Systems
+Category: Standards Track                                   March 1997
+拨号控制MIB（SMIv2）
+（RFC2128 ——Dial Control Management Information Base using SMIv2） 
+
+
+本备忘录的状态
+本文档讲述了一种Internet社区的Internet标准跟踪协议，它需要进一步进行讨论和建
+议以得到改进。请参考最新版的“Internet正式协议标准” (STD1)来获得本协议的标准化
+程度和状态。本备忘录的发布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (2001).
+摘要
+该备忘录定义了为在Internet团体中使用网络管理协议的管理信息库（MIB）的一部分。
+特别是它描述了用于管理接入回路包括ISDN的管理对象。
+该文档以与SNMPv2 SMI一致的方式定义了一个MIB模块。对象集与SNMP框架和现
+有的SNMP标准一致。
+该文档是IETF的ISDN MIB工作组的工作成果。恳求评论，评论可以发送到工作组的
+邮件列表isdn-mib@cisco.com和/或作者。
+
+
+
+
+目录
+
+拨号控制MIB（SMIV2）	1
+1.  SNMPV2网络管理框架	2
+1.1.  对象定义	2
+2.  概述	3
+2.1.  MIB的结构	3
+2.2.  与接口MIB的关系	3
+2.2.1.  分层模型和虚电路	3
+2.2.2.  ifTestTable	4
+2.3. 多链路和备份线路支持	5
+2.4. 对等点类的支持	5
+3. 定义	5
+3.1. 拨号控制MIB	5
+4.  致谢	30
+5.  参考文献	31
+6.  安全考虑	32
+7. 作者地址	32
+
+1.  SNMPv2网络管理框架
+SNMPv2网络管理框架目前包括三个主要部分。它们是：
+?	SMI，在RFC1902 [1]中描述——用于为管理目的描述和命名对象的机制。
+?	MIB-II，STD 17，RFC1213 [2]——Internet协议组的管理对象核心集。
+?	协议，STD 15，RFC1157 [3]——和/或RFC 1905 [4]——访问管理对象的协议。
+
+框架允许为实验和和评估定义新对象。
+1.1.  对象定义
+管理对象通过一个虚拟信息库访问，称为管理信息库或MIB。MIB中的对象用抽象语
+法标记（ASN.1）的子集（定义在SMI中）定义。特别地，每个对象类型命名为一个OBJECT 
+IDENTIFIER（一个管理指配名）。对象类型和对象实例一起唯一地标识一个特定的实例化对
+象。为方便起见，通常使用一个文本字符串，称为描述符，指向对象类型。
+
+2.  概述
+2.1.  MIB的结构
+管理需求接入环路需要下面的信息组：
+?	通用配置信息
+?	描述对等配置和对等统计的信息。在这方面，对等配置表示在出呼叫时如何连接到对等
+点上、在入呼叫时如何标识对等点和其他呼叫相关配置信息。
+?	存储活跃呼叫信息的信息。
+?	保留呼叫历史的信息。
+
+而MIB是由四组构成的。
+?	dialCtlConfiguration组用来指明普通配置信息。
+?	dialCtlPeer组用来描述对等点配置和对等点统计。
+?	callActive组用来存储活跃呼叫的信息。
+?	callHistory组用来存储呼叫历史信息。这些呼叫可以是电路交换或虚电路。存储每个历
+史呼叫中的成功呼叫、非成功呼叫和拒绝呼叫。当一个呼叫结束的时候会产生一行。
+2.2.  与接口MIB的关系
+本节阐述了该MIB与接口MIB[8]的关系。下面的子节中说明了关系的各方面。实现者
+可以参考接口MIB文档以理解这些方面的总体意图。
+2.2.1.  分层模型和虚电路
+在非经常接入信道，有很多允许呼叫和被呼叫的对等系统。从路由的角度来看，所有的
+系统都应该被看作是激活的，但是它们大多数在任意给定的时间都没有呼叫。
+在拨号接口，由于到一个给定的对等点的呼叫从一个信道到另一个信道转换，因此更复
+杂。任何人也不能确定的说“我在这个接口呼叫那个对等点”。然而，有必要在低层接口和
+支持对等点的各种逻辑接口之间提供一个映射算法。这由为每个对等点创建一个逻辑接口
+（ifEntry）和为每个低层接口创建一个逻辑接口（ifEntry）来解决。它们之间然后用
+ifStackTable相互关联。
+低层接口或者是物理接口，例如调制解调器接口，或逻辑接口，例如ISDN B信道，它
+然后又位于物理ISDN接口之上。
+因此该模型看起来像下面这样。以ISDN为例：
+
+
+
++-------------------------------------------------------+
+|               Network Layer Protocol                  |
++------+ +-------+ +-------+ +-------+ +-------+ +------+
+       | |       | |       | |       | |       | | <== appears active
+     +-+ +-+   +-+ +-+   +-+ +-+   +-+ +-+   +-+ +-+
+     | PPP |   | PPP |   | F/R |   | PPP |   | F/R |
+     | for |   | for |   | for |   | for |   | for |   ifEntry with
+     |Peer1|   |Peer2|   |switch   |Peer3|   |switch   shadow PeerEntry
+     |     |   |     |   |  A  |   |     |   |  B  |
+     +-+ +-+   +-+ +-+   +-+ +-+   +-+ +-+   +-+ +-+
+                 | |                 | |           <== some actually are
+    +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+
+    |   B   | |   B   | |   B   | |   B   | |   B   |
+    |channel| |channel| |channel| |channel| |channel|
+    +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+ +--+
+       | |       | |       | |       | |       | |
++------+ +-------+ +-------+ +-------+ +-------+ +------+
+|             Basic/Primary Rate Interface              |
++-------------------------------------------------------+
+
+将到被叫对等点的IP接口映射为B信道
+
+为每个对等点保留IfEntries。
+在该模型中，每个对等点需要有一个相关的封装层接口。该接口可以是任何一种，例如
+PPP或者LAPB。
+为了给一个给定的对等点指定网络地址，一般要增加一个路由/前向行，指向封装层接
+口，通过该接口可以到达该对等点。
+2.2.2.  ifTestTable
+ifTestTable的用法定义在定义网络层以下封装的MIB中。例如如果使用PPP封装，
+ifTestTable由PPP定义。
+2.2.3	ifRcvAddressTable
+ifRcvAddressTable用法定义在定义网络层以下封装的MIB中。例如如果使用PPP封装，
+ifRcvAddressTable由PPP定义。
+2.2.3.1.	单个对等点的ifEntry
+ifEntry定义在定义网络层以下封装的MIB中。例如如果使用PPP封装，
+ifRcvAddressTable由PPP定义。
+ifEntry决不会由拨号控制MIB创建。拨号控制MIB通常依靠某些ifTypes组中的一些
+其他ifIndex。也就是说，为了在拨号控制MIB中创建一行，基ifEntry必须已经通过其他机
+制创建。
+拨号控制表中的行有自己的RowStatus，允许拨号控制附加信息来去，但不影响它隶属
+的ifIndex。如果在一个给定的实现中，该两者紧密绑定，删除ifEntry则可能有删除拨号控
+制行的副作用。
+2.3. 多链路和备份线路支持
+为了支持多链路和备份过程，在dialCtlPeerCfgTable中对于单一的对等点可能会有多条
+记录。
+单一的对等点用dialCtlPeerCfgTable中的dialCtlPeerCfgId对象标识。在
+dialCtlPeerCfgTable中可能会有多条记录具有同一dialCtlPeerCfgId值，但是ifIndex值不同。
+这些记录中的每一个都描述了一个到同一对等点的可能连接。这些记录可以用来处理多链路
+和备份过程，例如通过PPP多链路捆绑隶属的ifEntry。
+2.4. 对等点类的支持
+对等点类可以通过在dialCtlPeerCfgAnswerAddress中使用统配符（例如‘*’或‘？’）
+来支持。要接受的号码可以部分定义（例如‘*1234’）或完全统配（例如‘*’）。
+该功能的详细规范已超出该文档的范围。
+然而实现者应该注意到支持对等点类可能会导致安全漏洞。用户不知道呼叫的来源，那
+将潜在地允许非鉴权访问。
+3. 定义
+3.1. 拨号控制MIB
+
+DIAL-CONTROL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY,
+        NOTIFICATION-TYPE,
+        OBJECT-TYPE,
+        Unsigned32
+                FROM SNMPv2-SMI
+        TEXTUAL-CONVENTION,
+        DisplayString,
+        TimeStamp,
+        RowStatus
+                 FROM SNMPv2-TC
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP,
+        NOTIFICATION-GROUP
+                FROM SNMPv2-CONF
+        IANAifType
+                FROM IANAifType-MIB
+        ifOperStatus,
+        ifIndex,
+        InterfaceIndex,
+        InterfaceIndexOrZero
+                FROM IF-MIB
+        transmission
+                FROM RFC1213-MIB;
+
+dialControlMib MODULE-IDENTITY
+        LAST-UPDATED    "9609231544Z" -- Sep 23, 1996
+        ORGANIZATION    "IETF ISDN工作组"
+        CONTACT-INFO
+            "        Guenter Roeck
+             Postal: cisco Systems
+                     170 West Tasman Drive，                                                                                                                                                                                                                                    
+                     San Jose, CA 95134
+                     U.S.A.
+             Phone:  +1 408 527 3143
+             E-mail: groeck@cisco.com"
+        DESCRIPTION
+            "描述需求接入和可能其他种类接口的对等点信息的MIB模块。"
+        ::= { transmission 21 }
+
+AbsoluteCounter32 ::= TEXTUAL-CONVENTION
+        STATUS      current
+        DESCRIPTION
+"代表一个类似与Counter32的值，它从0开始，不减少也不循环增加。
+只可以用在不可能循环增加的情况。如果该计数器溢出，它会锁定到最
+大值4,294,967,295。
+主要使用该类型的计数器的情况是计数器的值要被作为历史记录，因此
+不再受读的影响。"
+        SYNTAX      Unsigned32
+
+-- 拨号控制MIB对象定义
+
+dialControlMibObjects OBJECT IDENTIFIER ::= { dialControlMib 1 }
+
+-- 通用配置组
+
+dialCtlConfiguration OBJECT IDENTIFIER ::= { dialControlMibObjects 1 }
+
+-- 通用配置数据/参数
+
+dialCtlAcceptMode OBJECT-TYPE
+        SYNTAX INTEGER {
+            acceptNone(1),
+            acceptAll(2),
+            acceptKnown(3)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+"可接受的入呼叫的安全级别
+acceptNone(1)  - 不接受入呼叫
+acceptAll(2)   - 接受入呼叫，即使在dialCtlPeerCfgTable 中没有匹
+配的记录
+acceptKnown(3) – 只在dialCtlPeerCfgTable 中有匹配的记录时接受
+入呼叫"
+        ::= { dialCtlConfiguration 1 }
+
+dialCtlTrapEnable OBJECT-TYPE
+        SYNTAX      INTEGER {
+            enabled(1),
+            disabled(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+"该对象表示是否应该为所有的对等点产生
+dialCtlPeerCallInformation和dialCtlPeerCallSetup陷阱。如果该对
+象的值为enabled(1)，将为所有的对等点产生陷阱。如果该对象的值为
+disabled(2)，将只为将dialCtlPeerCfgTrapEnable设置为enabled(1)
+的对等点产生陷阱。"
+        DEFVAL      { disabled }
+        ::= { dialCtlConfiguration 2 }
+
+
+-- 对等点组
+
+dialCtlPeer OBJECT IDENTIFIER ::= { dialControlMibObjects 2 }
+
+-- 对等点配置组
+
+dialCtlPeerCfgTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF DialCtlPeerCfgEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"对等点列表，被管设备接受来自该表中的对等点的呼叫或向它们发出呼
+叫。"
+       ::= { dialCtlPeer 1 }
+
+dialCtlPeerCfgEntry OBJECT-TYPE
+        SYNTAX      DialCtlPeerCfgEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"单一对等点的配置数据。该行有效持久，它包含标识对等点、如何连接
+到对等点、如何识别对等点和它的访问权限等信息。
+dialCtlPeerCfgOriginateAddress 的值必须在该表中的一行变为激活
+（active（1））前指定。现有行的任何可写参数可以在该行激活时修改。
+修改在所提问对等点下次被呼叫时生效。
+该表中的行只可以在相关联的ifEntry已存在时创建。"
+        INDEX       { dialCtlPeerCfgId, ifIndex }
+::= { dialCtlPeerCfgTable 1 }
+
+DialCtlPeerCfgEntry ::= SEQUENCE {
+            dialCtlPeerCfgId                 INTEGER,
+            dialCtlPeerCfgIfType             IANAifType,
+            dialCtlPeerCfgLowerIf            InterfaceIndexOrZero,
+            dialCtlPeerCfgOriginateAddress   DisplayString,
+            dialCtlPeerCfgAnswerAddress      DisplayString,
+            dialCtlPeerCfgSubAddress         DisplayString,
+            dialCtlPeerCfgClosedUserGroup    DisplayString,
+            dialCtlPeerCfgSpeed              INTEGER,
+            dialCtlPeerCfgInfoType           INTEGER,
+            dialCtlPeerCfgPermission         INTEGER,
+            dialCtlPeerCfgInactivityTimer    INTEGER,
+            dialCtlPeerCfgMinDuration        INTEGER,
+            dialCtlPeerCfgMaxDuration        INTEGER,
+            dialCtlPeerCfgCarrierDelay       INTEGER,
+            dialCtlPeerCfgCallRetries        INTEGER,
+            dialCtlPeerCfgRetryDelay         INTEGER,
+            dialCtlPeerCfgFailureDelay       INTEGER,
+            dialCtlPeerCfgTrapEnable         INTEGER,
+            dialCtlPeerCfgStatus             RowStatus
+        }
+
+dialCtlPeerCfgId OBJECT-TYPE
+        SYNTAX      INTEGER (1..2147483647)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"该对象标识单一的对等点。在该表中对于一个对等点可能有多行，分别
+定义了到达该对等点的几种不同方法。因此，该表中可能会有多行具有
+同一dialCtlPeerCfgId 。一个对等点的多行可被用来支持多链路和备份
+线路。单一的对等点可以用该对象的唯一值来标识。一个对等点的不同
+行必须有相同的dialCtlPeerCfgId和不同的ifEntries，因此具有不同
+的ifIndex值。"
+        ::= { dialCtlPeerCfgEntry 1 }
+
+dialCtlPeerCfgIfType OBJECT-TYPE
+        SYNTAX      IANAifType
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "用于呼叫该对等点的接口类型。对于ISDN，取值isdn(63)。"
+        DEFVAL      { other }
+        ::= { dialCtlPeerCfgEntry 2 }
+
+dialCtlPeerCfgLowerIf OBJECT-TYPE
+        SYNTAX      InterfaceIndexOrZero
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"对等点被呼叫的接口的ifIndex值。例如在一个ISDN接口，该值可以
+是D信道的ifIndex值或者B信道的ifIndex值，只要适合于一个给定
+的对等点。例如，对于基本速率租用线路，有必要指定B信道的ifIndex，
+而对于半永久连接必须指明D信道的ifIndex。
+如果接口可以动态指定，该对象值为0。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 3 }
+
+dialCtlPeerCfgOriginateAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"对等点被呼叫的地址。把该对象看作一个D信道呼叫请求中的‘ATDT’
+后的字符集或者‘电话号码’。
+该信息的结构指明了具体的交换类型。如果到达该对等点不需要地址信
+息，例如对于租用线路，该对象将为0长度字符串。"
+        ::= { dialCtlPeerCfgEntry 4 }
+
+dialCtlPeerCfgAnswerAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+ "呼叫方号码信息单元，例如入呼叫通过PBX或交换机的ISDN SETUP消
+息中的号码信息单元。该地址可以用来标识对等点。如果该地址未知或
+者与dialCtlPeerCfgOriginateAddress 相同，该对象将为0字符长度。
+"
+        DEFVAL      { "" }
+        ::= { dialCtlPeerCfgEntry 5 }
+
+dialCtlPeerCfgSubAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "对等点被呼叫的子地址。
+             如果给定媒体的子地址没有定义或者没有使用，该对象为0长度字符串。"
+        DEFVAL      { "" }
+        ::= { dialCtlPeerCfgEntry 6 }
+
+dialCtlPeerCfgClosedUserGroup OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "对等点被呼叫的闭合用户组(Closed User Group)。
+             如果给定闭合用户组没有定义或者没有使用，该对象为0长度字符串。"
+        REFERENCE
+            "Q.931, chapter 4.6.1."
+        DEFVAL      { "" }
+        ::= { dialCtlPeerCfgEntry 7 }
+
+dialCtlPeerCfgSpeed OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"在呼叫该对等点时希望的信息传送速率，单位为bits/秒。详细的特定
+媒体信息，例如ISDN电路的信息类型和信息传送速率，必须从该对象中
+取出。如果要使用的传送速率未知或为默认值，该对象的值为0。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 8 }
+
+dialCtlPeerCfgInfoType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            other(1),
+            speech(2),
+            unrestrictedDigital(3),     -- 64k/s数据
+            unrestrictedDigital56(4),   -- 56k速率适配
+            restrictedDigital(5),
+            audio31(6),                 -- 3.1 kHz音频
+            audio7(7),                  -- 7 kHz音频
+            video(8),
+            packetSwitched(9),
+            fax(10)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "在呼叫对等点时要使用的信息传送能力。
+             speech(2)指非数据连接，其中audio31(6)和audio7(7)指数据模式连接。"
+        DEFVAL      { other }
+        ::= { dialCtlPeerCfgEntry 9 }
+
+dialCtlPeerCfgPermission OBJECT-TYPE
+        SYNTAX      INTEGER {
+            originate(1),
+            answer(2),
+            both(3),               -- 发起和应答
+            callback(4),
+            none(5)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"可用的许可。callback(4)拒绝该呼叫然后再呼叫对方，或者如果可用
+的话使用‘反向付费’信息单元。注意callback(4)被希望用于控制付费，
+不是安全，并且适用于反向呼叫优先于接受呼叫。由于安全原因反向呼
+叫可以用PPP反向呼叫来处理。"
+        DEFVAL      { both }
+        ::= { dialCtlPeerCfgEntry 10 }
+
+dialCtlPeerCfgInactivityTimer OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        UNITS       "seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"如果在该对象指定的时间内（以秒为单位）不再携带有用数据，连接将
+会被自动断开。该上下文中的有用信息指前向包，包括路由信息；不包
+括封装维护帧。0表示在无有用数据时连接不会自动切断，也就是说是一
+个专用电路。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 11 }
+
+dialCtlPeerCfgMinDuration OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"呼叫以秒计的最小保持时间，从呼叫连接开始到呼叫断开。该对象用于
+这样的情况：在大多数国家计费采用时间单位，该时间应该尽可能精确。
+"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 12 }
+
+dialCtlPeerCfgMaxDuration OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "以秒计的最大呼叫保持时间。0表示‘不受限制’。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 13 }
+
+dialCtlPeerCfgCarrierDelay OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        UNITS       "seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"以秒计的呼叫超时时间。缺省值为0，表示采用对提问的媒体指定的呼
+叫超时。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 14 }
+
+dialCtlPeerCfgCallRetries OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"呼叫一个无响应地址的次数。0表示没有限制。目的是限制对一个不可
+访问或拒绝呼叫的地址的持续呼叫次数。
+一些国家限制对一个给定对等点的重试呼叫次数。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 15 }
+
+dialCtlPeerCfgRetryDelay OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        UNITS       "seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"如果不能到达对等点，两次呼叫重试之间的时间间隔。0表示呼叫重试
+可以无延时地进行。"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 16 }
+
+dialCtlPeerCfgFailureDelay OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        UNITS       "seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"在发现对等点不可到达后多长时间（以秒为单位）重新呼叫。例如在
+dialCtlPeerCfgCallRetries定义的非成功呼叫次数后。0表示在
+dialCtlPeerCfgCallRetries 次非成功呼叫后，对等点不会被再次呼叫。
+"
+        DEFVAL      { 0 }
+        ::= { dialCtlPeerCfgEntry 17 }
+
+dialCtlPeerCfgTrapEnable OBJECT-TYPE
+        SYNTAX      INTEGER {
+            enabled(1),
+            disabled(2)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+"该对象表示是否为该对等点产生dialCtlPeerCallInformation和 
+dialCtlPeerCallSetup陷阱。"
+        DEFVAL      { disabled }
+        ::= { dialCtlPeerCfgEntry 18 }
+
+dialCtlPeerCfgStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "表中该行的状态。"
+        ::= { dialCtlPeerCfgEntry 19 }
+
+-- 对等点统计表
+
+dialCtlPeerStatsTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF DialCtlPeerStatsEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"每个对等点行的统计信息。dialCtlPeerCfgTable 表中的每一行在该表
+中都有一行。"
+       ::= { dialCtlPeer 2 }
+
+dialCtlPeerStatsEntry OBJECT-TYPE
+        SYNTAX      DialCtlPeerStatsEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"单个对等点的统计信息。该行有效持久，包含描述上次呼叫尝试的信息
+和附加统计信息。"
+        AUGMENTS    { dialCtlPeerCfgEntry }
+      ::= { dialCtlPeerStatsTable 1 }
+
+DialCtlPeerStatsEntry ::=
+        SEQUENCE {
+            dialCtlPeerStatsConnectTime          AbsoluteCounter32,
+            dialCtlPeerStatsChargedUnits         AbsoluteCounter32,
+            dialCtlPeerStatsSuccessCalls         AbsoluteCounter32,
+            dialCtlPeerStatsFailCalls            AbsoluteCounter32,
+            dialCtlPeerStatsAcceptCalls          AbsoluteCounter32,
+            dialCtlPeerStatsRefuseCalls          AbsoluteCounter32,
+            dialCtlPeerStatsLastDisconnectCause  OCTET STRING,
+            dialCtlPeerStatsLastDisconnectText   DisplayString,
+            dialCtlPeerStatsLastSetupTime        TimeStamp
+        }
+
+dialCtlPeerStatsConnectTime OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        UNITS       "seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"自从系统启动以来的累计连接时间。这是总的连接时间，也就是出呼叫
+的连接时间加入呼叫的连接时间。"
+        ::= { dialCtlPeerStatsEntry 1 }
+
+dialCtlPeerStatsChargedUnits OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"自从系统启动以来该对等点的累计付费单元。只计算采用本地接口的付
+费单元，例如发起的呼叫或激活‘反向付费’的呼叫。"
+        ::= { dialCtlPeerStatsEntry 2 }
+
+dialCtlPeerStatsSuccessCalls OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "到该对等点的已完成的呼叫。"
+        ::= { dialCtlPeerStatsEntry 3 }
+
+dialCtlPeerStatsFailCalls OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "自从系统启动以来到该对等点的失败的呼叫尝试数。"
+        ::= { dialCtlPeerStatsEntry 4 }
+
+dialCtlPeerStatsAcceptCalls OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "自从系统启动以来发自该对等点的已接受的呼叫数。"
+        ::= { dialCtlPeerStatsEntry 5 }
+
+dialCtlPeerStatsRefuseCalls OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "自从系统启动以来发自该对等点的被拒绝的呼叫数。"
+        ::= { dialCtlPeerStatsEntry 6 }
+
+dialCtlPeerStatsLastDisconnectCause OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..4))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"与上次呼叫相关的编码的网络原因值。该对象将会在任何当一个呼叫开
+始或清除的时候更新。该对象的值依赖于接口类型和在该接口上使用的
+协议和协议的版本。下面给出了一些可以参考的可能原因。"
+        REFERENCE
+"- Bellcore SR-NWT-001953, 基本接入接口上的ISDN终端设备的通用指导
+5.2.5.8.节
+- Bellcore SR-NWT-002343, 客户前端设备的ISDN基本速率接口通用指导
+8.2.5.8.节
+- ITU-T Q.931, 附录I.
+- ITU-T X.25, CAUSE和DIAGNOSTIC字段值。
+- German Telekom FTZ 1TR6, 3.2.3.4.4.4.节"
+        ::= { dialCtlPeerStatsEntry 7 }
+
+dialCtlPeerStatsLastDisconnectText OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+DESCRIPTION
+"上次呼叫中断原因的ASCII文本描述。
+该对象存在是因为一个管理站不可能存储各种类型的接口的所有可能的
+原因值。它只用在当管理站不能解码
+dialCtlPeerStatsLastDisconnectCause的值时。
+该对象将会在任何当一个呼叫开始或清除的时候更新。"
+        ::= { dialCtlPeerStatsEntry 8 }
+
+dialCtlPeerStatsLastSetupTime OBJECT-TYPE
+        SYNTAX      TimeStamp
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"当上一个到该对等点的呼叫开始后的sysUpTime的值。
+对于ISDN媒体，该变量为从网络中接收到建立消息或将建立消息发向网
+络的时间。
+该对象将会在任何当一个呼叫开始或清除的时候更新。"
+        ::= { dialCtlPeerStatsEntry 9 }
+
+--
+-- 活跃呼叫组
+--
+
+callActive OBJECT IDENTIFIER ::= { dialControlMibObjects 3 }
+
+-- callActiveTable
+-- 存储活跃呼叫信息的表
+-- 这些呼叫可以是电路交换或虚电路。
+-- 当一个呼叫开始时会创建一条记录，呼叫清除时会删除该记录。
+
+callActiveTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CallActiveEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "包含到一个特定目的地的活跃呼叫信息的表。"
+        ::= { callActive 1 }
+
+callActiveEntry OBJECT-TYPE
+        SYNTAX      CallActiveEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"关于单个活跃连接的信息。
+当一个呼叫开始时会创建一条记录，呼叫清除时会删除该记录。"
+INDEX       { callActiveSetupTime, callActiveIndex }
+        ::= { callActiveTable 1 }
+
+
+CallActiveEntry ::=
+        SEQUENCE {
+            callActiveSetupTime                  TimeStamp,
+            callActiveIndex                      INTEGER,
+            callActivePeerAddress                DisplayString,
+            callActivePeerSubAddress             DisplayString,
+            callActivePeerId                     INTEGER,
+            callActivePeerIfIndex                INTEGER,
+            callActiveLogicalIfIndex             InterfaceIndexOrZero,
+            callActiveConnectTime                TimeStamp,
+            callActiveCallState                  INTEGER,
+            callActiveCallOrigin                 INTEGER,
+            callActiveChargedUnits               AbsoluteCounter32,
+            callActiveInfoType                   INTEGER,
+            callActiveTransmitPackets            AbsoluteCounter32,
+            callActiveTransmitBytes              AbsoluteCounter32,
+            callActiveReceivePackets             AbsoluteCounter32,
+            callActiveReceiveBytes               AbsoluteCounter32
+        }
+
+callActiveSetupTime OBJECT-TYPE
+        SYNTAX      TimeStamp
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+"当与该行相关的呼叫开始时的sysUpTime的值。该对象用于经过一段特
+定时间后NMS查询所有呼叫。同时，该对象也可以用来找出呼叫开始和
+呼叫连接间的比较大的延时。对于ISDN媒体，该变量为从网络中接收到
+建立消息或将建立消息发向网络的时间。"
+        ::= { callActiveEntry 1 }
+
+callActiveIndex OBJECT-TYPE
+        SYNTAX      INTEGER (1..'7fffffff'h)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "小的索引变量，用来区分在百分之一秒内开始的多个呼叫。"
+        ::= { callActiveEntry 2 }
+
+callActivePeerAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫连接到的号码。如果该号码不可用，该对象为0长度。"
+        ::= { callActiveEntry 3 }
+
+callActivePeerSubAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"该呼叫要连接到的子地址。如果子地址没有定义或不可用，该对象为0
+长度。"
+        ::= { callActiveEntry 4 }
+
+callActivePeerId OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"对等点表行的Id值，该行标识了此呼叫的对等点。如果该呼叫的对等
+点表行不存在或未知，该对象的值为0。"
+        ::= { callActiveEntry 5 }
+
+callActivePeerIfIndex OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"对等点表行的ifIndex值，该行标识了此呼叫的对等点。如果该呼叫的
+对等点表行不存在或未知，该对象的值为0。"
+::= { callActiveEntry 6 }
+
+callActiveLogicalIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndexOrZero
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"逻辑接口的ifIndex值，呼叫通过该接口进行。对于ISDN媒体，该对
+象是用于此呼叫的B信道的ifIndex。如果该呼叫的对等点表行未知，该
+对象的值为0。"
+        ::= { callActiveEntry 7 }
+
+callActiveConnectTime OBJECT-TYPE
+        SYNTAX      TimeStamp
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"当呼叫连接时的sysUpTime值。
+如果呼叫没有连接，该对象将具有值0。"
+::= { callActiveEntry 8 }
+
+callActiveCallState OBJECT-TYPE
+        SYNTAX      INTEGER {
+            unknown(1),
+            connecting(2),
+            connected(3),
+            active(4)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "当前呼叫状态。
+             unknown(1)     - 呼叫状态未知。
+             connecting(2)  - 正在进行连接尝试（出呼叫）。
+             connected(3)   - 一个入呼叫正在确认过程。
+             active(4)      - 呼叫是激活的。"
+        ::= { callActiveEntry 9 }
+
+callActiveCallOrigin OBJECT-TYPE
+        SYNTAX      INTEGER {
+            originate(1),
+            answer(2),
+            callback(3)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "呼叫来源。"
+        ::= { callActiveEntry 10 }
+
+callActiveChargedUnits OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+DESCRIPTION
+"该连接的已付费单位。对于入呼叫或交换机没有提供付费信息的呼叫，该对
+象的值为0。"
+::= { callActiveEntry 11 }
+
+callActiveInfoType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            other(1),                   -- 例如非ISDN媒体
+            speech(2),
+            unrestrictedDigital(3),     -- 64k/s数据
+            unrestrictedDigital56(4),   -- 具有56k速率适配
+            restrictedDigital(5),
+            audio31(6),                 -- 3.1 kHz音频
+            audio7(7),                  -- 7 kHz音频
+            video(8),
+            packetSwitched(9),
+            fax(10)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫的信息类型。"
+        ::= { callActiveEntry 12 }
+
+callActiveTransmitPackets OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS     current
+        DESCRIPTION
+            "为该呼叫传送的包的数目。"
+        ::= { callActiveEntry 13 }
+
+callActiveTransmitBytes OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "为该呼叫传送的字节数。"
+        ::= { callActiveEntry 14 }
+
+callActiveReceivePackets OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫接收到的包的数目。"
+        ::= { callActiveEntry 15 }
+
+callActiveReceiveBytes OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫接收到的字节数。"
+        ::= { callActiveEntry 16 }
+
+--
+-- 呼叫历史组
+--
+
+callHistory OBJECT IDENTIFIER ::= { dialControlMibObjects 4 }
+
+callHistoryTableMaxLength OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+"callHistoryTable可以包含的最大行数。值为0将阻止保留任何历史记
+录。如果该表已满，最早的行会被删除以创建新行。"
+        ::= { callHistory 1 }
+
+callHistoryRetainTimer OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        UNITS       "minutes"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+"callHistoryEntry在删除前被保留的最小时间。值为0 将阻止保留任
+何历史记录，但不会阻止产生callCompletion陷阱也不影响其他表。"
+        ::= { callHistory 2 }
+
+-- callHistoryTable
+-- 存储过去的呼叫信息的表。存储目的地号码、呼叫连接和断开时间、断开原因。
+-- 这些呼叫可以是电路交换或虚电路。
+-- 每一个成功呼叫、非成功呼叫和拒绝呼叫都被存储起来。
+-- 当一个呼叫清除后会创建一行。
+
+callHistoryTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF CallHistoryEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "包含特定呼叫和特定目的地信息的表。"
+        ::= { callHistory 3 }
+
+callHistoryEntry OBJECT-TYPE
+        SYNTAX      CallHistoryEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "关于单个连接的信息。"
+        INDEX       { callActiveSetupTime, callActiveIndex }
+        ::= { callHistoryTable 1 }
+
+
+CallHistoryEntry ::=
+        SEQUENCE {
+            callHistoryPeerAddress               DisplayString,
+            callHistoryPeerSubAddress            DisplayString,
+            callHistoryPeerId                    INTEGER,
+            callHistoryPeerIfIndex               INTEGER,
+            callHistoryLogicalIfIndex            InterfaceIndex,
+            callHistoryDisconnectCause           OCTET STRING,
+            callHistoryDisconnectText            DisplayString,
+            callHistoryConnectTime               TimeStamp,
+            callHistoryDisconnectTime            TimeStamp,
+            callHistoryCallOrigin                INTEGER,
+            callHistoryChargedUnits              AbsoluteCounter32,
+            callHistoryInfoType                  INTEGER,
+            callHistoryTransmitPackets           AbsoluteCounter32,
+            callHistoryTransmitBytes             AbsoluteCounter32,
+            callHistoryReceivePackets            AbsoluteCounter32,
+            callHistoryReceiveBytes              AbsoluteCounter32
+        }
+
+callHistoryPeerAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫连接到的号码。如果该号码不可用，该对象值长度为0。"
+        ::= { callHistoryEntry 1 }
+
+callHistoryPeerSubAddress OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"该呼叫连接到的子地址。如果该子地址没有定义或不可用，该对象为0
+长度字符串。"
+        ::= { callHistoryEntry 2 }
+
+callHistoryPeerId OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"对等点表行的Id值，该行标识了此呼叫的对等点。如果该呼叫的对等
+点表行不存在或未知，该对象的值为0。"
+        ::= { callHistoryEntry 3 }
+
+callHistoryPeerIfIndex OBJECT-TYPE
+        SYNTAX      INTEGER (0..2147483647)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"对等点表行的ifIndex值，该行标识了此呼叫的对等点。如果该呼叫的
+对等点表行不存在或未知，该对象的值为0。"
+        ::= { callHistoryEntry 4 }
+
+callHistoryLogicalIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"逻辑接口的ifIndex值，呼叫通过该接口进行。对于ISDN媒体，该对
+象是用于此呼叫的B信道的ifIndex。"
+        ::= { callHistoryEntry 5 }
+
+callHistoryDisconnectCause OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..4))
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"与该呼叫相关的网络原因的编码值。该对象将会在任何当一个呼叫开始
+或清除的时候更新。该对象的值依赖于接口类型和在该接口上使用的协
+议和协议的版本。下面给出了一些可以参考的可能原因。"
+        REFERENCE
+"- Bellcore SR-NWT-001953, 基本接入接口上的ISDN终端设备的通用指导
+5.2.5.8.节
+- Bellcore SR-NWT-002343, 客户前端设备的ISDN基本速率接口通用指导
+8.2.5.8.节
+- ITU-T Q.931, 附录I.
+- ITU-T X.25, CAUSE和DIAGNOSTIC字段值。
+- German Telekom FTZ 1TR6, 3.2.3.4.4.4.节"
+        ::= { callHistoryEntry 6 }
+
+callHistoryDisconnectText OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"呼叫中断原因的ASCII文本描述。
+该对象存在是因为一个管理站不可能存储各种类型的接口的所有可能的
+原因值。它只用在当管理站不能解码
+dialCtlPeerStatsLastDisconnectCause的值时。"
+        ::= { callHistoryEntry 7 }
+
+callHistoryConnectTime OBJECT-TYPE
+        SYNTAX      TimeStamp
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"当呼叫连接时的sysUpTime值。"
+        ::= { callHistoryEntry 8 }
+
+callHistoryDisconnectTime OBJECT-TYPE
+        SYNTAX      TimeStamp
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "呼叫断开时的sysUpTime值。"
+        ::= { callHistoryEntry 9 }
+
+callHistoryCallOrigin OBJECT-TYPE
+        SYNTAX      INTEGER {
+            originate(1),
+            answer(2),
+            callback(3)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "呼叫来源。"
+        ::= { callHistoryEntry 10 }
+
+callHistoryChargedUnits OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+"该连接的已付费单位。对于入呼叫或交换机没有提供付费信息的呼叫，
+该对象的值为0。"
+        ::= { callHistoryEntry 11 }
+
+callHistoryInfoType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            other(1),                   -- 例如非ISDN媒体
+            speech(2),
+            unrestrictedDigital(3),     -- 64k/s数据 data
+            unrestrictedDigital56(4),   -- 具有56k速率适配
+            restrictedDigital(5),
+            audio31(6),                 -- 3.1 kHz音频
+            audio7(7),                  -- 7 kHz音频
+            video(8),
+            packetSwitched(9),
+            fax(10)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "该呼叫的信息类型。"
+        ::= { callHistoryEntry 12 }
+
+callHistoryTransmitPackets OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS     current
+        DESCRIPTION
+            "当该呼叫活跃时传送的包的数目。"
+        ::= { callHistoryEntry 13 }
+
+callHistoryTransmitBytes OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "当该呼叫活跃时传送的字节数。"
+        ::= { callHistoryEntry 14 }
+
+callHistoryReceivePackets OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "当该呼叫活跃时接收到的包的数目。"
+        ::= { callHistoryEntry 15 }
+
+callHistoryReceiveBytes OBJECT-TYPE
+        SYNTAX      AbsoluteCounter32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "当该呼叫活跃时接收到的字节数。"
+        ::= { callHistoryEntry 16 }
+
+-- 与连接管理相关的陷阱
+
+dialControlMibTrapPrefix OBJECT IDENTIFIER ::= { dialControlMib 2 }
+dialControlMibTraps OBJECT IDENTIFIER ::= { dialControlMibTrapPrefix 0 }
+
+dialCtlPeerCallInformation NOTIFICATION-TYPE
+        OBJECTS {
+            callHistoryPeerId,
+            callHistoryPeerIfIndex,
+            callHistoryLogicalIfIndex,
+            ifOperStatus,
+            callHistoryPeerAddress,
+            callHistoryPeerSubAddress,
+            callHistoryDisconnectCause,
+            callHistoryConnectTime,
+            callHistoryDisconnectTime,
+            callHistoryInfoType,
+            callHistoryCallOrigin
+        }
+        STATUS      current
+        DESCRIPTION
+"当成功呼叫清除时或呼叫尝试最终失败时，该陷阱/通知被发送到管理
+者。如果正在进行呼叫重试，那么在所有重试尝试都失败时发送。然而，
+在成功的呼叫尝试中只发送一次该陷阱，后来的呼叫尝试没有陷阱。
+ifOperStatus将返回与该呼叫的对等点相关的虚拟接口的操作状态。"
+     ::= { dialControlMibTraps 1 }
+
+dialCtlPeerCallSetup NOTIFICATION-TYPE
+        OBJECTS {
+            callActivePeerId,
+            callActivePeerIfIndex,
+            callActiveLogicalIfIndex,
+            ifOperStatus,
+            callActivePeerAddress,
+            callActivePeerSubAddress,
+            callActiveInfoType,
+            callActiveCallOrigin
+        }
+        STATUS      current
+        DESCRIPTION
+"当接收到呼叫建立消息或者发出呼叫建立消息时，该陷阱/通知被发送
+到管理者。ifOperStatus将返回与该呼叫的对等点相关的虚拟接口的操
+作状态。"
+     ::= { dialControlMibTraps 2 }
+
+-- 一致性信息
+
+dialControlMibConformance OBJECT IDENTIFIER ::=
+                                { dialControlMib 3 }
+dialControlMibCompliances OBJECT IDENTIFIER ::=
+                                { dialControlMibConformance 1 }
+dialControlMibGroups      OBJECT IDENTIFIER ::=
+                                { dialControlMibConformance 2 }
+
+-- 一致性表述
+
+dialControlMibCompliance MODULE-COMPLIANCE
+        STATUS      current
+        DESCRIPTION
+            "实现DIAL CONTROL MIB的记录的一致性表述。"
+        MODULE      -- this module
+        MANDATORY-GROUPS
+            { dialControlGroup, callActiveGroup, callHistoryGroup,
+              callNotificationsGroup }
+        ::= { dialControlMibCompliances 1 }
+
+-- 一致性单元
+
+dialControlGroup OBJECT-GROUP
+        OBJECTS {
+            dialCtlAcceptMode,
+            dialCtlTrapEnable,
+            dialCtlPeerCfgIfType,
+            dialCtlPeerCfgLowerIf,
+            dialCtlPeerCfgOriginateAddress,
+            dialCtlPeerCfgAnswerAddress,
+            dialCtlPeerCfgSubAddress,
+            dialCtlPeerCfgClosedUserGroup,
+            dialCtlPeerCfgSpeed,
+            dialCtlPeerCfgInfoType,
+            dialCtlPeerCfgPermission,
+            dialCtlPeerCfgInactivityTimer,
+            dialCtlPeerCfgMinDuration,
+            dialCtlPeerCfgMaxDuration,
+            dialCtlPeerCfgCarrierDelay,
+            dialCtlPeerCfgCallRetries,
+            dialCtlPeerCfgRetryDelay,
+            dialCtlPeerCfgFailureDelay,
+            dialCtlPeerCfgTrapEnable,
+            dialCtlPeerCfgStatus,
+            dialCtlPeerStatsConnectTime,
+            dialCtlPeerStatsChargedUnits,
+            dialCtlPeerStatsSuccessCalls,
+            dialCtlPeerStatsFailCalls,
+            dialCtlPeerStatsAcceptCalls,
+            dialCtlPeerStatsRefuseCalls,
+            dialCtlPeerStatsLastDisconnectCause,
+            dialCtlPeerStatsLastDisconnectText,
+            dialCtlPeerStatsLastSetupTime
+        }
+        STATUS      current
+        DESCRIPTION
+            "提供DIAL CONTROL能力的对象集。"
+        ::= { dialControlMibGroups 1 }
+
+callActiveGroup OBJECT-GROUP
+        OBJECTS {
+            callActivePeerAddress,
+            callActivePeerSubAddress,
+            callActivePeerId,
+            callActivePeerIfIndex,
+            callActiveLogicalIfIndex,
+            callActiveConnectTime,
+            callActiveCallState,
+            callActiveCallOrigin,
+            callActiveChargedUnits,
+            callActiveInfoType,
+            callActiveTransmitPackets,
+            callActiveTransmitBytes,
+            callActiveReceivePackets,
+            callActiveReceiveBytes
+        }
+        STATUS      current
+        DESCRIPTION
+            "提供活跃呼叫能力的对象集。"
+        ::= { dialControlMibGroups 2 }
+
+callHistoryGroup OBJECT-GROUP
+        OBJECTS {
+            callHistoryTableMaxLength,
+            callHistoryRetainTimer,
+            callHistoryPeerAddress,
+            callHistoryPeerSubAddress,
+            callHistoryPeerId,
+            callHistoryPeerIfIndex,
+            callHistoryLogicalIfIndex,
+            callHistoryDisconnectCause,
+            callHistoryDisconnectText,
+            callHistoryConnectTime,
+            callHistoryDisconnectTime,
+            callHistoryCallOrigin,
+            callHistoryChargedUnits,
+            callHistoryInfoType,
+            callHistoryTransmitPackets,
+            callHistoryTransmitBytes,
+            callHistoryReceivePackets,
+            callHistoryReceiveBytes
+        }
+        STATUS      current
+        DESCRIPTION
+            "提供呼叫历史能力的对象集。"
+        ::= { dialControlMibGroups 3 }
+
+callNotificationsGroup NOTIFICATION-GROUP
+    NOTIFICATIONS { dialCtlPeerCallInformation, dialCtlPeerCallSetup }
+    STATUS        current
+    DESCRIPTION
+            "需要一个Dial Control MIB实体来实现的通知。"
+    ::= { dialControlMibGroups 4 }
+
+
+END
+
+4.  致谢
+   该文档由ISDN MIB工作组制定。非常感谢下面人员： 
+
+           Ed Alcoff
+           Fred Baker
+           Bibek A. Das
+           Ken Grigg
+           Jeffrey T. Johnson
+           Glenn Kime
+           Oliver Korfmacher
+           Kedar Madineni
+           Bill Miskovetz
+           David M. Piscitello
+           Lisa A. Phifer
+           Randy Roberts
+           Hascall H. Sharp
+           Hongchi Shih
+           Robert Snyder
+           Bob Stewart
+           Ron Stoughton
+           James Watt
+5.  参考文献
+[1]  SNMPv2 Working Group, Case, J., McCloghrie, K., Rose, M., andS. Waldbusser, 
+"第二版简单网管协议（SNMPv2）的管理信息结构", RFC 1902, January 1996.
+
+[2]  McCloghrie, K., and M. Rose, Editors, "第二版简单网管协议（SNMPv2）的管理信
+息库：MIB-II", STD 17, RFC 1213, Hughes LAN Systems, Performance Systems 
+International, March 1991.
+
+[3]  Case, J., Fedor, M., Schoffstall, M., and J. Davin, "简单网管协议(SNMP)", STD 
+15, RFC 1157, SNMP Research, Performance Systems International, MIT Lab for Computer 
+Science, May 1990.
+
+[4]  SNMPv2 Working Group, Case, J., McCloghrie, K., Rose, M. andS. Waldbusser, "
+第二版网络管理协议(SNMPv2)的协议操作", RFC 1905, January 1996.
+
+[5]  ITU-T Recommendation "数字用户信令系统No.1(DSS 1) – ISDN基本呼叫控制的用
+户网络接口第3层规范", Rec. Q.931(I.451), March 1993.
+
+[6]  ITU-T Recommendation "ISDN附加业务ISDN用户网络接口第3层规范的通用控制过
+程。", Rec. Q.932(I.452).
+
+[7]  ITU-T Recommendation "数字用户信令系统No. 1(DSS 1) – 帧模式基本呼叫控制的
+信令规范", Rec. Q.933.
+
+[8]  McCloghrie, K. and F. Kastenholz, "MIB-II接口组的演进", RFC 1573, Hughes LAN 
+Systems, FTP Software, January 1994.
+
+6.  安全考虑
+   该MIB中的信息可安全地用于上层协议。
+   实现者应注意支持对对等点类的支持可能会导致安全漏洞（见3.4节）。用户不知道呼叫
+从哪儿来，如果其他鉴权策略（例如PPP鉴权）不可用，将会潜在地允许未授权访问。
+
+7. 作者地址
+   Guenter Roeck
+   cisco Systems
+   170 West Tasman Drive
+   San Jose, CA 95134
+   U.S.A.
+
+   Phone: +1 408 527 3143
+   EMail: groeck@cisco.com
+
+
+
+RFC2128——Dial Control Management Information Base using SMIv2
+                   拨号控制MIB
+
+
+31
+RFC文档中文翻译计划

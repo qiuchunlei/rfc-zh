@@ -1,0 +1,312 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：顾国飞（ggfei  ggfei@263.net）
+译文发布时间：2001-4-10
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保留本文档的翻译及版权信息。
+
+
+Network Working Group                                           J. Myers
+Request for Comments: 1939                               Carnegie Mellon
+STD: 53                                                          M. Rose
+Obsoletes: 1725                             Dover Beach Consulting, Inc.
+Category: Standards Track                                       May 1996
+
+
+RFC1939-POP3协议
+（RFC1939  Post Office Protocol - Version 3）
+
+本备忘录状态
+   This memo provides information for the Internet community.  It does
+   not specify an Internet standard of any kind.  Distribution of this
+   memo is unlimited.
+
+
+目录
+1. 简介	2
+2. 简单说明	2
+3. 基本操作	3
+4. "确认"状态	3
+5. "操作"状态	5
+6."更新"状态	5
+7.可选的POP3命令	5
+8. POP3命令总结	7
+9. POP3会话实例	8
+10. 消息格式	9
+11. 安全性考虑	9
+12. 参考资料	9
+14. 致谢	9
+15. 作者地址	10
+APPENDIX A. DIFFERENCES FROM RFC 1725	10
+APPENDIX B. COMMAND INDEX	11
+
+
+1. 简介
+　　对于在网络上的比较小的结点，支持消息传输系统（MTS）是不实际的。例如，一台工作站可能不具有充足的资源允许SMTP服务器和相当的本地邮件传送系统保持序驻留，并持续运行。同样的，将一台个人计算机长时间连接在IP类型网络上的费用也是可观的（结点缺少的资源被称为"联络性"）。
+　　虽然如此，在这样的小结点上允许管理邮件是十分有用的，并且这些结点经常支持一个用户代理来管理邮件。为解决这一问题，能够支持MTS的结点就为这些不能支持的结点提供了邮件存储功能。邮局协议-版本3就是使这样的工作站可以用一种比较实用的方法来访问存储于服务器上的储存邮件。通常，这意味着工作站可以从服务器上取得邮件，而服务器为它暂时保存邮件。 
+　　在下文中，客户主机指的是利用POP3服务的主机，而服务器主机指的是提供POP3服务的主机。
+2. 简单说明
+　　在此文档中不指明客户主机如何将邮件送入到传送系统中去。但这里有一个说明：当用户代理需要将信息送到传送系统时，它在接力主机上建立SMTP连接（这些接力主机可以是POP3主机，也可以不是）。
+3. 基本操作
+　　初始时，服务器通过侦听TCP端口110开始POP3服务。当客户主机需要使用服务时，它将与服务器主机建立TCP连接。当连接建立后，POP3发送确认消息。客户和POP3服务器相互（分别）交换命令和响应，这一过程一直要持续到连接终止。
+　　POP3命令由一个命令和一些参数组成。所有命令以一个CRLF对结束。命令和参数由可打印的ASCII字符组成，它们之间由空格间隔。命令一般是三到四个字母，每个参数却可达40个字符长。
+　　POP3响应由一个状态码和一个可能跟有附加信息的命令组成。所有响应也是由CRLF对结束。现在有两种状态码，"确定" ("+OK")和"失败" ("-ERR")。
+　　对于特定命令的响应是由许多字符组成的。在这些情况中，下面一一表述：在发送第一行响应和一个CRLF之后，任何的附加信息行发送，他们也由CRLF对结束。当所有信息发送结束时，发送最后一行，包括一个结束字符（十进制码46，也就是"."）和一个CRLF对。如果信息中的任何一行以结束字符开始，此行就是通过在那一行预先装入结束而进行字符填充的。因此，多行响应由五个CRLF.CRLF 结束。当检测多行响应时，客户检测以确认此行是否以结束字符开始。如果是的，而且其后的字符不是CRLF，此行的第一个字符（结束字符）将被抛弃；如果其后紧跟CRLF，从POP服务器来的响应终止，包括.CRLF 的行也不被认为是多行响应的一部分了。
+　　在生命周期中，POP3会话有几个不同的状态。一旦TCP连接被打开，而且POP3服务器发送了确认信息，此过程就进入了"确认"状态。在此状态中，客户必须向POP3服务器确认自己是其的客户。一旦确认成功，服务器就获取与客户邮件相关的资源，此时这一过程进入了"操作"状态。在此状态中，客户提出服务，当客户发出QUIT命令时，此过程进入了"更新"状态。在此状态中，POP3服务器释放在"操作"状态中取得的资源，并发送消息，终止连接。
+　　POP3服务器可以拥有一个自动退出登录的记时器。此记时器必须至少可以记录10分钟。这样从客户发送的消息才可能刷新此记时器。当记时器失效时，POP3会话并不进入"更新"状态，而是关闭TCP连接，而且不删除任何消息，不向客户发送任何响应。
+4. "确认"状态
+　　一时TCP连接由POP3客户打开，POP3服务器发送一个单行的确认。这个消息可以是由CRLF结束的任何字符。例如，它可以是： 
+　　　　S: +OK POP3 server ready
+　　注意：这个消息是一个POP3应答。POP3服务器应该给出一个"确定"响应作为确认。
+　　此时POP3会话就进入了"确认"状态。此时，客户必须向服务器证明它的身份。在文档中介绍两种可能的处理机制，一种是USER和PASS命令，另一种是在后面要介绍的APOP命令。
+　　用USER和PASS命令进行确认过程，客户必须首先发送USER命令，如果POP3服务器以"确认"状态码响应，客户就可以发送PASS命令以完成确认，或者发送QUIT命令终止POP3会话。如果POP3服务器返回"失败"状态码，客户可以再发送确认命令，或者发送QUIT命令。
+　　当客户发送了PASS命令后，服务器根据USER和PASS命令的附加信息决定是否允许访问相应的存储邮件。
+　　一旦服务器通过这些数据决定允许客户访问储存邮件，服务器会在邮件上加上排它锁，以防止在进入"更新"状态前对邮件的改变。如果成功获得了排它锁，服务器返回一个"确认"状态码。会话进入"操作状态"，同时没有任何邮件被标记为删除。如果邮件因为某种原因不能打开（例如，排它锁不能获得，客户不能访问相应的邮件或者邮件不能进行语法分析），服务器将返回"失败"状态码。在返回"失败"状态码后，服务器会关闭连接。如果服务器没有关闭连接，客户可以重新发送确认命令，重新开始，或者发送QUIT命令。
+　　在服务器打开邮件后，它为每个消息指定一个消息号，并以八进制表示每个消息的长度。第一个消息被指定为1，第二个消息被指定为2，以此类推，第N个消息被指定为N。在POP3命令和响应中，所以的消息号和长度以十进制表示。
+　　下面是对上述三条命令的总结：
+
+
+5. "操作"状态
+　　一旦客户向服务器成功地确认了自己的身份，服务器将锁住并打开相应的邮件，这时POP3会话进入"操作"状态。现在客户可以重复下面的POP3命令，对于每个命令服务器都会返回应答。最后，客户发送QUIT命令，会话进入"更新"状态。
+下面是在"操作"状态中可用的命令：
+6."更新"状态
+　　当客户在"操作"状态下发送QUIT命令后，会话进入"更新"状态。（注意：如果客户在"确认"状态下发送QUIT后，会话并不进入"更新"状态。）
+　　如果会话因为QUIT命令以外的原因中断，会话并不进入"更新"状态，也不从服务器中删除任何信件。
+7.可选的POP3命令
+　　以上讨论的命令是对POP3服务的最小实现。以下说明的可选命令允许客户更方便地处理信件，这是一个比较一般的POP3服务实现。
+　　· TOP msg n
+　　【参数】一个是未被标记为删除的信件数，另一个是非负数（必须提供）
+　　【限制】仅在"操作"状态下使用。
+　　【说明】
+　　如果服务器返回"确认"，响应是多行的。在初始的+OK后，服务器发送信件头，一个空行将信件头和信件体分开，对于多行响应要注意字节填充终止符。 
+　　注意：如果客户要求的行数比信件体中的行数大，服务器会发送整个信件。
+　　【响应】+OK：其后有信件头； 
+　　-ERR：其后无类似消息。
+　　【例子】
+　　C: TOP 1 10 
+　　S: +OK
+　　S: <服务器发送消息头，一个空行和信件的头10行>
+　　S: .
+　　...
+　　C: TOP 100 3
+　　S: -ERR no such message
+
+　　· UIDL [msg]
+　　【参数】信件数（可选）。如果给出信件数，不包括被标记为删除的信件。
+　　【限制】仅在"操作"状态下使用。
+　　【说明】
+　　如果给出了参数，且POP3服务器返回包括上述信息的"确认"，此行称为信息的"独立-ID表"。 
+　　如果没有参数，服务器返回"确认"响应，此响应便以多行给出。在初的+OK后，对于每个信件，服务器均给出相应的响应。此行叫做信件的"独立-ID表"。
+　　为简化语法分析，所有服务器要求使用独立-ID表的特定格式。它包括空格和信件的独立-ID。
+　　信件的独立-ID由0x21到0x7E字符组成，这个符号在给定的存储邮件中不会重复。
+　　注意：信件不包括被标记为删除的信件。
+　　【响应】+OK：其后是独立-ID表； 
+　　-ERR：其后无类似信件。
+　　【例子】
+　　C: UIDL 
+　　S: +OK
+　　S: 1 whqtswO00WBw418f9t5JxYwZ
+　　S: 2 QhdPYR:00WBw1Ph7x7
+　　S: .
+　　...
+　　C: UIDL 2
+　　S: +OK 2 QhdPYR:00WBw1Ph7x7
+　　...
+　　C: UIDL 3
+　　S: -ERR no such message, only 2 messages in maildrop
+
+　　· APOP name digest
+　　【参数】指定邮箱的字串和MD5摘要串。
+　　【限制】仅在POP3确认后的"确认"状态中使用。
+　　【说明】通常，每个POP3会话均以USER/PASS互换开始。这导致了用户名和口令在网络上的显式传送，这不会造成什么危险。但是，许多客户经常连接到服务检查信件。通常间隔时间比较短，这就加大了泄密的可能性。 
+另一种提供"确认"过程的方法是使用APOP命令。
+　　实现APOP命令的服务器包括一个标记确认的时间戳。例如：在UNIX上使用APOP命令的语法为：process-ID.clock@hostname，其中进程-ID是进程的十进制的数，时钟是系统时钟的十进制表示，主机名与POP3服务器名一致。
+　　客户记录下此时间戳，然后以送APOP命令。name语法和USER命令一致。Digest是采用MD5算法产生的包括时间戳和共享密钥的字串。此密钥是客户和服务器共知的，应该注意保护此密钥，如果泄密，任何人都能够以用户身份进入服务器。
+　　如果服务器接到APOP命令，它验证digest，如果正确，服务器返回"确认"，进入"操作"状态；否则，给出"失败"并停留在"确认"状态。
+　　注意：共享密钥的长度增加，解读它的难度也相应增加，这个密钥应该是长字符串。
+　　【响应】+OK：邮件锁住并准备好； 
+　　-ERR：拒绝请求。
+　　【例子】
+　　S: +OK POP3 server ready <1896.697170952@dbc.mtview.ca.us> 
+　　C: APOP mrose c4c9334bac560ecc979e58001b3e22fb
+　　S: +OK maildrop has 1 message (369 octets)
+　　在此例子中，共享密钥 <1896.697170952@dbc.mtview.ca.us>tanstaaf由MD5算法生成，它产生了digest值， c4c9334bac560ecc979e58001b3e22fb
+8. POP3命令总结
+基础的POP3命令：
+USER name 在"确认"状态有效
+PASS string
+QUIT
+　
+STAT 在"操作"状态有效
+LIST [msg]
+RETR msg
+DELE msg
+NOOP
+RSET
+　
+QUIT 在"更新"状态有效
+　
+可选的POP3命令：
+APOP name digest 在"确认"状态有效
+TOP msg n 在"操作"状态有效
+UIDL [msg]
+　
+POP3 响应：
++OK
+-ERR
+　
+注意：除了STAT，LIST和UIDL的响应外，其它命令的响应均为"+OK"和 "-ERR"。响应后的所有文本将被客户略去。
+9. POP3会话实例
+S: <等待连接到TCP端口110>
+C: <打开连接>
+S: +OK POP3 server ready <1896.697170952@dbc.mtview.ca.us>
+C: APOP mrose c4c9334bac560ecc979e58001b3e22fb
+S: +OK mrose's maildrop has 2 messages (320 octets)
+C: STAT
+S: +OK 2 320
+C: LIST
+S: +OK 2 messages (320 octets)
+S: 1 120
+S: 2 200
+S: .
+C: RETR 1
+S: +OK 120 octets
+S: <服务器发送信件1>
+S: .
+C: DELE 1
+S: +OK message 1 deleted
+C: RETR 2
+S: +OK 200 octets
+S: <服务器发送信件2>
+S: .
+C: DELE 2
+S: +OK message 2 deleted
+C: QUIT
+S: +OK dewey POP3 server signing off (maildrop empty)
+C: <关闭连接>
+S: <等待下一次连接>
+10. 消息格式
+　　在会话过程中的消息格式都假定与Internet文本消息格式标准一致。应该注意的是，由于各个服务器对于换行符的处理不同，因此计数不一定相同。通常，在"确认"状态中，服务器能够以八进制计算信件的大小。例如，如果在打开储存邮件时服务器内部认定换行符代表一个字符，一般服务器在计算它时作为两个字符计。注意，以终止符开始的消息行不被计数两次，因为客户将在接收到多行响应后删除所有字节填充。
+11. 安全性考虑
+　　可以推测，使用APOP命令可以提供会话期间的保护。相应的，同时实现PASS和APOP命令的服务器只允许用户以一种方式访问；也就是说要么使用USER/PASS组合，要么使用APOP命令，不能同时使用两个。
+而且，注意随着共享密钥长度的增加，解读的难度也就上升了。服务器要提供用户名时不给出任何响应，不给出任何暗示此用户名是否正确。而口令却在网络上显式传送；使用RETR和TOP命令在网络上显式传送信件。
+12. 参考资料
+   [RFC821] Postel, J., "Simple Mail Transfer Protocol", STD 10, RFC
+       821, USC/Information Sciences Institute, August 1982.
+
+   [RFC822] Crocker, D., "Standard for the Format of ARPA-Internet Text
+       Messages", STD 11, RFC 822, University of Delaware, August 1982.
+
+   [RFC1321] Rivest, R., "The MD5 Message-Digest Algorithm", RFC 1321,
+       MIT Laboratory for Computer Science, April 1992.
+
+   [RFC1730] Crispin, M., "Internet Message Access Protocol - Version
+       4", RFC 1730, University of Washington, December 1994.
+
+   [RFC1734] Myers, J., "POP3 AUTHentication command", RFC 1734,
+       Carnegie Mellon, December 1994.
+
+14. 致谢
+   The POP family has a long and checkered history.  Although primarily
+   a minor revision to RFC 1460, POP3 is based on the ideas presented in
+   RFCs 918, 937, and 1081.
+
+   In addition, Alfred Grimstad, Keith McCloghrie, and Neil Ostroff
+   provided significant comments on the APOP command.
+15. 作者地址
+   John G. Myers
+   Carnegie-Mellon University
+   5000 Forbes Ave
+   Pittsburgh, PA 15213
+
+   EMail: jgm+@cmu.edu
+
+   Marshall T. Rose
+   Dover Beach Consulting, Inc.
+   420 Whisman Court
+   Mountain View, CA  94043-2186
+
+   EMail: mrose@dbc.mtview.ca.us
+Appendix A. Differences from RFC 1725
+   This memo is a revision to RFC 1725, a Draft Standard.  It makes the
+   following changes from that document:
+
+      - clarifies that command keywords are case insensitive.
+
+      - specifies that servers must send "+OK" and "-ERR" in
+        upper case.
+
+      - specifies that the initial greeting is a positive response,
+        instead of any string which should be a positive response.
+
+      - clarifies behavior for unimplemented commands.
+
+      - makes the USER and PASS commands optional.
+
+      - clarified the set of possible responses to the USER command.
+
+      - reverses the order of the examples in the USER and PASS
+        commands, to reduce confusion.
+
+      - clarifies that the PASS command may only be given immediately
+        after a successful USER command.
+
+      - clarified the persistence requirements of UIDs and added some
+        implementation notes.
+
+      - specifies a UID length limitation of one to 70 octets.
+
+      - specifies a status indicator length limitation
+        of 512 octets, including the CRLF.
+
+      - clarifies that LIST with no arguments on an empty mailbox
+        returns success.
+
+      - adds a reference from the LIST command to the Message Format
+        section
+
+      - clarifies the behavior of QUIT upon failure
+
+      - clarifies the security section to not imply the use of the
+        USER command with the APOP command.
+
+      - adds references to RFCs 1730 and 1734
+
+      - clarifies the method by which a UA may enter mail into the
+        transport system.
+
+      - clarifies that the second argument to the TOP command is a
+        number of lines.
+
+      - changes the suggestion in the Security Considerations section
+        for a server to not accept both PASS and APOP for a given user
+        from a "must" to a "should".
+
+      - adds a section on scaling and operational considerations
+
+Appendix B. Command Index
+       APOP .......................................................   15
+       DELE .......................................................    8
+       LIST .......................................................    6
+       NOOP .......................................................    9
+       PASS .......................................................   14
+       QUIT .......................................................    5
+       QUIT .......................................................   10
+       RETR .......................................................    8
+       RSET .......................................................    9
+       STAT .......................................................    6
+       TOP ........................................................   11
+       UIDL .......................................................   12
+       USER .......................................................   13
+
+
+
+RFC1939  Post Office Protocol - Version 3                                   RFC1939-POP3协议
+
+1
+
+
+1
+ＲＦＣ文档中文翻译计划
+
+

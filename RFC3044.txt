@@ -1,0 +1,409 @@
+
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：张彦富（zhyfln   zhyfln@163.net）
+译文发布时间：2001-6-12
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保
+留本文档的翻译及版权信息。
+
+
+
+Network Working Group                              S. Rozenfeld
+Request for Comments: 3044            ISSN International Centre
+Category: Informational                            January 2001
+
+
+在ISSN-URN命名空间中用ISSN作为URN 
+（RFC3044 Using The ISSN (International Serial Standard Number) as URN (Uniform 
+Resource Names) within an ISSN-URN Namespace）
+
+本备忘录的状态
+本文档讲述了一种Internet社区的信息，它并不提供任何种类的Internet协议标准。本备
+忘录的发布不受任何限制。
+版权声明
+Copyright (C) The Internet Society (2001).
+
+摘要
+本文档阐述了如何在唯一命名空间（URN）框架中（URN）支持ISSN作为URN命
+名空间的标志。ISSN是连续出版物的国际标准代号，它是连续出版物永久的唯一的标识码，
+在出版界得到广泛的认可和使用。
+ISSN国际中心已经开发出在ISSN URN命名空间中用ISSN标识符作为统一资源名
+的ISSN URN识别系统，并且作为一种示例在运行，来评估在一种操作环境下的需求情况。
+  从概念和协议开发过程中许多IETF RFCs（RFC 2248， RFC 2141， RFC 2611）
+强调的是找到在URN结构中用现有的数字化系统来实现识别的方法。
+
+目录
+1.  介绍	2
+2.  ISSN系统	2
+2.1  ISSN编码	2
+2.2  ISSN构成	3
+2.3   ISSN书目记录	3
+2.4   ISSN网络	3
+2.5.ISSN注册	4
+3.	ISSN和URN	4
+3.1  ISSN满足URN相容性的要求	4
+3.2 标识和访问	5
+4. 识别	5
+4.1 ISSN URN识别系统概览	6
+4.2 全球识别	7
+5.命名空间注册	7
+6.安全考虑	9
+7.参考文献	9
+8.联系信息及有用的链接	10
+9． 版权说明	10
+10． 译者说明	11
+
+1.  介绍
+ISSN国际中心利用ISSN和URN的功能上的相似性已于1999-2000年对ISSN实现
+了URN的功能。
+ISSN-IC现在基于IETF RFCs有关URN的内容开发了中心识别系统，该系统通过在
+ISSN URN命名空间中用ISSN标识符作为统一资源名，实现直接对ISSN电子资源的访
+问。该例子表明通过设计，用于书目领域的标识方案也可集成到现有的URN标识符中。
+
+然而，将该示例推广使用需要有一个团体或机构来分配命名空间和管理RDS/NAPTR
+全球识别结构。在本文中连续出版物指所有格式的连续出版物，既包括印刷格式，也包括
+电子资源格式。该文档包括ISSN URN命名空间的注册格式，该格式也包括在本文档其他
+部分中的一些段落。
+
+本文提到的所有数字和描述截止到2000年7月13日。
+2.  ISSN系统
+ISSN系统是由UNESCO和ICSU-AB联合小组于1967年建立的，目的是为发行、保存、
+归档的连续出版物的刊名建立一个世界级注册系统。
+现在，ISSN系统是按照国际标准ISO 3297定义的，由两部分数据元素构成：
+国际标准连续出版物编号，该编号是特定连续出版物的唯一标识。
+特定题名，指定给以连续出版物的唯一的名字，并且是与ISSN不可分割的。
+ISSN系统已经建立了一个良好的框架，ISSN国际网络。
+2.1  ISSN编码
+ISSN是国际标准连续出版物编号的英文缩写，它是按照ISO 3297标准定义来为连续
+出版物进行编码的，其编码是唯一的。
+该标准规定：
+每一个ISSN都是一个连续出版物的唯一标号，ISSN用于一个连续出版物的整个周期，
+包括现在发行的、已经出版的及在可预见的将来即将出版的，不论其媒介类型。
+连续出版物包括期刊、报纸、年刊(诸如报告、年鉴、目录等)，以及杂志、丛书、学
+会纪要、会议录、学术会议录等等
+现在，ISSN用于纸板和电子连续出版物资源，更广范围的应用还在讨论中。
+2.2  ISSN构成
+ISO 3297标准规定：
+ISSN由八位阿拉伯数字组成，除了最后一位用于校验唯有可能用X. ISSN不表示语种
+或国别，也不反映出版者或媒介。
+校验位总是出现在最右端（最末位).校验位是用前面七位加权因数8-2对11取模求得
+的。当校验位为10时用X来表示。
+每一个ISSN和刊物的刊名不可分割的，看名是题名的一种，目的是避免重复，因此
+刊名在ISSN注册数据中也是唯一的。ISSN合刊名是等价的，它们都唯一的标志了一种连
+续出版物。
+在印刷和显示ISSN时，前面标记为ISSN和一个空格，8位数字分成两组，每组4个，
+中间用连字符隔开。
+例如：ISSN 0000-0019, ISSN 1560-1560
+由ISSN国际中心负责创建和发布ISSN给各国中心，在由各国中心负责本国的ISSN
+分配。
+2.3   ISSN书目记录
+除了ISSN和刊名，ISSN书目记录还包括另外的三十种书目数据，以便能不混淆确定
+可靠地表即一个连续出版物。
+ISSN书目记录特征之一是他在链接字段中包括其他ISSN,目的是将该连续出版物和
+已经标识过的连续出版物之间建立联系。
+为了能识别和访问数字形式的连续出版物资源，ISSN格式中还附加了以下数据：
+ - 媒介代码，用以标识该连续出版物的媒介形式；
+ - 链接字段，用以表示同一连续出版物不同媒介出版形式之间的关系，包括印刷版的，
+在线版的以及从在线版印刷成的；
+ - 电子资源的位置，给定资源的URLs。
+2.4   ISSN网络
+这里指运行机构，其主要功能包括：
+ - 收集标识所需的材料；
+ - 给一连续出版物分配ISSN和刊名，做出明确的标识；
+ - 创建并修改ISSN书目记录；
+ - 示ISSN书目记录可被使用。
+其机构包括：
+ - ISSN各国中心，共69个，负责标识本国的连续出版物。各国中心创建的ISSN记
+录传送到ISSN国际中心经验证后，更新到ISSN注册数据库。
+ - ISSN国际中心，负责协调各国ISSN中心对连续出版物的管理工作，并负责没有
+ISSN中心的国家的事务。还负责收集并检验所有的数目记录，更新ISSN注册记录的一致
+性。
+它负责管理ISSN注册数据并使其有效。
+
+
+2.5.ISSN注册
+是有ISSN-IC控制和维护的数据库。包括按ISSN-MARK格式存储的970 000条书目
+记录，该格式是USMARC格式的子集，是一种不同媒体（CD-ROM，DAT以及因特网上）
+都可以使用的格式。
+3.	ISSN和URN
+3.1  ISSN满足URN相容性的要求
+下列文档中讨论了URN不同的规约和要求：
+
+URN语法 （RFC 2141，1997年5月，R. Moats)
+使用现有的书目标识符作为统一资源名 (RFC 2288,1998年2月, C. Lynch, R. 
+Daniel)
+统一资源名的功能需要(RFC 1737, 1994年10月, K. Sollins, L. Masinter)
+URN命名空间的定义机制(RFC 2611, 1999年6月,L. Daigle, R. Iannela)
+IETF文档的URN命名空间(RFC 2648, 1999年8月, R. Moats)
+
+下面是从RFC 1737摘录的部分内容，来说明URNs 的功能需求。
+· 全球普适性：URN是一个全球性的名字，而不是地区性的，其在世界任何地方都
+有同样的含意。
+ - ISSN适用性：按照ISO标准3279，系列出版物的标识是全球性的。
+· 全球唯一性：同一个URN永远不会指定给两个不同的资源。
+ - ISSN适用性：一个ISSN指定给一个切仅只定给一个连续出版物，一旦使用后就再
+也不会重新分配给其它出版物。
+· 永久性：URN的生命周期是永久的。
+ - ISSN适用性：所有的ISSN都在ISSN注册机构注册，该注册数据即包括现在发行
+的连续出版物，也包括已经停止发行的连续出版物。
+· 可伸缩性：URNs能被分配给网上现有的的任何资源，而且数百年仍会有效。
+ - ISSN适用性：已经有超过98500000ISSN。
+·对继承的支持性：设计的方案必须对现有的命名系统提供支持，技能继承现有的命
+名系统。
+ - ISSN适用性：从ISSN的定义我们知道，ISSN标识系统是连续出版物资源的继承
+标识系统。
+·独立性：只有命名发布机构才有权决定在什么条件下发布一个名字。 
+ - ISSN适用性：ISSN满足该条件。
+·解决方案：由于URNs有相应的URLs,因此必须有一种可行的机制将URN翻译成
+URL.
+ - ISSN适应性:ISSN-IC已经开发了ISSN URN分解器能将给定的ISSN翻译成一个或
+几个URLs.
+
+  除了以上这些对URN功能元素的基本要求外,还有关于如何将字符串编码的要求:
+  单一编码,便于比较,便于人类誊写,传送友好,机时消耗,文本识别等等。
+  - ISSN适应性:按ISO标准的定义,ISSN是一非常简单、字符数少，完全满足这些要
+求。
+
+  考虑到ISSN的目的，结构以及适应对电子连续出版物的资源标识的新发展，我们
+可以确定ISSN实现了所有的URN的要求。
+
+  语法要求：
+  对于满足URN命名空间和URN语法要求问题（RFC2141），由于ISSN没有使用任
+何URN保留字，所以基于URN命名空间的ISSN符合URN的语法要求。
+
+  在RFC2288（4.2 编码和词汇等价问题）中论述到：在命名空间中表示ISSN是没有
+问题的，在ISSN中合法的字符串在URN命名空间中也是合法的，在ISSN中永远也不会
+用到特殊字符以及%编码。
+  例如：urn：ISSN：1046-8188
+ 
+  附加的比较规则对ISSN命名空间也是适合的，连字符在比较前先撤消，偶尔出现
+的‘x’也会转换成大写。
+3.2 标识和访问
+  URN的任务也要为访问资源特性和资源提供安全的访问。由于ISSN书目记录资源
+中包括标识、描述、位置、及/或访问数据信息，也可以将其看成是元数据。
+  ISSN作为连续出版物资源的标识数字被广泛使用，由于ISSN网络提供相应被标识
+资源的URLs，所以ISSN也作为一种用来在因特网上查找和访问资源工具。这依靠ISSN 
+URN识别系统来完成。
+4. 识别
+  关于对URN识别的不同规格说明和要求的研究参见些列文献:
+  对URN识别服务的URI识别服务 (RFC 2483, 1999年1月, M. Mealling)
+
+  是用域名系统对统一资源标识符的识别 (RFC2168, 1997年6月, R. Daniel, M. Mealling)
+
+  统一资源名识别的体系原理 (RFC 2276, 1998年1月, K. Sollins)
+
+4.1 ISSN URN识别系统概览
+  使用ISSN作为统一资源名意味着必须 使用一种映射机制来确保在使用标准网页浏览器等因
+特王工具时能够访问到可用的资源.
+  从技术的观点看,这促使我们开发不同软件插件和服务需求来实现该目的. 
+  识别软件能将给定定的ISSN-URN翻译成电子地址:
+  - 书目描绘或者元数据地址
+  - 期刊本身的地址(如果期刊十一电子形势发布的).
+  这些电子位置在URLs中并不能保证使永久可用的,因此对存储URLs的识别数据必须检查和
+更新以确保映射地址和相应的URNs相对应.
+  为确保在数据库中存储的URLs的准确性一定要定期检查,如果发生改变就要江ISSNURN分
+解数据库更新.
+  
+浏览器将包括URN功能,允许将特定资源地址按ISSN形式表示,这意味着标准浏器如果不包括
+URN插件选相，那么就必须开发一个。
+  
+  分解器的设计和实现：
+
+  - 第一步ISSN国际中心已经开发和实现了集中式识别系统，该系统位于ISSN国际中心的识
+别服务器中。该系统能确保有效地对一给定的ISSN和一个或几个URL（s）之间实现映象，该
+系统是通过对ISSN-URL映象文件的设计和实现来完成的。
+  - 现在实现ISSN和URLs之间的映象主要方法是通过将映象文件从ISSN注册记录中提取出
+来并独立地存储在一特定结构的文件中，以便于识别过程的实现。此外，从ISSN书目资源中
+获取URLs的其他方法正在测试中。还将数据和属性同URLs建立联系以便分解器识别对象句
+柄。
+
+  URL检查器的设计和实现：
+  - 为了保持对ISSN-URN连续性和可访问性，开发了成为“URL看守机”的自动机程序来控
+制所有URLs状态，并保存在ISSN-URL映象文件中，检测并存储URLs中断情况和重定向问
+题。
+
+  浏览器插件的设计和实现：
+  - 现有的浏览器不包括URN‘协议’功能。对Netscape communicator和MS-Explorer浏览器
+的插件已经开发出来并且可以使用。这样只要在浏览器地址栏中直接输入ISSN处理的字符串
+“urn：ISSN：”就可以获得对书目记录或/和在线资源的访问，而不用输入URL。在HTML网
+页中点击ISSN也可以实现相同的功能。
+例如： urn：ISSN：1560-1560
+
+4.2 全球识别
+  由于ISSN系统给出的不是局部环境的地址（比如一个特定的图书馆），并且希望能够指向其
+他URNs链接（或者其他识别服务），以便能识别一系列相关的资源，因此我们要解决将先有的
+识别实现方法推广到全球识别系统。识别特别是全球识别是ISSN-URN命名空间中要解决的主
+要问题。
+  这一问题在以下文件中有论述（选自 RFC 2611，“URN命名空间定义机制”）：
+  
+  标识符识别过程：
+    如果要实现全球访问识别，命名空间就必须注册成诸如NAPTR的RDS系统（识别挖掘系
+统，参见RFC2276），接下来的识别过程就依RDS机制按标准URI识别过程相同。我们现在的
+ISSN URN命名空间全球识别集成观察和评估RDS系统主要是按下列RFC文档的概念和建议为
+基础的：
+   RFC 2276 全球识别RDS体系结构
+   RFC 2168 NAPTR DNS扩展
+  
+  从技术的观点来讲，现在的识别系统有足够的柔性来代替RDS/NAPTR识别结构。 
+
+
+5.命名空间注册
+  命名空间标识符: ISSN
+  注册信息: 
+  版本: 1
+  日期: 2000-08028
+
+  命名空间注册人信息:
+  姓名: S. ROZENFEILD(Mr.)
+  E-MAIL: rozenfeld@issn.org
+  工作单位: ISSN国际中心
+  地址: 20, rue Bachaumont 75002 PARIS FRANCE
+  
+  语法结构说明:
+  与ISO标准3270《连续出版物信息和文档国际标准》一致。ISSN由八位0-9的阿
+拉伯数字组成，除了末位用于检验位有时会用x表示。ISSN不包含区分语言、国籍、出版
+者等信息。校验位总是位于最右端，将各位加权8-2然后对11取模计算出校验数字，如果
+校验数字为10，则用x表示。
+
+  每一个ISSN都与一连续出版物的刊名一一对应，连续出版物的刊名被称为“关键
+题头”，为了避免重复，在ISSN数据库中关键题头是唯一的。ISSN和关键题头是等价的，
+都唯一毫不含糊地标识了同一连续出版物。
+  当印刷和显示ISSN时，首先是‘ISSN’及一空格，然后是两组数字，每组四位，
+中间用连字符‘-’连接。因此ISSN结构就是：
+    NNNN-NNNC
+  其中N是0-9数字符，C是校验字符为0-9数字符或x。
+  ISSN URN命名空间结构与URN语法要求相一致（RFC 2141）。
+例如，urn：ISSN：0259-000X
+      urn：ISSN：1560-1506
+  相关附属文档：
+  ISO 3279 信息和文档-国际标准连续出版物号（ISSN）
+
+  ISSN：连续出版物数字格式标识符。
+  与URN结构一致性。
+  （ISSN 国际中心-1999年1月）
+
+  ISSN-URN工程。（ISSN国际中心-1999年10月）
+
+ 标识符唯一性：
+   标识符唯一性已由ISSN定义保证。根据ISO 3279的定义每一个ISSN都是唯一
+的标识符，分配给特定的连续出版物。ISSN永远不会分配两次。
+
+ 标识符永久性：
+   ISSN的持久性由ISSN中心对ISSN注册数据的维护和更新来保证。即使已停止
+发行的记录仍保留在ISSN数据库中。属于同一‘家族’的连续出版物间的关系也在ISSN
+记录中保存连接。该连接机制扩大了现在的标识符永久性的概念。
+
+ 标识符分配过程：
+   ISSN网络包括68个各国家中心和国际中心，他们的任务是：
+   - 收集要标记的连续出版物的资料；
+   - 检查包括电子资源在内的所有类型连续出版物的标识；
+   - 给不同的期刊分配ISSN；
+   - 建立书目记录；
+   - 维护数据。
+   书目记录中包含的数据集中在ISSN国际中心，这样可以在世界范围内做唯一性检
+查。一个特定的ISSN只分配给一个且仅一个连续出版物，关键题名和ISSN一样都是书
+目记录的关键元素。
+   现在ISSN数据库包含超过950 000条书目记录，值得关注的是电子资源和相关的
+数据以及访问这些数据的方式。
+
+  识别标识符的过程：
+    第一步ISSN国际中心作为示范产品已经开发了集中式具有多种识别能力
+ISSN-URN分解器。
+    第二步我们将使ISSN命名空间能够识别全球访问，并且能提供遵循RDS/NAPTR
+协议的识别服务。
+
+  关于词汇等价的规则：
+    校验数字如果是‘X’，则对大小写敏感，因此遇到‘X’就要转换成大写。
+    在第四位和第五位数字之间的连字符可以忽略。
+
+  和URN语法相容性问题：
+    没有保留字符。
+
+安全问题
+  因为命名空间没有定义保留字符，因此并没有考虑任何安全问题。
+  
+  验证机制：
+    到现在还没有指定。
+  范围：
+    全球性。
+
+6.安全考虑
+  安全问题在第5节已做了讨论.
+
+7.参考文献
+   [1] ISO 3279 Information and documentation - International Standard
+       Serial Number (ISSN)
+
+   [2] The ISDS Manual - ISSN International Centre (Paris, 1983) (under
+       revision)
+
+   [3] Moats, R., "URN Syntax", RFC 2141, May 1997.
+
+   [4] Sollins, K. and L. Masinter, "Functional Requirements for Uniform
+       Resource Names", RFC 1737, December 1994.
+
+   [5] Lynch, C., Preston, C. and R. Daniel, "Using Existing
+       Bibliographic Identifiers as Uniform Resource Names", RFC 2288,
+       February 1998.
+
+   [6] Daniel, R. and M. Mealling, "Resolution of Uniform Resource
+       Identifiers using the Domain Name System", RFC 2168, June 1997.
+
+   [7] Sollins, D., "Architectural Principles of Uniform Resource Name
+       Resolution", RFC 2276, January 1998.
+8.联系信息及有用的链接
+    Slawek Rozenfeld (Mr.)
+   Head, Computer Section
+   ISSN International Centre
+     20, rue Bachaumont
+           750002 PARIS
+                 FRANCE
+
+   EMail: rozenfeld@issn.org
+          issnic@issn.org
+
+   ISSN Web site  http://www.issn.org
+   ISSN-URN links http://www.issn.org/urn/
+9． 版权说明
+
+   Copyright (C) The Internet Society (2001).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET 
+ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, 
+INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE 
+INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES 
+OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+10． 译者说明
+由于水平有限，其中错误在所难免，敬请诸位指正。
+
+RFC3044 Using The ISSN (International Serial Standard Number) as URN (Uniform 
+Resource Names) within an ISSN-URN Namespace
+在ISSN-URN命名空间中用ISSN作为URN 
+
+
+1
+RFC文档中文翻译计划

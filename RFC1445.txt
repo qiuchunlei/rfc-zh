@@ -1,0 +1,1179 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：NETBUS（NETBUS   lfong@263.net）
+译文发布时间：2001-8-7
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保
+留本文档的翻译及版权信息。
+
+
+
+
+
+
+          Network Working Group                                J. Galvin  
+ Request for Comments: 1445                   Trusted Information Systems 
+                                                            K. McCloghrie  
+                                                       Hughes LAN Systems                                    
+                                                             April 1993
+
+SNMPv2的管理模型
+(RFC1445—Administrative Model for version 2
+ of the  Simple Network Management Protocol (SNMPv2)）
+
+本备忘录的状态
+
+  本RFC叙述了Internet社区的一个Internet 体系结构委员会的跟踪草案，
+并且征求有利于改进的讨论和建议。请引用当前版本的<<IAB 官方协议标准>>
+以利于本草案的标准化地位和状态。本备忘录的传播是不受限制的。
+
+
+目录
+
+1.  介绍	2
+1.1.  术语的注解	3
+2.模型的元素	3
+2.1.  SNMPv2 参与者	3
+2.2.  SNMPv2 实体	5
+2.3.  SNMPv2 管理站点	6
+2.4.  SNMPv2 代理	6
+2.5.  视图子树	6
+2.6.  MIB 视图	7
+2.7.  代理关系	7
+2.8.  SNMPv2 上下文	8
+2.9.  SNMPv2 管理通讯	8
+2.10.  SNMPv2鉴定过的管理通讯	9
+2.11.  SNMPv2 私有管理通讯	10
+2.12.  SNMPv2  管理通讯类	11
+2.13.  SNMPv2 访问控制策略	11
+3.  过程的元素	12
+3.1. 产生一个请求	13
+3.2.  处理一个收到的通讯	14
+3.3.  生成一个响应	16
+4. 模型应用	16
+4.1 无安全的小代理配置	16
+4.2 安全小代理配置	18
+4.3 MIB视图的配置	20
+4.4 代理配置	22
+4.4.1 外部代理配置	22
+4.4.2 本地代理配置	25
+4.5 公共密钥配置	28
+5. 安全考虑	29
+6. 感谢	29
+7. 参考	29
+8.  作者地址	30
+
+
+1.  介绍
+ 
+一个网络管理系统包含：几个（可能是许多的）节点，每个都有一个名为代理
+的处理实体。代理有到管理工具的通路；至少一个管理站点和一个管理协议，该协
+议用于在代理和管理站点间传递管理信息。协议的实施是在一个定义了鉴定和认证
+策略的管理体系下进行的。
+    
+网络管理站点上运行监视和控制网络元素的管理应用程序。网络元素是诸如主
+机，路由器，终端服务器等的设备，通过对它们的管理信息的访问来监视和控制网
+络元素。
+
+本文档--<< SNMPv2的管理模型>>--的目的就是定义：在不同的配置和环境下，
+管理体系是怎样被用来实现实际的网络管理的。
+          
+这里描述的模型使后面的要求成为必要：交换SNMPv2消息的对等实体使用唯一
+的表示。所以，这里表现出与先前的SNMP [1]的基于社区的管理模型的不同。通过
+对每个SNMPv2消息来源和预期的接收者的明白无误的标识，这个新的策略改善了过
+去的社区方案，它不仅支持一个更加方便的访问控制模型，而且允许在将来对非对
+称公匙安全协议的有效运用。
+
+1.1.  术语的注解
+
+为了便于说明，原先的Internet标准网络管理体系（在RFC 1155,1157和1212中
+有描述）被叫做SNMP版本1体系(SNMPv1)。当前的体系叫做SNMP版本2体系(SNMPv2)。
+
+2.模型的元素
+2.1.  SNMPv2 参与者
+SNMPv2 参与者是一个概念性的，虚拟的执行环境，它的操作被限制在（出于
+对安全性的考虑）一个特定 SNMPv2实体的所有可能的操作的子集中（参考2.2），
+该子集被管理性地定义  。不论一个SNMPv2实体什么时候处理一个SNMPv2 消息，它
+都是以一个SNMPv2 参与者的身份进行操作，因而它的操作就被限制在为这个参与者
+定义的操作集合中。对这个参与者，其特定的可能的操作可能与其他参与者的操作
+集合重叠或者不相关，它也可能是那个SNMPv2 实体的所有可能操作的一个合适或者
+不合适的子集。从协议体系上讲，每个SNMPv2参与者包含：
+
+?	一个唯一的，与众不同的参与者标识。
+
+?	一个逻辑网络位置，参与者执行时所在的逻辑网络位置称为一个传送协议的域，
+并且传送寻址信息。     
+?	一个专门的鉴定协议和相关的参数，所有那个参与者产生的协议消息通过他们
+被鉴定为初始的和完整的。
+
+?	一个专门的私有协议和相关参数，用来保护所有参与者接收的协议消息，防止
+泄漏。
+
+从概念上讲，每个SNMPv2参与者可以用一个ASN.1值表示，符合下面的语法：
+               SnmpParty ::= SEQUENCE {
+                 partyIdentity
+                    OBJECT IDENTIFIER,
+                 partyTDomain
+                    OBJECT IDENTIFIER,
+                 partyTAddress
+                    OCTET STRING,
+                 partyMaxMessageSize
+                    INTEGER,
+                 partyAuthProtocol
+                    OBJECT IDENTIFIER,
+                 partyAuthClock
+                    INTEGER,
+                 partyAuthPrivate
+                    OCTET STRING,
+                 partyAuthPublic
+                    OCTET STRING,
+                 partyAuthLifetime
+                    INTEGER,
+                 partyPrivProtocol
+                    OBJECT IDENTIFIER,
+                 partyPrivPrivate
+                    OCTET STRING,
+                 partyPrivPublic
+                    OCTET STRING
+               }
+
+对于每个代表一个SnmpParty 参与者的SnmpParty值，下列叙述是成立的：
+          o    它的 partyIdentity 组件是参与者的标识
+
+          o    它的 partyTDomain 组件称作传送域，并指明参与者用来接收网络
+管理通信量的那种传送设备。一个传送域的例子是 snmpUDPDomain (在UDP上的
+SNMPv2 ，使用 SNMPv2 参与者).
+
+          o    它的 partyTAddress 组件称作传送寻址信息，代表一个参与者用
+来接收网络管理通信量的传送设备的地址。
+
+          o    它的 partyMaxMessageSize 组件称作最大消息的尺码，代表这个
+参与者将要接收的最大SNMPv2 消息的八位组的长度。
+
+          o    它的 partyAuthProtocol 组件称作鉴定协议，指明了一个协议和
+鉴定所有该参与者生成的消息是初始和完整的机制。在这种上下文下，值 noAuth 表
+明该参与者产生的消息未被鉴定为初始和完整。
+
+          o    它的 partyAuthClock 组件称作鉴定时钟，代表与该参与者关联的
+当前时间。本组件的重要性是在鉴定协议中体现的。
+
+          o    它的 partyAuthPrivate 组件称作私有鉴定密匙，代表支持鉴定协
+议所需的任何保密的值。本组件的重要性是在鉴定协议中体现的。
+
+          o    它的 partyAuthPublic 组件称作公有鉴定密匙，代表任何支持鉴
+定协议所需的公共值。本组件的重要性是在鉴定协议中体现的。
+
+          o    它的 partyAuthLifetime 组件称作生命周期，代表该参与者生成
+的协议消息的可以接受的传送延时的管理性的上界。本组件的重要性是在鉴定协议
+中体现的。
+
+          o    它的 partyPrivProtocol 组件称作私有协议，指明了一个协议和
+一个防止该参与者接收到的所有协议消息泄漏的机制。在这种情况下，值 noPriv           
+表明该参与者接收到的消息未被保护以防止泄漏。
+
+          o    它的 partyPrivPrivate 组件称作私有密匙，代表支持私有协议所
+需的保密值。本组件的重要性是在私有协议中体现的。
+
+          o    它的 partyPrivPublic 组件称作公有密匙，代表支持私有协议所
+需的任何公共值。本组件的重要性是在私有协议中体现的。
+
+对于所有的被某个SNMPv2实体实现的SNMPv2参与者，如果它的鉴定协议是
+noAuth而且它的私有协议是noPriv，那么那个实体称作不安全的。
+
+2.2.  SNMPv2 实体
+
+     一个 SNMPv2 实体是一个实际的处理者，它通过用[2]中指明的方式产生消息
+并且/或者对SNMPv2协议消息进行响应来完成网络管理操作。 当一个SNMPv2实体以
+一个特定的SNMPv2参与者的身份进行操作时，这个实体的操作必须限制在管理性地
+定义在那个参与者上的所有可能的操作的子集中。
+
+     通过定义，一个SNMPv2实体的操作在一个特定SNMPv2参与者生成的任何单个协
+议消息的处理和一个潜在的不同的SNMPv2参与者生成的任何其他协议消息的处理之
+间不需要同时发生。相应地，一个支持超过一个参与者的SNMPv2实体的实现不需要
+是多线程的。当然，也存在着实现时选用多线程的情况。
+
+从协议体系上说，每个SNMPv2实体维护一个保存了它所知的所有SNMPv2参与者
+的逻辑数据库，这些参与者的操作有的是逻辑地实现的，有的是通过代理与远地实
+体地交互来实现的，有的是远地实体实现的。另外，每个SNMPv2实体维护一个存有
+该实体所知的所有被管理对象资源（参照2.8）。最后，每个SNMPv2实体维护一个存
+有定义了针对已知的SNMPv2参与者的访问权限的访问控制策略信息的逻辑数据库。
+
+2.3.  SNMPv2 管理站点
+
+    一个SNMPv2管理站点是一个SNMPv2参与者在通过生成相应的SNMPv2协议消息来
+初始化SNMPv2管理操作时，或者在它接收和处理陷阱通告时假定的运作性的角色。
+有时，术语SNMPv2管理站点也指专注于操作角色的SNMPv2的部分实现（例如图形工
+作站）。这种SNMPv2的部分实现可能用来提供方便或管理设备的本地革新，但是它
+们可能对代表远地协议用户的SNMPv2管理操作提供很少甚至没有支持。
+ 
+2.4.  SNMPv2 代理
+
+ 	一个SNMPv2代理是一个SNMPv2参与者在为响应收到的诸如一个SNMPv2管理站点
+（参照2.3）生成的SNMPv2协议消息而进行SNMPv2管理操作时假定的操作性角色。          
+有时，术语SNMPv2代理也指专注于这种操作角色的SNMPv2（例如在嵌入式系统中）
+的部分实现。这种部分实现对代表管理设备的远地用户的SNMPv2管理操作的实现提
+供了支持，但是它可能对这些设备的本地革新提供很少甚至没有支持。
+
+2.5.  视图子树
+
+ 	一个视图子树是所有名字有公共的ASN.1实体标识符前缀的管理信息库对象的
+集合。一个视图子树由OBJECT IDENTIFIER的值来标识，该值是该子树中所有（潜在）
+的类似的管理信息库对象实例中最大的OBJECT IDENTIFIER前缀。
+      
+当标识一个视图子树的OBJECT IDENTIFIER前缀比根据SMI[3]定义的OBJECT 
+IDENTIFIER长时，用这个视图子树来控制访问就会在对象实例层有梯度。这种梯度
+在超越作为代理角色的SNMPv2实体的范围之上来考虑。
+ 
+  所以，一个作为代理角色的SNMPv2实体的实现不需要支持在标识一个特定叶子
+对象类型时有多于必要数目的子标识符的视图子树的值。然而，在决定哪一个作为
+管理者角色的SNMPv2实体应该接收陷阱通知时，也用到了访问控制信息。（4.2.6 of 
+[2]） 所以，为了使一个管理站点能使用合适粒度的陷阱通知配置，代理实现者可
+能希望提供实例级的梯度。
+
+2.6.  MIB 视图
+
+    一个MIB视图是根据SMI [3]（那就是，所有MIB对象的所有实例的通用集合）定
+义的所有对象类型的所有实例的集合的子集：
+          o   一个MIB视图的每个元素用一个ASN.1 OBJECT IDENTIFIER 值唯一地
+标识。所以，一个特定对象类型的完全相同命名的实例（例如在不同的代理中） 必
+须包含在不同的MIB视图中。也就是，在一个特定的MIB视图中，一个特定的对象实
+例名字解析为最多一个对象实例。
+
+          o    每个 MIB 视图被定义为视图子树的一个集合。
+
+2.7.  代理关系
+
+一个代理关系在下面情况下存在：为了处理一个接收到的管理请求，一个SNMPv2
+实体必须和其他逻辑上远地的实体通讯。 一个用代理关系来处理管理请求的SNMPv2
+实体叫做一个SNMPv2代理机构。
+    当一个逻辑上远地的参与者和一个SNMPv2实体间的通讯是通过SNMPv2时（通过
+任何传输协议），那个代理参与者称作一个SNMPv2本地代理关系。SNMPv2本地代理
+关系的部署是一种有利的手段，用它可以分期偿还或轮换构建一个大的管理系统时
+的管理处理或带宽的代价。
+ 
+当一个逻辑上远地的参与者和一个SNMPv2实体间的通讯不是通过SNMPv2时（通
+过任何传输协议），那个代理参与者称作一个SNMPv2远地代理关系。 远地代理关系
+的部署是一种使Internet上的从某种意义上讲不可管理的设备或部门可以通过
+SNMPv2来管理。
+          
+定义一个通常用于一个SNMPv2代理关系的SNMPv2实体的行为的透明原则如下：
+              
+一个SNMPv2实体处理从另一个SNMPv2实体接收而来的SNMPv2协议消息的方式对
+于后者是完全透明的。
+
+      这种透明原则是从历史上分离结构体系与实现的SNMP原则中继承而来。 这种
+二分法给Internet标准网络管理体系的信息和分配模型都带来了好处，而且它是可
+能建造的大型管理系统的建筑性基石。 与这种原则一致，尽管在某些环境下SNMPv2
+代理机构的实现可能与传输层的网桥的实现相似，这种特定的实现战略（或其他任
+何实现战略）不值得在SNMPv2管理体系或代理管理的标准机制中得到认可。
+
+   很明显，在透明原则里，在任何两个SNMPv2对等体之间需要保持SNMPv2的管理
+操作的语义。特别地，如果一个操作集合的范围延伸到去管理位于多个网络位置的
+信息，它的“似乎是同步” 的语义将极难保证。正因为如此，允许管理位于多个位
+置的信息的操作集合的代理配置是不提倡的， 尽管这种操作并没有被协议体系明确
+的禁止，以防在很稀少的情况下，可能需要以一种相容的方法来支持它们。
+
+     在这种透明原则下，还很明显的是：与一个代理机构的交互时，不提供给一个
+管理站点实现它的请求的代理机制的特点和过程的信息。 也就是，除了在底层传输
+地址中的任何明显的区别外，应该使管理站点看起来似乎是在通过SNMPv2与被代理
+的设备直接通讯。所以，一个在代理机构和它被代理设备间的通讯超时信息应该表
+现为在管理站点与代理机构间的超时。 同样的，一个来自于被代理设备的出错响应
+应该尽可能的以代理机构和管理站点间的对应出错信息表示。
+
+
+2.8.  SNMPv2 上下文
+
+ 一个 SNMPv2 上下文 是指一个可被一个SNMPv2实体访问的被管理对象资源的
+集合。 被一个上下文标识的对象资源可能是本地的或远地的。
+
+ 一个涉及本地对象资源的SNMPv2上下文被标识为一个MIB视图。 在这种情况
+下，一个SNMPv2实体用本地机制去访问被SNMPv2上下文标识的管理信息。
+
+    一个涉及远地对象资源的远地SNMPv2上下文被标识为一个代理关系。 在这种情
+况下，一个SNMPv2实体作为一个代理机构去访问被SNMPv2上下文标识的管理信息。
+
+
+2.9.  SNMPv2 管理通讯
+     SNMPv2管理通讯是一个从一个特定的SNMPv2参与者到第二个特定的SNMPv2参
+与者的，关于包含在相应的SNMPv2实体中可以被访问的SNMPv2上下文中的管理信息
+的通讯。 特别地，一个SNMPv2管理通讯可以是：
+
+          o    一个发起通讯的参与者的关于被寻址的参与者可以访问的信息的
+查询（例如getRequest,  getNextRequest, 或者 getBulkRequest）。
+
+          o    一个被寻址参与者的，关于发起方可访问的信息的，指示性的断言。
+（例如Response, InformRequest, 或者 SNMPv2-Trap）
+
+          o    一个发起方作出的，发给被寻址的参与者的，关于被寻址的参与者
+可以访问的信息的命令式的断言（例如setRequest ），或者
+
+          o    一个发向被寻址的参与者的确认，它是关于发起方接收到的信息
+的。（例如 一个确认 InformRequest 的响应）
+
+     一个管理通讯用一个ASN.1值表示，符合下面的语法:
+
+               SnmpMgmtCom ::= [2] IMPLICIT SEQUENCE {
+                 dstParty
+                    OBJECT IDENTIFIER,
+                 srcParty
+                    OBJECT IDENTIFIER,
+                 context
+                    OBJECT IDENTIFIER,
+                 pdu
+                    PDUs
+               }
+
+     对于每个代表一个SNMPv2管理通讯的SnmpMgmtCom值,  下列叙述成立:
+
+          o    它的 dstParty 组件称作目的点， 标识了该通讯发往的SNMPv2参
+与者。 
+
+          o    它的 srcParty 组件称作 源点，标识了发起通讯的SNMPv2参与者。 
+
+          o    它的 context 组件标识SNMPv2上下文，它含有通讯涉及的管理信
+息 
+
+          o    它的 pdu 组件有在[2]中赋于的形式和含义。 
+
+
+2.10.  SNMPv2鉴定过的管理通讯
+
+     SNMPv2鉴定过的管理通讯是这样的SNMPv2管理通讯：它的发起方SNMPv2参与者
+被可信地鉴定过，并且该通讯的传输的完整性受到保护。一个SNMPv2鉴定过的管理
+通讯用一个ASN.1值表示，符合下面的语法:
+
+               SnmpAuthMsg ::= [1] IMPLICIT SEQUENCE {
+                 authInfo
+                    ANY, -- 由鉴定协议定义
+                 authData
+                    SnmpMgmtCom
+               }
+
+     对于每个代表一个SNMPv2鉴定过的管理通讯的SnmpAuthMsg值,  下列叙述成
+立:
+
+          o    它的 authInfo 组件称作鉴定信息，包含支持产生本消息的SNMPv2
+参与者使用的鉴定协议的信息。鉴定信息的详细含义由使用的鉴定协议指定；除了
+鉴定协议用它来判断该通讯是否被鉴定过以外，它对通讯的应用语义没有影响。
+
+          o    它的 authData 组件称作鉴定数据，代表一个SNMPv2管理通讯。 
+
+
+
+2.11.  SNMPv2 私有管理通讯
+
+          SNMPv2 私有管理通讯是一个SNMPv2鉴定过的管理通讯，它受到可能的保
+护，防止泄漏。一个私有管理通讯用一个ASN.1值表示，符合下面的语法:
+
+               SnmpPrivMsg ::= [1] IMPLICIT SEQUENCE {
+                 privDst
+                    OBJECT IDENTIFIER,
+                 privData
+                    [1] IMPLICIT OCTET STRING
+               }
+
+          对每个代表一个SNMPv2 私有管理通讯的SnmpPrivMsg值，下面的叙述成
+立：
+
+          o    它的 privDst 组件称作私有目的地，表明该通讯发向的SNMPv2 参
+与者。
+
+          o    它的 privData 组件称作私有数据，包含一个SNMPv2鉴定过的管理
+通讯的（可能已加密）数据序列（根据[5]的约定）。
+
+
+2.12.  SNMPv2  管理通讯类
+
+          一个 SNMPv2  管理通讯类对应于一个在[2]中定义的特定的SNMPv2 PDU 
+类型。SNMPv2  管理通讯类用ASN.1 INTEGER 值表示，需要根据识别PDU的类型而定
+（表1）
+           
+
+
+                              Get              1
+                              GetNext          2
+                              Response         4
+                              Set              8
+                              -- unused       16
+                              GetBulk         32
+                              Inform          64
+                              SNMPv2-Trap    128
+
+                    表 1: 管理通讯类
+
+
+           一个表示通讯类的值被计算为2，增加到ASN.1上下文的值，对应SNMPv2 
+PDU的特定标签。
+
+          一个管理通讯的类的集合用ASN.1 INTEGER 值来表示，该值是该集合类
+表示通讯类的标识的和。空集用0值表示。
+
+2.13.  SNMPv2 访问控制策略
+
+          SNMPv2 访问控制策略是一个用SNMPv2 上下文和在一对SNMPv2参与者间
+被认证的管理通讯类描述的本地访问策略的标准说明书。在协议体系中，该说明书
+包含四部分：
+
+          o    SNMPv2访问控制的目标－接收其他参与者的管理请求，执行管理操
+作的SNMPv2参与者。
+
+          o    SNMPv2访问控制的主体－通过发送管理通讯给其他参与者而请求
+管理操作被执行的SNMPv2参与者。
+
+          o    SNMPv2访问控制的被管理的对象资源――标识管理信息的SNMPv2
+上下文，被请求的管理操作在它之上被执行，
+
+          o    指定SNMPv2管理通讯类的策略，它属于一个特定的SNMPv2上下文，
+该上下文由一个被认证的特定的目标从一个特定的主体获得。
+
+          概念性地，一个SNMPv2访问策略用ASN.1值表示，符合下面地语法：
+
+               AclEntry ::= SEQUENCE {
+                 aclTarget
+                    OBJECT IDENTIFIER,
+                 aclSubject
+                    OBJECT IDENTIFIER,
+                 aclResources
+                    OBJECT IDENTIFIER,
+                 aclPrivileges
+                    INTEGER
+               }
+
+           对于表示一个SNMPv2访问策略的每个值，下列陈述成立：
+
+          o    它的 aclTarget 组件称作目标，指明该部分策略允许访问的
+SNMPv2参与者 。
+
+          o    它的 aclSubject 组件称作主体，指明被该部分策略赋予权限的
+SNMPv2参与者。 
+
+          o    它的 aclResources 组件称作被管理的对象资源，表明该部分策略
+涉及的SNMPv2上下文。
+
+          o    它的 aclPrivileges 组件称作权限，代表一个SNMPv2管理通讯类
+的集合，在指明特定的SNMPv2上下文时，该集合从特定的主体参与者接收，认证后
+被目标参与者处理。 
+
+          SNMPv2访问控制策略的运用仅发生在管理通讯接收的时候；它不用在管
+理通讯的传输中。注意：用AclEntry语法的ASN.1值，也被用于决定一个SNMPv2陷阱
+[2]的目的地。
+
+3.  过程的元素
+
+          本小节描述一个SNMPv2 实体在处理SNMPv2 消息的程序。这些程序独立
+于可能用到的特定的鉴定和私有协议。
+
+
+3.1. 产生一个请求
+
+          本小节描述一个SNMPv2实体发送一个管理请求和者一个陷阱通知的程
+序：
+
+          (1)  创建一个SnmpMgmtCom值，其中的srcParty组件表明发起方的参与
+者，dstParty表明接收的参与者，context标识期望的SNMPv2上下文，pdu指明期望
+的管理操作。
+
+          (2)  查询存有参与者信息的本地数据库，以决定发起方和接收方的
+SNMPv2的鉴定协议和其他相关信息。
+
+          (3)  创建一个 SnmpAuthMsg值，含有下面的属性：
+
+  根据发起方的鉴定协议创建它的 authInfo 组件。特别地，如果发起方的鉴定协
+议为noAuth，该属性置为长度为0的OCTET STRING值。
+
+它的 authData 属性是已经创建的SnmpMgmtCom的值
+                   
+          (4)  查询关于参与者信息的本地数据库，以决定接收方的SNMPv2参与者
+的私有协议和其他相关信息。
+
+          (5)  创建一个 SnmpPrivMsg 值，属性如下： 
+
+ 它的 privDst 属性指明接收方的SNMPv2参与者。  
+
+ 它的 privData 属性是序列化的SnmpAuthMsg 值（可能被加密）。 
+
+ 特别地，如果接收方SNMPv2参与者地私有协议是noPriv，那么privData属性是
+未被加密的。否则，privData根据私有协议来处理。
+
+          (6)  根据[5]中的约定序列化SnmpPrivMsg 的值 。
+
+          (7)  序列化后地SnmpPrivMsg值用接收方的SNMPv2参与者的传输地址和
+传输域来传送。
+
+          注意：上述地过程不包含任何SNMPv2访问控制策略地应用。(参照2.13)
+
+3.2.  处理一个收到的通讯
+          本节描述一个SNMPv2实体收到一个管理通讯后的处理过程。
+
+          (1)  增加 snmpStatsPackets 计数器 [7].如果收到的信息不是一个
+SnmpPrivMsg的序列化的（根据[5]地约定）值，该消息不作进一步地处理就被抛弃。               
+(如果该数据包的第一个八位组地值为16进制的30，有时在抛弃该消息前增加
+snmpStats30Something counter [7]的值；否则增加snmpStatsEncodingErrors 
+counter [7]的值)
+
+          (2)  查询关于参与者信息的本地数据库，根据SnmpPrivMsg中的privDst
+属性得到接收方SNMPv2参与者的信息。
+
+
+          (3)  如果本地数据库中没有关于接受方SNMPv2参与者的信息，或者表明
+本地的SNMPv2实体没有实现接收方参与者的操作，那么无需进一步的处理就丢弃接
+收到的消息，之后增加snmpStatsUnknownDstParties counter [7]的值。
+
+          (4)  根据SnmpPrivMsg中的privData属性创建一个ASN.1 OCTET STRING
+值（可能根据使用的私有协议解密）
+
+               特别地，如果该参与者的私有协议是noPriv，那么OCTET STRING
+的值与SnmpPrivMsg中的privData的值完全对应。
+
+          (5)如果OCTET STRING的值未被序列化，（根据[5]的约定） ，那么无需
+进一步的处理就丢弃接收到的消息，之后增加snmpStatsEncodingErrors               
+counter [7] 的值 。
+
+          (6)  如果authData 中的dstParty 属性与SnmpPrivMsg 中的privDst 属
+性不同，那么无需进一步的处理就丢弃接收到的消息，之后增加
+snmpStatsDstPartyMismatches counter [7]的值 。
+
+          (7)  根据SnmpAuthMsg中authData中的srcParty属性得出发起方SNMPv2
+参与者，在关于参与者信息的本地数据库中查询它的信息。
+
+          (8)  如果本地数据库中没有发起方参与者的信息，那么无需进一步的处
+理就丢弃接收到的消息，之后增加 snmpStatsUnknownSrcParties counter [7]      
+的值  。
+
+          (9) 根据关于参与者信息的本地数据库中发起和接收方的SNMPv2参与者
+的相关信息和鉴定协议，鉴定得到的SnmpAuthMsg值。
+
+               特别地，如果鉴定协议指明为noAuth，那么总是鉴定SnmpAuthMsg
+的值为真实的。
+
+          (10)如果鉴定SnmpAuthMsg的值为不真实的，那么无需进一步的处理就丢
+弃接收到的消息，而且，如果snmpV2EnableAuthenTraps object [7] 正在生效，那
+么该SNMPv2实体根据它的配置（4.2.6 of[2]）发送authorizationFailure 陷阱[7]
+
+          (11)从SnmpAuthMsg中的authData属性提取SnmpMgmtCom的值
+
+          (12)  从SnmpMgmtCom的context属性得到SNMPv2的上下文，查询关于参
+与者信息的本地数据库以获得它的信息。
+
+          (13) 如果本地数据库中没有该SNMPv2上下文的信息，那么无需进一步的
+处理就丢弃接收到的消息，之后增加snmpStatsUnknownContexts counter [7]的值 。
+
+          (14)查询关于访问处理信息的本地数据库，根据接收方参与者和指明的
+SNMPv2上下文得到本地访问策略许可给发起方SNMPv2参与者的访问权限。
+
+          (15)根据与SnmpMgmtCom中的PDUs属性值关联的ASN.1 tag值决定管理通
+讯类。如果接收到的消息的管理信息类是32, 8, 2, 或 1(也就是 GetBulk, Set, 
+GetNext 或者  Get)，并且本地SNMPv2 实体没有实现SNMPv2 上下文，那么无需进
+一步的处理就丢弃接收到的消息，之后增加snmpStatsUnknownContexts counter [7] 
+的值。
+
+          (16) 如果接收到的消息的管理信息类是128, 64 或 4 (也就是 
+SNMPv2-Trap, Inform, 或者 Response)，并且该类无访问权限，那么无需进一步的
+处理就丢弃接收到的消息，之后增加snmpStatsBadOperations counter [7] 的值。
+
+          (17)如果接收到的消息的管理通讯类没有访问权限，那么在生成和传送
+一个响应消息后无需进一步的处理就丢弃接收到的消息，该响应消息代表接收方
+SNMPv2参与者，被发往发起方SNMPv2参与者，它的context, var-bind-list 和 
+request-id 属性与接收到的请求中的对应属性完全一样。 它的 error-               
+index属性是 zero 并且它的 error-status 属性是authorizationError [2]. 
+
+          (18) 如果 SNMPv2 上下文 涉及本地对象资源，那么根据在[2]中的程序，
+用SNMPv2 上下文识别MIB视图，根据该视图用接收方SNMPv2实体执行SnmpMgmtCom
+值代表的管理操作。
+
+          (19)   如果 SNMPv2 上下文 涉及远地对象资源，那么通过合适的代理
+关系执行SnmpMgmtCom值代表的管理操作。
+
+
+3.3.  生成一个响应
+          生成一个针对SNMPv2 管理请求的响应的过程和传送一个请求的过程是
+完全一样的（参考3.1），除了下列的情况例外：
+
+          (1)  在第一步，从初始的SnmpMgmtCom 中的srcParty 属性得到响应
+SnmpMgmtCom 中的dstParty ，从初始的SnmpMgmtCom 中的dstParty 属性得到响应
+SnmpMgmtCom 中的srcParty 属性， 从初始的SnmpMgmtCom中的context属性得到响
+应SnmpMgmtCom中的context属性；而且，响应SnmpMgmtCom的pdu属性的值是那个实
+施初始SnmpMgmtCom值指定的操作执行后得到的结果。
+
+(2)	在第七步，用生成自己的相应请求的传送地址和传送域来传送序列
+化的SnmpPrivMsg值，即使这与关于参与者信息的本地数据库中记
+录的传送信息不同。
+
+4. 模型应用
+这一部分描写如何设置管理模型，以达到在各种环境和配置中实现有效的网络
+管理.定义了几种类型的管理配置，并用各自的几个例子来加以描述.
+
+
+4.1 无安全的小代理配置
+这段是关于与一个或多个SNMPv2管理站点相互作用的小的、无安全保证的
+SNMPv2代理的配置的例子.表2是关于小代理和管理者都知道的SNMPv2参与者的信
+息.表3  介绍了关于本地访问策略的相似的公共部分的信息.
+
+在表2 中，代理在IP地址为1.2.3.4、UDP的断口161使用参与者身份gracie
+来操作；管理者在IP地址为1.2.3.5、UDP的断口的2001上用身份为george来操
+作的.在小的、无安全保证的SNMPv2代理段执行必须提供关于两个SNMPv2参与者的
+身份和传输地址的管理配置（和稳定存储）：自身和远端的.严格的讲，关于参与者
+的其他信息（包括访问策略信息）是不必要配置的.
+
+身份            gracie（代理者）                 george（管理者）
+域              snmpUDPDomain                 snmpUDPDomain
+地址            1.2.3.4，161                 1.2.3.4.5，2001
+认证段口          noAuth                         noAuth
+（Auth  Port）
+认证的私有密钥    “”                            “”
+（Auth Priv Key）
+认证的公开密钥       “”                              “”
+认证的时钟            0                                0
+认证的生命周期       0                                0
+私有端口             noPriv                          noPriv
+私有私人密钥         “”                              “”
+私有的公开密钥       “”                             “”
+         表2 ：小代理的参与者信息
+
+目标      主题       上下文         权限
+gracie     george      local      35（获取, 获取下一个 获取一批）
+                                     （Get GetNext GetBulk）
+george    gracie       local       132 
+(Response   SNMPv2-Trap)
+表3 ：关于小代理的访问信息
+
+假如管理端的参与者george希望通过叫代理者gracie发布一个SNMPv2的
+GetNext 请求消息来的询问关于上下文为“local”的管理信息.该管理者参考他本
+地的关于参与者的数据库信息.因为对参与者george的鉴定认证协议是记录为
+“moAuth”的，这个通过管理者生成的 GetNext 请求消息是作为原始性和完整性是
+不需要鉴别的.通过管理者的本地数据库中关于参与者的信息，对参与者gracie的
+私有协议是设置为“noPriv”的，GetNext请求消息是不会得到保护的，可能会暴
+露.更准确的讲，它是简单的装配的，排序和传输到目的地址的（IP 地址为1.2.3.4，
+UDP端口为161），这个目的地址就是参与者gracie在管理者的本地数据库中的信息
+所记录的.
+
+当GetNext请求消息在代理段被收到后，这个（gracie）参与者的身份信息从
+消息中取得 ，并且接收的实体参考参与者信息的本地数据库.因为gracie的私有协
+议是“noPriv”，其接受消息是不会得到不被暴露的保护的.类似的，当原始参与者
+（grorge）的身份被取得后，参与者的本地数据库的信息也被取得了.因为对当时人
+george的鉴别协议记录为“noAuth”，这个接受信息是立即被认证接收.
+
+这个接受消息完全被处理的情况，仅仅发生代理关于访问策略信息的本地数据
+库对通过参与者george向参与者gracoe关于SNMPv2的上下文为“local”
+的"GetNext"请求通讯的认证.访问策略的数据库信息在表3 中的认证象通讯等
+（Get 和GetBulk等操作）.
+
+当一个标准的请求被处理时，一个响应消息通过参考SNMPv2上下文“local”
+和身份来生成，gracie作为源参与者，从请求端来的george作为目的参与者.因为
+对gracie的本地数据库中的关于认证协议记为“noAuth”，对原始和整体性而言，
+一般性的响应消息是不用认证的.根据参与者信息的本地数据库，对参与者george
+的私有协议是“noPriv”，响应消息可能被暴露.响应消息从相应的的请求地址传输
+到传输地址，而不关心和传输地址相关的george的本地数据库的信息.
+
+当生成响应是被管理者接受时，直接的参与者（george）的身份是从消息中提
+取出来的，并且管理者参考参与者的本地数据库信息.因为参与者george的私有协
+议记录为“noPriv”，该响应是得不到保护的.类似的，发起的参与者gracie的身份
+被提取出来，并参考其本地数据库，因为参与者gracie的认证协议记为“noAuth”，
+响应立即作为认证被接受.
+
+接受的信息能完全被处理，仅仅当管理者的本地数据库的访问策略认证来自于
+参与者gracie到管理者george的响应信息，并且参考SNMPv2的上下文“local”.
+访问策略信息数据库描述象表3中认证响应消息等（如 snmpV2-陷阱信息）
+
+
+4.2 安全小代理配置
+这段给出了一个例子来配置SNMPv2安全小代理，该代理仅仅和单一的SNMPv2
+的管理站相互作用.表4 说明了关于对小代理和管理者都知道的SNMPv2参与者的信
+息.而表5 类似地说明了本地访问策略的公共信息.
+
+管理者和代理之间的相互影响在这个配置中是和上面的非安全小代理非常相似
+的，除了所有的协议消息要对原始性和完整性认证及对信息的隐蔽的保护.这个例子
+要求加密技术，是为了支持通过SNMPv2本身来分发密码密钥.一个更精确的包含附
+加的一对参与者例子支持在没有加密技术认证消息中交换非加密信息来不花加密的
+代价。
+
+一个实际的安全代理的配置可能要求SNMPv2参与者的认证和私有协议均为不
+认证noAuth（）和无私有（noPriv），其目的是为了支持时钟同步（参考[6]）.更
+详细的说，这些额外的参与者是不在这个例子中说明的.
+  身份               ollie                stan
+                                 (代理)              (管理者)
+               域                snmpUDPDomain        snmpUDPDomain
+               地址           1.2.3.4, 161         1.2.3.5, 2001
+               认证端口        v2md5AuthProtocol   v2md5AuthProtocol
+               认证私有密钥   "0123456789ABCDEF"   "GHIJKL0123456789"
+               认证公开密钥      ""                   ""
+               认证时钟           0                    0
+               认证的生命周期     300                  300
+               私有端口         desPrivProtocol     desPrivProtocol
+               私人私有密钥   "MNOPQR0123456789"   "STUVWX0123456789"
+               私人公开密钥      ""                   ""
+               表4: 安全小代理的参与者信息
+
+目标     目标      上下文      权限
+          ollie     stan       local       35 (Get, GetNext & GetBulk)
+          stan      ollie      local      132 (Response & SNMPv2-Trap)
+表 5: 安全小代理的访问信息
+
+在表4 中，这个例子的代理参与者在IP地址为1.2.3.4、UDP端口为161上使
+用ollie的身份来操作；管理者在IP地址为1.2.3.5、UDP的端口为2001上使用身
+份stan来操作.SNMPv2的安全小代理的执行必须提供关于SNMPv2的参与者的相关
+信息管理配置（和稳定存储）：包括它自身和远端.Ollie和stan认证他们通过使用
+SNMPv2认证协议v2md5AuthProtocol和他们的彼此不同的私有认证密钥来产生的所
+有的信息.尽管在这里他们的私有认证密钥的值（"0123456789ABCDEF" 和 
+"GHIJKL0123456789"）的出现是属于解释目的，关于私有认证密钥的信息一般是不
+会提供给人们的，并且是限制请求它的协议的部分操作.
+
+当使用v2md5AuthProtocol时，对每个SNMPv2参与者的公开认证密钥从不会在
+SNMPv2的认证和校验中使用的.（v2md5AuthProtocol在字符上是对称的的），同时
+每个参与者的私有认证密钥必须对彼此要认证通讯的参与者是已经知道的.相反，不
+对称认证协议（公开密钥）不能依靠他们操作的私有密钥的共享.
+
+传输给参与者stan的所有协议消息是使用desPrivProtocol私有协议和私有密
+钥“STUVWX0123456789”来加密的；它们加密是通过相同的协议和密钥.类似地，传
+输给参与者ollie的所有信息是用desPrivProtocol协议和私人私有密钥
+“MNOPQR0123456789”来加密的，他们相互加密.作为认证密钥，私人私有密钥是不
+能提供给人们的，同时请求它的协议的执行也要限制部分功能.
+
+
+4.3 MIB视图的配置
+这段描述了一个关于MIB视图定义的惯例和惯例的使用，并给出一个关于参考
+本地目标资源的SNMPv2的上下文的MIB视图的配置.
+
+一个MIB视图通过收集视图子树来定义（参考2.6段），并且任何一个MIB视
+图可以用这种方法来描述.因为MIB视图的定义可以包含很多视图子树，关于一个简
+化的MIB视图的定义也是合理的.
+
+惯例中采纳了关于支持用视图子树族（包括或者排除有关的MIB）来实现简化
+的MIB视图的定义.该视图子树族包括或排除相关MIB视图的定义。通过这个惯例，
+每个SNMPv2实体根据相关的SNMPv2上下文（可参考本地的目标资源）来定义MIB
+视图，通过该MIB视图来维持本地表.在表中的每个条目表示一个视图子树族，该视
+图子树包括或者排除一些SNMPv2上下文的MIB视图.每个表中实体描述了一个子树
+族用一对序偶：目标验证人（OBJECT IDENTIFIER）值（又叫族名）和位串（bitstring）
+值（又叫族标志）.族标志是指出了在一个相关族名的子验证名在一个相关子树族定
+义中是非常重要的.对每个可能的MIB对象实例，如果下列条件成立，那么它是属于
+通过一个详细表条目来描述的的视图子树族的：
+
+?	由MIB对象实例组成的目标标识符名至少和上述的表条目的族名一样数目
+的标识符.
+
+在上述的MIB对象实例名中每个子标识符匹配相应族名相关的子标识符.而不
+管其族标志是否为零
+
+对一个特殊的SNMPv2上下文来讲，在MIB视图中出现的MIB对象实例是和子树
+族的实例的成员有关的，在SNMPv2的上下文中的本地表的条目：
+
+●	如果一个MIB对象实例不属于任何一个子树族，则对相关的SNMPv2的上下文
+而言，它就不在的MIB视图中.
+
+●	如果一个MIB对象实例属于子树族，该子树族是通过一个相关的表条目详细
+的描述的，则根据条目的类型来决定是包括还是排除相关的MIB视图.
+
+●	如果一个MIB对象实例属于通过多个相关表条目描述的子树族，则实例根据
+单一的表条目来决定是包括还是排除相关的MIB视图.这里表项目，首先，关
+联最大的子标识名数，其次，还关联最大的族名.
+
+子树通过这样的表条目来描述，其关联的族标志是符合通过族名的条目来标识
+的单一视图子树.因为惯例提供了内在族标志值和多个的扩展，带有一个零长度的族
+标志的表项代表一个子树族，该子树与一个单一的视图子树相对应。
+
+上下文       类型         族名          族标志
+lucy       included    internet       ''H
+表6：小代理的视图定义
+
+用这个惯例来简化MIB视图的定义，一些最通用的MIB定义可以方便的表示.
+例如，表6就说明了小的SNMPv2实体需要的MIB视图的定义，这个小的MIB具有单
+一的SNMPv2的上下文，该上下文和MIB视图相关，这样MIB视图包括了在SNMPv2
+网络管理结构中定义的所有MIB目标.这个说明表有单一的入口.在MIB视图中定义
+条目的SNMPv2上下文（lucy）的在第一列表明.条目的类型表明任何MIB对象实例
+属于子树族，该子树族是通过对在MIB视图中SNMPv2上下文“lucy”的条目的出现
+来描述的.这个条目的族名是internert，并且零长度的族标志表明了相关子树族和
+根和该节点的单一子视图相适应.
+
+另一个关于MIB视图定义的例子（见表7）是一个有多个SNMPv2上下文的SNMPv2
+实体，并且有截然不同的MIB视图.关联了SNMPv2上下文lucy的MIB视图，组成了
+所有在SNMPv2网络环境结构中定义的MIB目标的实例，除了适合于SNMPv2参与者
+管理的部分.相反地，属于SNMPv2上下文ricky 的MIB视图仅仅包含在Internet-
+标准 MIB的系统组中的MIB对象实例，和SNMPv2参与者管理的这些对象实例.
+
+上下文         类型        族名         族标志
+               lucy       included    internet       ''H
+               lucy       excluded    snmpParties    ''H
+               ricky      included    system         ''H
+               ricky      included    snmpParties    ''H
+                  表7: 多上下文的视图定义
+
+一个更复杂的关于MIB视图配置的例子说明了通过视图子树族（见表8）的视图
+子树的简化集合.在这个例子中，和SNMPv2上下文lucy相关的MIB视图包括所有的对
+象实例（这些实例在Internet标准MIB系统组中），和一些次要的网络交互的设备相
+关的信息.无论如何，相关信息交互是不包括交互的速度的.次要表条目族标志值
+“FFAO”H 表明一个MIB对象实例属于相关的子树族，假如它的名字的初始前缀包含
+有在注册层次上的ifEntry 部分，它的名字的11层子树的名字为2.
+描述次要网络交互的速度的MIB对象实例，是属于通过次要的和第三个表的条目的来
+描述的子树族，但特殊的实例是排除SNMPv2上下文为lucy的MIB视图的，因为更多的
+相关族名在表条目上是排除类型.
+
+对SNMOv2上下文为ricky的MIB视图在这个例子中也被定义.这个SNMPv2上下文
+为ricky的MIB视图包括了在Internet标准MIBicmp组中所有的对象实例，和与管理设
+备相关的15层的网络交互所有相关的信息.另外，SNMPv2上下文为rickyMIB视图包括
+在14层上收到的和网络交互的8位组的数目.
+上下文         类型        族名         族标志
+               lucy       included      system             ''H
+               lucy       included    { ifEntry 0 2 }    'FFA0'H
+               lucy       excluded    { ifSpeed 2 }      ''H
+               ricky      included    icmp               ''H
+               ricky      included    { ifEntry 0 5 }    'FFA0'H
+ricky      included    { ifInOctets 4 }   ''H
+
+表 8: 更多的视图定义的详细阐述
+
+根据上面的例子的假设，一个MIB视图配置的 广阔范围可以通过[4]中的简化描
+述得到高效的支持，严格的MIB设计可能有时要更加简化大多数MIB视图定义的大小
+和复杂度.一方面，MIB视图配置的机构没有强加一个绝对的约束在当地管理的访问
+策略上和MIB的名字空间的结构上；在另一方面，大多数的访问策略是已知的，这些
+策略的配置代价可以通过分配一些不同的部分在注册层来降低，这里注册层的MIB
+目标是本地策略要求经常频繁地处理的.
+
+
+4.4 代理配置
+这节主要是用一个例子来解释SNMPv2的代理配置.一方面，外部代理配置提供了
+管理非SNMP设备的能力，另一方面，本地代理配置允许一个管理者减轻一个主要任
+务不是管理的网络设备的管理方面的负担.从这个程度上来讲，SNMPv2代理机构的功
+能主要就是个管理信息的集合，代理配置也可减轻大规模管理活动的带宽要求.
+
+这个例子配置的一个说明：实际的配置可能要求附加的的部分，主要大为了支
+持时钟同步和保密的分发.
+
+
+4.4.1 外部代理配置
+这段主要是介绍一个关于通过SNMPv2管理站管理网络元素（这些网络元素并不
+支持SNMPv2）的配置的例子.这个在SNMPv2代理机构的配置中心通过使用一个叫所有
+者协议（proprietary protocol）来和非SNMPv2设备进行交互来实现SNMPv2的管理
+操作.
+
+表9 介绍了关于SNMPv2参与者的信息，这些信息记录在SNMPv2代理机构的本地
+数据库中的参与者信息中.表10介绍了关于代理关系的信息，该信息记录在SNMPv2
+代理机构的本地数据库的的上下文信息中.表11 介绍了关于SNMPv2参与者的信息，
+该信息记录SNMPv2管理站的本地数据库的参与者信息中.表12 介绍了关于访问策略
+的数据库信息，该信息是在本地的管理中指明.
+
+身份              groucho             chico             harpo
+                    (管理者)           (代理人)           (代理目的)
+   域            snmpUDPDomain       snmpUDPDomain     acmeMgmtPrtcl
+   地址         1.2.3.4, 2002       1.2.3.5, 161          0x98765432
+   认证端口       v2md5AuthProtocol   v2md5AuthProtocol   noAuth
+   认证私有密钥   "0123456789ABCDEF"  "GHIJKL0123456789"  ""
+   认证公开密钥        ""                  ""              ""
+   认证时钟          0                   0                 0
+   认证生命周期     300                 300                0
+   私有端口        noPriv              noPriv              noPriv
+   私人私有密钥    ""                  ""                  ""
+   私人公开密钥     ""                  ""                  ""
+             表9: 代理机构的参与者信息
+
+          上下文     代理目的              代理源          代理上下文
+          ducksoup    harpo                n/a             n/a
+                  表10: 代理机构的代理关系
+
+               身份          groucho              chico
+                           (管理者)              (代理人)
+               域           snmpUDPDomain        snmpUDPDomain
+               地址           1.2.3.4, 2002        1.2.3.5, 161
+               认证端口     v2md5AuthProtocol    v2md5AuthProtocol
+               认证私有密钥  "0123456789ABCDEF"   "GHIJKL0123456789"
+               认证公开密钥    ""                   ""
+               认证时钟        0                    0
+               认证生命周期    300                  300
+               私有端口       noPriv               noPriv
+               私人私有密钥     ""                   ""
+               私人公开密钥      ""                   ""
+                表 11: 管理站的参与者信息
+
+          目标        主题       上下文       权限
+       chico      groucho    ducksoup     35 (Get, GetNext & GetBulk)
+       groucho    chico      ducksoup    132 (Response & SNMPv2-Trap)
+                 表12: 外部代理的访问访问信息
+
+向在表9中的介绍，代理机构的参与者在IP地址为1.2.3.5、UDP端口为161上用
+身份chico操作；同时，这个例子中的管理者在IP地址为1.2.3.5、UDP端口为2002
+上用身份groucho操作.Groucho和chico认证所有的关于他们使用
+v2md5AuthProtocol协议生成的信息和他们截然不同的、私有的认证密钥.虽然他们
+的私有认证密钥值("0123456789ABCDEF" 和"GHIJKL0123456789")在这里因为解释
+的目的而出现了.但私有密钥的信息一般是不会告诉人们的，并且对请求它的协议的
+执行也是有限制的.
+
+参与者harpo不会发送或接收SNMPv2协议信息；进一步说，所有与参与者的通讯
+信息是通过一个假设的私有协议来确认的，该私有协议是由acmeMgmtPrtcl的值来确
+认的.由于参与者harpo不参与到SNMPv2中，许多为该参与者记录在本地数据库中的
+诸属性均被忽略.
+
+表10 表明了相互了解的代理的代理关系.更详细的说，SNMPv2上下文ducksoup
+指一个这样的关系：参与者harpo感到满意的关系.（这个代理的目的地的参与者的
+传输域决定了代理源的解释和代理上下文的确认---在这种情况下，用
+acmeMgmtPrtcl表明代理源和上下文是可以忽略的）
+
+为了询问与参与者harpo相关的私有设备，管理站的groucho构造了一个SNMPv2 
+的GetNext 请求，其中包含一个SnmpMgmtCom的值，该值是参考SNMPv2的上下文
+ducksoup，并且传输它给在IP地址为1.2.3.5、UDP端口为161的参与者chico.该请求
+是用私有认证密钥“0123456789ABCDEF”来认证的.
+
+当该请求被参与者chico接收到后，消息的发起者作为参与者groucho通过使用
+本地信息（见表9 ）的私有密钥“0123456789ABCDEF”来效验.由于参与者groucho
+通过发布一个通过访问控制策略（见表12）对参与者chico和SNMPv2的上下文 
+ducksoup 的GetNext（也可以是Get、GetBulk）请求来获得认证.从而该请求获得认
+可.由于上下文信息的本地数据库指明了SNMPv2的上下文 ducksoup是参考了一个代
+理关系，这个请求可通过直接翻译到参与者harpo的合适的操作acmeMgmtPrtcl上来
+获得确认.这些新的操作传输到参与者harpo的acmeMgmtPrtcl的域上的0x98765432
+地址上.
+
+代理和私有设备之间私有协议的交流要求：一个SNMPv2响应管理操作是通过参
+与者chico转发参与者grpucho的结果而不是参考SNMPv2的上下文ducksoup.这个响
+应通讯是为了原始的和完整性的认证，可通过在参与者chico的传输中指明使用认证
+协议“v2md5AuthProtocol”和私有认证密钥“GHIJKL0123456789”来实现.它传输
+给在管理站点的SNMPv2参与者groucho，其IP地址为1.2.3.4、UDP端口为2002（相应
+请求的源地址）.
+
+当参与者groucho接受到这个响应后，参与者chico通过使用本地私有认证密钥
+信息（见表 11）“GHIJKL0123456789”来效验发起者的信息.由于参与者chico可根
+据相关访问策略（见表12），再通过发布关于参与者groucho和SNMPv2上下文ducksoup
+的响应通讯来认证，其响应获得认可，同时结束对私有设备的询问.
+
+通过观察记录管理站在代理机构（表9 ）上既不是静态的、也不是专有配置的
+本地数据库的参与者信息是很重要的.例如，在这个例子中，假设acmeMgmtPrtcl是
+一个管理站连接到局域网上的私有的MAC-layer机构.在这样的环境下，SNMPv2参与
+者chico想驻留在连接到LAN的SNMPv2代理机构，通过局域网协议的参与，去发现附
+件和未连接到局域网上的各类站点.在这中情况下，SNMPv2代理很容易调整它的本地
+参与者的数据库信息，达到通过SNMPv2管理站点来支持不是直接受局域网管理的站
+点.对每个新发现的局域网站点，SNMPv2代理可以把它作为一个类似于参与者harpo
+（代表局域网本身的）的条目添加它到参与者信息的本地数据库中，也可以添加它
+到上下文信息的本地数据库中，作为一个类似于SNMPv2的上下文ducksoup（代表在
+SNMPv2域中新站点的代理关系）的条目来处理.
+
+由SNMPv2代理机构通过使用SNMPv2来询问参与者的本地数据库信息，只要有新
+站点连接到局域网上来.一个SNMPv2管理站能够发现和影响它们，
+
+
+4.4.2 本地代理配置
+该段介绍了一个关于配置支持SMPv2本地代理操作的例子.即在一个SNMPv2代理
+和一个要通过次要SNMPv2代理仲裁的管理站之间进行非直接交互的操作.
+
+该例子的配置和上面的外部代理的介绍是类似的.在这个例子中，无论如何，与
+身份为harpo相关的参与者通过SNMPv2接收消息，并且和SNMPv2代理chico用认证的
+SNMPv2通讯来进行交互.
+
+表13介绍了关于SNMPv2参与者的信息，它记录在SNMPv2代理的代理信息的本地
+数据库中.表14介绍了关于记录在SNMPv2代理的上下文信息的本地数据库中的代理
+关系信息.表11介绍了关于记录在SNMPv2管理站点的参与者信息的本地数据库中
+SNMPv2参与者信息.表15介绍了关于在本地管理中指明的访问策略的数据库信息.
+
+               身份          groucho              chico
+                             (管理者)            (代理)
+               域            snmpUDPDomain        snmpUDPDomain
+               地址           1.2.3.4, 2002        1.2.3.5, 161
+               认证端口       v2md5AuthProtocol    v2md5AuthProtocol
+               认证私有密钥   "0123456789ABCDEF"   "GHIJKL0123456789"
+               认证公开密钥      ""                   ""
+               认证时钟        0                    0
+               Auth Lifetime     300                  300
+               Priv Prot         noPriv               noPriv
+               Priv Priv Key     ""                   ""
+               Priv Pub Key      ""                   ""
+
+               Identity          harpo                   zeppo
+                                 (代理目的)            (代理源)
+               Domain            snmpUDPDomain        snmpUDPDomain
+               Address           1.2.3.6, 161         1.2.3.5, 161
+               Auth Prot       v2md5AuthProtocol   v2md5AuthProtocol
+               Auth Priv Key   "MNOPQR0123456789"   "STUVWX0123456789"
+               Auth Pub Key     ""                   ""
+               Auth Clock       0                    0
+               Auth Lifetime    300                  300
+               Priv Prot         noPriv               noPriv
+               Priv Priv Key     ""                   ""
+               Priv Pub Key      ""                   ""
+                   表 13: 代理的参与者信息
+
+         上下文      代理目的            代理源           代理上下文
+          ducksoup    harpo                zeppo           bigstore
+          bigstore    groucho              chico           ducksoup
+                  表14: 代理的代理关系
+
+          目标        主体     Context     Privileges
+         chico      groucho    ducksoup     35 (Get, GetNext & GetBulk)
+        groucho    chico      ducksoup    132 (Response & SNMPv2-Trap)
+        harpo      zeppo      bigstore     35 (Get, GetNext & GetBulk)
+        zeppo      harpo      bigstore    132 (Response & SNMPv2-Trap)
+                  表 15: 本地代理的访问信息
+
+在表13中介绍说，代理的参与者在IP地址为1.2.3.5、UDP端口为161上用身份
+chico来操作的.该例子的管理者在IP地址为1.2.3.4、UDP端口为2002上用身份
+groucho来操作的.；代理源参与者在IP地址为1.2.3.5、UDP端口为161上用身份zeppo
+来操作的.；代理目的参与者在IP地址为1.2.3.6、UDP端口为161上用身份harpo来操
+作的.4个SNMPv2参与者的认证产生的信息是为了保证原始性和完整性，他们使用了
+认证协议 v2md5AuthProtocol 和不同的私有认证密钥.虽然这些私有认证密钥的值
+("0123456789ABCDEF","GHIJKL0123456789", "MNOPQR0123456789"和
+"STUVWX0123456789")在这里描述出来了，但私有密钥的信息一般是不能告诉人们
+的，同时要限制一些请求它协议操作.
+
+表14 介绍了相互了解的代理机构间代理关系，更具体的讲，SNMPv2上下文
+ducksoup是参考这样一个关系的：被SNMPv2参与者zeppo和SNMPv2参与者harpo的通
+讯认可了，同时也参考了SNMPv2的上下文bigstore.
+
+为了询问与参与者harpo相关的代理设备，管理站点groucho构造一个SNMPv2的
+GetNext请求，该请求中包含了参考SNMPv2的上下文ducksoup的SnmpMgmtCom值，并
+且传输给在IP为1.2.3.5、UDP端口为161的（见表11）参与者chico，这个请求是用
+私有认证密钥“0123456789ABCDEF”来认证的.
+
+当参与者chico收到请求时，消息的发起者是通过参与者grouhco使用本地信息
+（见表13）关于私有认证密钥“0123456789ABCDEF”来校验的.由于参与者groucho
+是通过发布GetNext（也可以是get和getbulk）请求来认证的，该发布是参考了参与
+者chico和相关访问控制策略（见表15）的SNMPv2上下文ducksoup，故该请求被接受.
+由于上下文信息的本地数据库指明了参考代理关系的SNMPv2上下文ducksoup，这个
+通过翻译为一个从参与者zeppo到参与者harpo的相应SNMPv2的 GetNext请求，同时
+也参考了SNMPv2的上下文bigstore的请求，是可以得到确认的.通过使用私有认证
+“STUVWX0123456789”来认证新的通讯和传输到IP地址为1.2.3.6的参与者harpo.
+
+当新的请求被参与者harpo收到时，消息的发起者是通过参与者zeppo使用本地
+信息（见表13）关于私有认证密钥“STUVWX0123456789”来校验的.由于参与者zeppo
+是通过发布GetNext（也可以是get和getbulk）请求来认证的，该发布参考了参与者
+harpo和相关访问控制策略（见表15）的SNMPv2上下文ducksoup，故该请求被接受.
+描述了询问结果的SNMPv2响应消息是通过参与者harpo到参与者zeppo来生成的.并
+参考了SNMPv2的上下文bigstore.这个响应通讯也是使用私有认证密钥
+“MNOPQR0123456789”来认证的，并传输给IP地址为1.2.3.5的参与者zeppo（相应
+的请求的源地址）
+
+当这个响应被参与者zeppo收到时，信息的发起者是通过参与者harpo使用本地
+信息（见表13）关于私有认证密钥“MNOPQR0123456789”来校验的.由于参与者harpo
+是通过发布和响应通讯来认证的，该通讯参考了参与者zeppo和通过相关的访问控制
+策略（表15）SNMPv2的上下文bigstore ，响应是可以接受的.并且它是对原始的
+GetNext请求构造响应，表明为一个ducksoup的SNMPv2上下文.从参与者chico到参与
+者groucho响应的原始性和完整性通过使用私有认证密钥“GHIJKL0123456789”来认
+证的，并传输给IP地址为1.2.3.5的参与者groucho（相应原始请求的源地址）.
+
+当这个响应被参与者groucho收到时，消息的发起者是通过参与者chico使用本
+地信息（见表13）关于私有认证密钥“GHIJKL0123456789”来校验的.由于参与者chico
+是通过了发布和响应通讯来认证的，该通讯又参考了参与者groucho和通过相关的访
+问控制策略（表15）SNMPv2的上下文ducksoup，故响应是可以接受的.并且可完成询
+问.
+
+
+4.5 公共密钥配置
+这段介绍了一个关于假设的安全协议的配置的例子.这个假设协议将基于不对
+称（公开密钥）的密码技术，把它作为一个提供数据原始性的认证（不保证会保护
+不被暴光）.这个例子说明了用公开密钥技术的管理模型的一致性，并且在例子范围
+内支持保护不被暴光.
+身份          ollie                stan
+                             (代理t)              (管理者)
+               域            snmpUDPDomain        snmpUDPDomain
+               地址           1.2.3.4, 161         1.2.3.5, 2004
+               Auth Prot         pkAuthProtocol       pkAuthProtocol
+               Auth Priv Key   "0123456789ABCDEF"   ""
+               Auth Pub Key   "0123456789abcdef"   "ghijkl0123456789"
+               Auth Clock       0                    0
+               Auth Lifetime    300                  300
+               Priv Prot        noPriv               noPriv
+               Priv Priv Key     ""                   ""
+               Priv Pub Key      ""                   ""
+                 表 16: 公开密钥代理的参与者信息
+
+这个例子的配置由单一的SNMPv2代理组成，它是和单一的SNMPv2管理站点相互
+作用影响的.表16和17介绍了关于SNMPv2的参与者通过代理和管理者的信息，另外表
+5介绍的关于对管理者和代理的本地访问策略的信息.
+
+身份        ollie                stan
+                          (agent)              (manager)
+               域            snmpUDPDomain        snmpUDPDomain
+               Address           1.2.3.4, 161         1.2.3.5, 2004
+               Auth Prot         pkAuthProtocol       pkAuthProtocol
+               Auth Priv Key     ""                "GHIJKL0123456789"
+               Auth Pub Key   "0123456789abcdef"   "ghijkl0123456789"
+               Auth Clock        0                    0
+               Auth Lifetime     300                  300
+               Priv Prot         noPriv               noPriv
+               Priv Priv Key     ""                   ""
+               Priv Pub Key      ""                   ""
+          表 17: 公开密钥管理站点的参与者信息
+
+在表16中，使用身份为ollie的代理的参与者在IP为1.2.3.4、UDP的端口为161
+上上操作；使用身份stan的管理者的参与者在IP为1.2.3.5、UDP的端口为2004上操
+作；ollie和stan认证所有由他们生成的信息，通过用假设的SNMPv2认证协议与他们
+截然不同的私有认证密钥来保证其原始性和完整性.这些私有认证密钥的值
+（"0123456789ABCDEF" 和"GHIJKL0123456789"）在这里说明仅仅是为了解释的目
+的，私有密钥通常是不能告诉人们的，并且访问它们协议的执行也有部分限制.
+
+在更多的方面，在上述的这个小的安全SNMPv2代理中，管理和代理之间的相互
+影响在它们的配置中总是同样的.最主要的不同不是SNMPv2的参与者在公共密钥的
+配置中有这样的信息：可以通过其他参与者来认证其通讯来了解关于私有密钥的信
+息，相反的，对每个收到的认证SNMPv2信息，发起者的身份是通过应用一个不对称
+加密技术算法对收到的信息和发起者的公开密钥一起来确认的.因此，在配置中，代
+理知道管理的公开密钥（“ghijkl0123456789”）但不知道它的私有密钥
+("GHIJKL0123456789")；类似地，管理者知道代理的公开密钥
+（“0123456789abcdef”）而不知道自己的私有密钥("0123456789ABCDEF").
+
+
+5. 安全考虑
+为了参与在管理模型中说明这个备忘录，SNMPv2的执行必须支持在参与者信息
+的本地数据库方面具有本地的、稳定存储的能力.相应地，每次尝试的操作必须小到
+稳定存储的数目之内.
+
+
+6. 感谢
+该文档是基本上基于RFC1351而来的.
+
+
+7. 参考
+[1]  Case, J., Fedor, M., Schoffstall, M., Davin, J., "Simple
+               Network Management Protocol", STD 15, RFC 1157, SNMP
+               Research, Performance Systems International, MIT
+               Laboratory for Computer Science, May 1990.
+
+          [2]  Case, J., McCloghrie, K., Rose, M., and Waldbusser, S.,
+               "Protocol Operations for version 2 of the Simple Network
+               Management Protocol (SNMPv2)", RFC 1448, SNMP Research,
+               Inc., Hughes LAN Systems, Dover Beach Consulting, Inc.,
+               Carnegie Mellon University, April 1993.
+
+          [3]  Case, J., McCloghrie, K., Rose, M., and Waldbusser, S.,
+               "Structure of Management Information for version 2 of the
+               Simple Network Management Protocol (SNMPv2)", RFC 1442,
+               SNMP Research, Inc., Hughes LAN Systems, Dover Beach
+               Consulting, Inc., Carnegie Mellon University, April 1993.
+
+          [4]  McCloghrie, K., and Galvin, J., "Party MIB for version 2
+               of the Simple Network Management Protocol (SNMPv2)", RFC
+               1447, Hughes LAN Systems, Trusted Information Systems,
+               April 1993.
+
+          [5]  Case, J., McCloghrie, K., Rose, M., and Waldbusser, S.,
+               "Transport Mappings for version 2 of the Simple Network
+               Management Protocol (SNMPv2)", RFC 1449, SNMP Research,
+               Inc., Hughes LAN Systems, Dover Beach Consulting, Inc.,
+               Carnegie Mellon University, April 1993.
+
+          [6]  Galvin, J., and McCloghrie, K., "Security Protocols for
+               version 2 of the Simple Network Management Protocol
+               (SNMPv2)", RFC 1446, Trusted Information Systems, Hughes
+               LAN Systems, April 1993.
+
+          [7]  Case, J., McCloghrie, K., Rose, M., and Waldbusser, S.,
+               "Management Information Base for version 2 of the Simple
+               Network Management Protocol (SNMPv2)", RFC 1450, SNMP
+               Research, Inc., Hughes LAN Systems, Dover Beach
+               Consulting, Inc., Carnegie Mellon University, April 1993.
+
+8.  作者地址
+               James M. Galvin
+               Trusted Information Systems, Inc.
+               3060 Washington Road, Route 97
+               Glenwood, MD 21738
+               Phone:  +1 301 854-6889
+               EMail:  galvin@tis.com
+
+               Keith McCloghrie
+               Hughes LAN Systems
+               1225 Charleston Road
+Mountain View, CA  94043
+US
+               Phone: +1 415 966 7934
+               Email: kzm@hls.com
+
+RFC1445—Administrative Model for version 2 of the Simple Network Management Protocol (SNMPv2)
+SNMPv2的管理模型
+
+
+1
+RFC文档中文翻译计划

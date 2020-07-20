@@ -1,0 +1,859 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：张海斌（netdebug    internetdebug@elong.com ）
+译文发布时间：2001-10-20
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+Network Working Group                                           A. Conta
+Request for Comments: 3034                        Transwitch Corporation
+Category: Standards Track                                      P. Doolan
+                                                                Ennovate
+                                                                A. Malis
+                                                   Vivace Networks, Inc.
+                                                            January 2001
+
+
+标签转换在帧中继网络说明书中的使用
+（RFC3034——Use of Label Switching on Frame Relay Networks Specification）
+
+备忘录状况
+这份文档为Internet社区指定为Internet标准（轨迹）协议，并且为进一步改进需要讨
+论和建议。这份协议的标准化状态和状况请参阅"Internet官方协议标准（Internet Official 
+Protocol Standards ）"(STD 1)的当前版。这份备忘录的分发不受限制。
+
+版权声明
+   Copyright (C) The Internet Society (2001)。版权所有。
+
+摘要
+   	这份文档在帧中继网络（Frame Relay networks）中为多重协议标签转换（Multiprotocol 
+Label Switching）定义模型和通用机制。此外，它延伸和澄清了在[ARCH]中描述的多重协议
+标签转换结构和在[LDP]中描述的标签分发协议（Label Distribution Protocol）（LDP）关于帧
+中继网络的部分。MPLS有助于将帧中继转换作为标签转换路由器（LSRs）使用。
+
+目录
+0.译者的话	2
+1.前言	2
+2.术语	3
+3.帧中继转换器的特殊特征	4
+4.标签包装	5
+5.帧中继标签转换处理	6
+5.1DLCIs的使用	6
+5.2同类LSPs	6
+5.3异类LSPs	6
+5.4帧中继标签转换回路预防和控制	7
+5.4.1 FR-LSRs回路控制-MPLS TTL处理	7
+5.4.2执行MPLS TTL计算	8
+5.5通过入口处FR-LSRs处理标签	11
+5.6经过核心FR-LSRs的标签处理	11
+5.7经过出口处FR-LSRs的标签处理	12
+6.帧中继标签转换控制元件	12
+6.1混合转换器（Ships in the Night）	13
+7.标签分配和维持程序	13
+7.1边缘LSR特性	13
+7.2标签空间的有效率使用 - 合并FR-LSRs	15
+7.3 帧中继所特有的LDP报文	16
+8.安全考虑	18
+9.确认	19
+10.参考资料	19
+11.作者地址	20
+12.完整版权声明	20
+确认	21
+
+
+0.译者的话
+	译者在翻译这份文档的时候，采取直译的方式，尽量保证原文的原意。同时也尽量考虑
+了中文的语义顺畅，便于中文读者阅读，译者在译文中加入了一些修饰语和译注，修饰语一
+般在括号中写明，而译注均有“译者注”字样。由于译者翻译本篇文挡时间有限，同时译者
+对本领域了解不多，虽然在翻译过程中查证了一些资料，但是译文中一定会存在许多理解有
+误、用词不当之处，欢迎读者来信指正，共同学习。
+
+1.前言
+   	多重协议标签转换结构（The Multiprotocol Label Switching Architecture）在[ARCH]中描
+述。使用帧中继转换器作为标签转换路由器是可能的。这样帧中继转换器运行在网络层路由
+算法（例如OSPF，IS-IS等），以及他们的转发（forwarding）基于这些路由算法的结果的
+基础上。没有帧中继路由被特别指定需要的。
+
+   	当一帧中继转换用于标签转换使用的时候，把最高（当前）层标签建立在那个转发判断
+（forwarding decisions）的基础上，在一帧（frame）的数据链路层标题的帧中继DLCI域中
+被携带。附加信息和最高（当前）层标签一道通过，但是不被帧中继处理，和其他的标签一
+道，如果包是多标签的，在定义在[STACK]中的通用的MPLS包装中被携带。
+
+   	帧中继永久虚拟电路（Frame Relay permanent virtual circuits）（PVCs）基于通讯
+能被配置为携带标签转换。当根据这份规格说明书MPLS通讯将被压缩和建立在网络层的
+路由信息基础上将被转发的同时，DLCIs将被使用作为MPLS标签，以及帧中继转换器将
+成为帧中继标签转换路由器。
+
+   	本文中的关键词"MUST"， "MUST NOT"， "REQUIRED"， "SHALL"， "SHALL NOT"，   
+"SHOULD"， "SHOULD NOT"， "RECOMMENDED"，  "MAY"， 以及"OPTIONAL"与
+RFC 2119【3】中的描述的意义是相同的。
+
+   	这份文档是[STACK]和[ATM]的一伙伴文档。
+
+2.术语
+LSR
+标签转换路由器（LSR）是一装置，其执行标签转换控制和在[ARCH]中描述的转发元
+件（components）。
+
+LC-FR
+标签转换受控帧中继（LC-FR）接口（interfaces）是经过标签转换控制元件（control 
+component）控制的帧中继接口。包（Packets）横渡这样的接口在DLCI域中携带标签。
+
+FR-LSR
+FR-LSR是LSR随着一个或多个LC-FR接口，其转发在两个这样的接口之间使用在
+DLCI域中携带标签的帧。
+
+FR-LSR域（domain）
+FR-LSR域是FR-LSRs的集合，其通过LC-FR接口（interfaces）相互连接。
+
+边缘装置（Edge Set）
+FR-LSR域的边缘装置是LSRs的集合，其通过LC-FR 接口连接到（FR-LSR）域。
+
+转发包装（Forwarding Encapsulation）
+转发包装是MPLS包装类型的包（packet）（帧中继，ATM，Generic），其（MPLS包装）
+包是决定包的MPLS转发的包，或者如果包是建立在网络层标题（如IP等等）的基础上，
+其（转发包装）是网络层包装。
+
+输入包装（Input Encapsulation）
+输入包装是MPLS包装类型的包（帧中继，ATM，Generic），当包是在LSR的接口被
+接收（received）的时候，或者那包没有MPLS包装，其（输入包装）是网络层（（如IP
+等等））包装。
+
+输出包装（Output Encapsulation）
+输出包装是MPLS包装类型的包（帧中继，ATM，Generic），当包是在LSR的接口被
+发送（transmitted）的时候，或者那包没有MPLS包装，其（输入包装）是网络层（（如IP
+等等））包装。
+
+输入TTL（Input TTL）
+输入TTL是栈（stack）顶部的MPLS TTL，当有标记的包（labeled packet）是在LSR
+接口被接收的时候，或者是网络层（IP）TTL，如果包没有被标记。
+
+输出TTL（Output TTL）
+输出TTL是栈（stack）顶部的MPLS TTL，当有标记的包（labeled packet）是在LSR
+接口被发送的时候，或者是网络层（IP）TTL，如果包没有被标记。
+
+此外，本文档使用的术语来自[ARCH]。
+
+3.帧中继转换器的特殊特征
+在标签交换体系结构（architecture）中允许相当大的灵活性进入LSR设备
+（implementation），一FR-LSR受到（或许预先存在）硬件的能力的限制以及对于这些作为
+帧格式（frame format）的限制被帧中继之上的多重协议互连[MIFR]利用，或者帧中继标准
+[FRF]等等的同时，因为这些限制，一些特殊过程（procedures）为FR-LSRs需求。
+
+某些影响他们的作为LSRs行为的帧中继转换器的重要特征是：
+
+-  标签交换功能在帧（frame）的帧中继数据链路标题域（DLCI）中被执行；这个要求标
+签(s)的大小和位置放在包（packet）中。DLCI域的大小是10（默认）或者23位（bits），并
+且它能在（包）标题跨越两个或者四个字节。
+
+-  通常没有能力对在路由器上IP标题执行'TTL-decrement'（TTL减少）功能。
+
+-  拥挤控制（congestion control）通过基于每一个在环路创建时被通过参数的基础上的结点
+（node）执行。在帧标题的标志（Flags）由于拥挤可以被设置，或者超过环路的合同的
+（contractual）参数。
+
+-  虽然在标准转换中可以配置在multipoint-to-point（多点到单点）环路中多个输入DLCIs
+转变为一个输出DLCI的结果，但是multipoint-to-multipoint VCs（多点到多点虚拟环路）通
+常不完全被支持。
+
+本文档描绘应用标签到帧中继转换器的（几种）方式，其工作在这些限制中。
+
+4.标签包装
+缺省情况下，所有贴上标签的包（packets）应该采用在[STACK]定义的通用标签包装传
+送，使用帧中继空包装（null encapsulation）机制：
+
+               0                       1                       (Octets)
+              +-----------------------+-----------------------+
+   (Octets)0  |                                               |
+              /                 Q.922 Address                 /
+              /             (length 'n' equals 2 or 4)        /
+              |                                               |
+              +-----------------------+-----------------------+
+           n  |                       .                       |
+              /                       .                       /
+              /                  MPLS packet                  /
+              |                       .                       |
+              +-----------------------+-----------------------+
+
+      "n"是Q.922地址的长度，其将是2或者4八位组（字节）的。
+
+Q.922[ITU]代表DLCI（在规范的次序中――第一位（bit）存储在最低端，也就是说在
+内存中一字节（byte）的靠近最右边的位（bit））[CANON]如下所示：
+
+            7     6     5     4     3     2     1     0      (bit order)
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+(octet) 0  |            DLCI(high order)       |  0  |  0  |
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+        1  |  DLCI(low order)      |  0  |  0  |  0  |  1  |
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+              10位（bits）DLCI
+
+            7     6     5     4     3     2     1     0      (bit order)
+           +-----+-----+-----+-----+-----+-----+-----+-----00
+(octet) 0  |            DLCI(high order)       |  0  |  0  |
+           +-----+-----+-----+-----+-----+-----+-----+-----
+        1  |  DLCI                 |  0  |  0  |  0  |  0  |
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+        2  |             DLCI                        |  0  |
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+        3  |       DLCI (low order)            |  0  |  1  |
+           +-----+-----+-----+-----+-----+-----+-----+-----+
+              23位（bits）DLCI
+
+使用帧中继空包装（null encapsulation）隐含着标签隐式编码网络协议类型。
+
+   	关于标签堆的结构规则，以及返回给帧源（the frame source）的错误信息也定义在
+[STACK]中。
+
+   	通用包装（The generic encapsulation）含有为（表示）一标签堆深度"n"[ STACK]的"n"
+标签，其高端（top）堆入口为EXP，S和TTL域[STACK]而不是为标签携带重要的值，其
+甚至被携带在Q.922[[ITU]地址格式编码中的帧中继数据链路标题DLCI域中。
+
+5.帧中继标签转换处理
+5.1DLCIs的使用
+   	标签转换通过把标签和路由联系起来和使用标签值转发包（实现），包括确定任何替换
+标签的值来完成。参见[ARCH]获得进一步细节。在FR-LSR中，顶部（当前）MPLS标签
+在帧（frame）的帧中继数据链路层标题部的DLCI域中被携带。顶部（top）标签隐含地携
+带关于网络协议类型的信息。
+
+   为两个连接的FR-LSRs，全双工（full-duplex）连接必须对LDP有效。DLCI通过配置的
+方式为LDP VC分配一值，与使用和配置DLCI相似在转换器之间（配置）运作IP路由协
+议。
+
+   	除了这个配置的值，DLCI值用于MPLS在链接的两个方向，其可以被看作属于两个独
+立的空间，例如，VCs可以是半双工（half-duplex），每一个方向都有它自己的DLCI。
+
+   	在DLCIs的容许范围， DLCIs的大小和支持VC合并一定（MUST）是通过LDP信息
+传达（communicated）的。注意为标签使用DLCIs的范围取决于DLCI域的大小。
+
+5.2同类LSPs
+   	如果<LSR1, LSR2, LSR3>是一LSP，当从LSR1，向LSR2，然后向LSR3传送包P的
+时候，LSR1、LSR2和LSR3将使用标签堆的同样的编码是可能的。这样LSP是同类的。
+
+5.3异类LSPs
+   	如果<LSR1, LSR2, LSR3>是一LSP，当传送包P给LSR2时LSR1将使用标签堆的一种
+编码，然而LSR2当传送包P给LSR3的时候将使用不同的编码是可能的。一般地说，MPLS
+结构支持在不同的转发站（hops）过程中采用不同的标签堆编码的LSPs。当贴上标签的包
+收到的时候，LSR必须解码它以确定标签堆的当前值，然后必须在标签堆上操作确定堆的
+新标签值，然后在传送贴上标签的包给它的下一个转发站（hop）之前，适合地将新值编码。
+
+   	自然将有MPLS网络，其含有一帧中继转换器的结合，作为LSRs和另一LSRs的操作，
+其（另一LSRs）操作使用其它MPLS包装，例如类属的（MPLS垫片标题――MPLS shim 
+header）或者ATM包装。在这样网络中可以有一些LSRs，其有帧中继接口以及MPLS类属
+的("MPLS垫片――MPLS Shim ")接口。这是一个在同样LSP的不同转发站（hops）上LSR
+采用不同标签堆编码的例子。这样LSR可以在输入的接口（incoming interface）交换帧中继
+编码的标签以及在输出的接口（outgoing interface）替换它将标签编码变为一类属的MPLS
+标题（MPLS shim）。
+
+5.4帧中继标签转换回路预防和控制
+   	FR-LSRs应该（SHOULD）运作在回路自由FR-LSPs或者LSP帧中继段上。因此，如
+同在[ARCH]和[LDP]中描绘的那样，FR-LSRs应该（SHOULD）使用回路检测和可以（MAY）
+使用回路预防机制。
+
+5.4.1 FR-LSRs回路控制-MPLS TTL处理
+   	MPLS TTL在MPLS标签堆中的编码是一种机制用于：
+
+   (a) 抑制回路；
+
+   (b) 限制包（packet）的范围。
+
+   	当包沿着LSP移动的时候，它应该随着同样的TTL值出现，如果它已经穿越同样的路
+由器的序列而没有进行标签转换。如果包沿着LSPs的分级结构（hierarchy）移动，当它从
+LSPs [ARCH]的分级结构出现的时候，穿越总LSR- hops的数目应该在它的TTL值中被反映
+出来。
+
+   	不管那个（指前一TTL值）来自网络层标题，当没有前一标签堆存在的时候；或者从
+先前存在（pre-existent）的低级标签堆入口与否，把MPLS TTL的初始值装入来自前一TTL
+的值新近压入标签堆入口。
+
+   	FR-LSR转换同一级标签了的包不减少MPLS TTL。一连串这样的FR-LSR是一" 
+non-TTL 段"。
+
+   	当包从一" non-TTL LSP段"出现的时候，不管怎样它应该在TTL中反映出它穿越的
+LSR-hops的数目。在unicast情况中，这个能通过向FR-LSR入口处（ingress）节点传播一
+有意义LSP长度或者LSP帧中继段长度，使得入口处（ingress）在转发包进入一non-TTL LSP
+段[ARCH]之前减少TTL的值。
+
+   	当入口处（ingress） FR-LSR决定在包到达"non-TTL LSP 段"出口处（egress）之前减
+少MPLS TTL（那个特定包的TTL）而期满的时候，FR-LSR一定（MUST）不要进行标记
+转换那个包，而宁可按照[STACK]中的规格说明试图给包的来源返回一出错报文（error 
+message）。
+
+- 把它当作期满的包并且向它的来源返回一ICMP报文。
+
+    - （继续向前）转发那个包，作为一个未加标签的包，它的TTL反映IP（网络层）转
+发。
+
+   	如果输入的TTL是1，仅第一种情况适用。
+
+   	在multicast情况中，一有意义的LSP长度或者LSP段长度向FR-LSR出口处（egress）
+节点传播，使出口处（egress）能在转发从non-TTL  LSP段出来包之前减少TTL值。
+
+5.4.2执行MPLS TTL计算
+   	计算应用于"input TTL"产生"output TTL"，取决于 (i)the "input encapsulation", 
+(ii)the "forwarding encapsulation", 和(iii)the "output encapsulation"。(i)(,ii)
+和(iii)之间的关系能被定义为"input encapsulation" (ie), "forwarding encapsulation" 
+(fe),和 "output encapsulation" (oe)的"D"操作。随后的应用于"input TTL"产生"output 
+TTL"的计算描述如下：
+
+   output TTL = input TTL - D(ie, fe, oe)
+
+   或者简要记法：
+
+   output TTL = input TTL - d
+
+   "d"有三种可能的值："0"、"1"或者LSP段转发站（hops）的数目：
+
+   unicast（方式）传送：
++================+=================+=================+=================+
+|                |     Type of     |     Type of     |     Type of     |
+|       d        |      Input      |    Forwarding   |     Output      |
+|                |  Encapsulation  |  Encapsulation  |  Encapsulation  |
++================+=================+=================+=================+
+|       0        |   Frame Relay   |   Frame Relay   |   Frame Relay   |
++----------------+-----------------+-----------------+-----------------+
+|       1        |       any       |  Generic MPLS   |  Generic MPLS   |
++----------------+-----------------+-----------------+-----------------+
+| number of hops |                 |  Generic MPLS   |                 |
+|      of        |       any       |      or         |   Frame Relay   |
+|  LSP segment   |                 |IP(network layer)|                 |
++================+=================+=================+=================+
+
+   	"LSP段的hops的数目是"hop计数"值，其附加于标签的使用，当包被转发的时候，如
+果LDP[LDP]已经提供这样的"hop 计数"值，当为LSP分配标签的时候，这样LDP报文就有
+"hop 计数对象"。如果LDP没有提供"hop 计数"值，或者提供了"unknown"值，那么"LSP段
+的hops的数目"的缺省值是1。
+
+   	当发送一个绑定逆流的标签的时候，"hop 计数"与从顺流地（downstream）绑定的（标
+签）结合，如果与"unknown"值不同，必须（MUST）增加1，然后hop计数与新绑定结合
+逆流的结果被传送出去（"unknown"值不改变被传送）。如果新的"hop计数"值超过"maximum"
+值，FR-LSR一定不要（MUST NOT）通过（pass）逆流的（upstream）绑定，反而必须（MUST）
+发送一逆流错误[LDP][ARCH]。
+
+   Multicast（方式）传送：
++================+=================+=================+=================+
+|                |     Type of     |     Type of     |     Type of     |
+|       d        |      Input      |    Forwarding   |     Output      |
+|                |  Encapsulation  |  Encapsulation  |  Encapsulation  |
++================+=================+=================+=================+
+|       0        |   Frame Relay   |   Frame Relay   |   Frame Relay   |
++----------------+-----------------+-----------------+-----------------+
+|                |                 |  Generic MPLS   |                 |
+|       1        |       any       |      or         |   Frame Relay   |
+|                |                 |IP(network layer)|                 |
++----------------+-----------------+-----------------+-----------------+
+| number of hops |                 |  Generic MPLS   |                 |
+|      of        |  Frame Relay    |      or         |       any       |
+|  LSP segment   |                 |IP(network layer)|                 |
++================+=================+=================+=================+
+
+   	在"转发包装"中，使用缩写词"I"为IP（网络层），使用"G"代表通用MPLS（Generic MPLS）
+和使用"F"代表帧中继MPLS；在LSR接口中，如果输入（input）或者输出（output）包装
+是IP而不是MPLS包装使用缩写词"i"，当输入或者输出MPLS包装是通用MPLS的时候使
+用"g"，当它是帧中继的时候使用"f"，当它是ATM的时候使用"a"，以及进一步考虑符号"iIf", 
+"gGf", "fFf",等等..如同前面的参考输入、转发和输出包装那样，下面为在前一部分中讨论为
+同类的（Homogeneous）和异类的（Heterogeneous）LSPs TTL计算的例子：
+
+                         Homogeneous LSP
+                         ---------------
+        IP_ttl = n                             IP_ttl=mpls_ttl-1 = n-6
+        --------->iIf                      fIi--------->
+                    | mpls_ttl = n-5       ^
+                    |                      |
+number of hops     1|     Frame Relay      |5
+                    |                      |
+                    V   2      3      4    |
+                    fFf--->fFf--->fFf--->fFf
+
+ "iIf"是在帧中继LSP中的"入口处LSR"和计算：mpls_ttl = IP_TTL - number of hops = n-5
+
+ "fIi"是来自帧中继LSP的"出口处LSR"和计算：IP_ttl = mpls_ttl-1 = n-6
+
+                          Heterogeneous LSP
+                          -----------------
+ingress LSR                                                  egress LSR
+IP_ttl = n                                               IP_ttl = n - 15
+links   LAN   PPP        FR          ATM    PPP    FR     LAN
+ --->iIg-->gGg-->gGf            fGa       aGg-->gGf       fGg-->gIi--->
+hops     1     2   |     6      | |   9   |  10   |  13   ^  14    15
+                   |1          4| |1     3|       |1     3|
+                   V  2     3   | V   2   |       V   2   |
+                  fFf-->fFf-->fFf aAa-->aAa       fFf-->fFf
+mpls_ttl
+       n-1   n-2  (n-2)-4=n-6  (n-6)-3=n-9  n-10  n-13     n-14
+
+"iIg"是在LSP中的"入口处LSR"；它计算：mpls_ttl=n-1
+"gGf"是来自通用MPLS段的"出口处LSR"和在帧中继段中"入口处LSR"和计算：mpls_ttl=n-6
+"fGa"是来自帧中继段"出口处LSR"，以及在ATM段中"入口处LSR"和计算：mpls_ttl=n-9
+"gGf"是来自通用MPLS段"出口处LSR"和在帧中继段中"入口处LSR"和计算：mpls_ttl=n-13
+"fGg"是来自帧中继段"出口处LSR"和在通用MPLS段中"入口处LSR"和计算：mpls_ttl=n-14
+"gIi"是来自LSP"出口处LSR"和计算：IP_ttl=n-15
+
+以及进一步的例子：
+
+                Frame Relay Unicast -- TTL calculated at ingress（入口处）
+
+   (ingress LSR)  1     2        3      4
+            x--->---+--->---+--->>--+-->>---x (egress LSR)
+      o.ttl=i.ttl-4         |     2      3
+                            ^
+    hops                   1|
+                            |
+                            x (ingress LSR)
+                              o.ttl=i.ttl-3
+
+          Frame Relay Multicast -- TTL calculated at egress（出口处）
+
+                (egress LSR)x  o.ttl=i.ttl-3
+    hops                    |
+                            ^3
+     (ingress LSR)          |            o.ttl=i.ttl-4
+            x--->---+--->---+--->---+--->---x (egress LSR)
+                1       2       3       4
+
+5.5通过入口处FR-LSRs处理标签
+   	当一包（packet）首次进入一MPLS域的时候，包通过正常的网络层（normal  network  
+layer）操作被转发，随着输出包装异常将包含采用至少一个入口的MPLS标签栈[STACK]。
+帧中继空包装（null encapsulation）将携带隐含在标签中的网络层协议的信息，其必须
+（MUST）是仅和那个网络协议关联的。在标签栈入口顶部中TTL域将充满在网络层转发
+[STACK]之后的结果的网络层TTL（或者转发站范围）。进一步FR-LSR处理在两个可能情
+况中是相似的：
+
+   (a) LSP是同类的（homogeneous）-- 仅帧中继 -- 和FR-LSR是入口处。
+
+   (b) LSP是异类的（heterogeneous），帧中继、PPP。以太网。ATM，等等..段形成LSP --
+和FR-LSR是入口处进入帧中继段。
+
+   	对于unicast包，MPLS TTL应该（SHOULD）是随着帧中继LSP的转发站（hops）的
+数目而减少（同类的），或者随着帧中继LSP的段部分（异类的）。LDP构造的LSP应该
+（SHOULD）把有意义的信息传递给入口处FR-LSR关于"non-TTL 段"的转发站的数目。
+
+   	对于multicast包，MPLS TTL应该（SHOULD）经过1被减少。LDP构造的LSP应该
+（SHOULD）把有意义的信息传递给出口处FR-LSR关于"non-TTL 段"的转发站的数目。
+
+   	下一步，MPLS包装的包被向下传递给作为输出DLCI顶部标签的帧中继数据链路驱动
+器。帧中继帧携带MPLS包装包被转发到帧中继VC上面给下一个LSR。
+
+5.6经过核心FR-LSRs的标签处理
+   	在一FR-LSR中，当前（顶部）MPLS标签在帧的帧中继数据链路层的DLCI域中被携
+带。正是在常规的帧中继中，对于一帧到达一接口（的时候），通过帧中继数据链路头携带
+的DLCI被在DLCI信息库中查找，被替换为一致的输出DLCI，然后在输出接口传送（转
+发到下一个转发站节点）。
+
+   	当前的标签信息也在标签堆栈的顶部中被携带。在顶部级（top-level）的入口中，除了
+标签信息的所有域，其在帧中继帧的数据链路层头被携带和交换，在当前是有效的。
+
+5.7经过出口处FR-LSRs的标签处理
+   	当达到一帧中继LSP的结束的时候，FR-LSRs弹出（pops）标签堆栈[ARCH]。如果标
+签被弹出的是最后标签，决定被携带的特定网络层协议是必要的。标签堆栈没有携带明确信
+息以识别出网络层协议。这个一定是从堆栈中被弹出的标签的值判断出来。
+
+   	如果标签弹出的不是最后标签，前一顶部级MPLS TTL被传播到新的顶部标签堆栈入
+口。
+
+   	如果FR-LSR是一混合的LSP的帧中继段出口处开关（switch），和帧中继段的末端不是
+LSP的末端，MPLS包将被处理为转发到下一个段LSP其建立在持有the Next Hop Label 
+Forwarding Entry（下一个转发站标签转发入口）(NHLFE) [ARCH]的基础上。输出标签被设
+置来自NHLFE的值，以及MPLS TTL被减少通过适当的依靠输出接口类型和传送操作（参见
+部分 6.3）的类型的值。进一步，MPLS包被转发针对LSP下一段的特定链路的MPLS规格说
+明书。
+
+   	对于unicast包，如果输出接口是通用一（one）MPLS TTL 应该（SHOULD）被一（one）
+减少，或者如果输出接口是一ATM （non-TTL）接口，则被LSP（异类的）的下一个ATM
+段转发站的数目（减少）。
+
+   	对于multicast包，MPLS TTL应该（SHOULD）被已经存在的FR段的转发站的数目减
+少。LDP建造的LSP应该（SHOULD）把有意义信息传递给出口处FR-LSR关于FR "non-TTL 
+段"的转发站的数目。
+
+6.帧中继标签转换控制元件
+   	为支撑标签转换，帧中继转换必须（MUST）执行标签转换的控制元件（control 
+component），其包括主要的标签分配和维持过程（procedures）。标签绑定信息可以（MAY）
+通过几种机械通讯，其中之一是标签分布协议（LDP）[LDP]。
+
+   	由于标签转换控制元件利用直接从网络层路由协议学习而来的信息，这隐含着转换必须
+（MUST）作为一个同位体（peer）参加这些协议（例如OSPF, IS-IS）。
+
+   	在有些情形下，LSRs可以使用其它协议（例如RSVP, PIM, BGP）发布标签绑定。在这
+些情况中，帧中继LSR应该参加这些协议。
+
+   	在这个情况中，帧中继环路通过LDP，或者RSVP，或者其他的没有卷入传统帧中继机
+制而被建立，假定环路建立合同（contractual）信息，例如输入/输出最大帧大小、进入/外出
+（incoming/outgoing）请求/协商（requested/agreed）吞吐率、进入/外出可接受吞吐率、进入
+/外出分段（burst）大小、进入/外出帧速率、传送，以及拥挤（congestion）控制可以（MAY）
+通过RSVP传递给FR-LSRs，或者被静态配置（statically configured）。仍假设拥挤控制和帧
+标题标志作为拥挤结果，将通过在与传统帧中继环路类似的方式的FR-LSRs被处理。随着
+最大努力（best-effort）路由器作为仿真目标的缺省，缺省VC参数，参与设置这些参数的
+LDP、RSVP或者其他机制的缺席将被0 CIR，所以输入修正将在进入帧设置DE位，但是
+没有帧被撤销。
+
+   	基于MPLS环路的控制和状态信息可以（MAY）通过LDP被通讯。
+
+   	标签转换的支持要求仅遵从[FRF] (framing, bit-stuffing, headers, FCS) 除了部分2.3(PVC 
+control signaling procedures, aka LMI)。为PVCs和/或SVCs的Q.933信令不被要求。如同在
+下一部分中讨论的那样，当两者都是运行在作为MPLS同样的界面的时候，PVC和/或SVC
+信令可以用于non-MPLS（标准帧中继）PVCs和/或SVCs。
+
+6.1混合转换器（Ships in the Night）
+   	标签转换控制元件在一帧中继转换上的存在不排除支持由ITU和帧中继论坛在同样的
+转换和同样的界面（NICs）定义的标签转换控制元件的能力。两个控制元件，标签转换和
+那些由ITU/帧中继论坛定义的将独立运作。
+
+   	这样的装置如何运作的定义超出了本文档的范围。然而，在两个控制元件之间一致的仅
+少量信息是需要的，例如对每一个元件可用的DLCI空间的一部分。
+
+7.标签分配和维持程序
+   	机制和标签发布协议的信息格式在[ARCH]和[LDP]文件中引证。在这部分中讨论的
+"downstream-on-demand"标签分配和维持机制一定（MUST）是经过不支持合并VC的
+FR-LSRs 使用，以及它也可以被确实支持合并VC的FR-LSRs使用（注意这个机制适合于
+hop-by-hop routed traffic）：
+
+7.1边缘LSR特性
+   	考虑FR-LSR域的边缘集合的成员。假定作为路由计算结果，选择FR-LSR作为下一个
+某些路由（certain route）（FEC）的转发站（hop），下一个转发站通过LC-Frame Relay接口
+到达。假定下一转发站（next-hop）FR-LSR是一"LDP-peer" [ARCH][LDP]。（那么）边缘（Edge）
+LSR从下一个转发站（顺流LSR）为一标签绑定发送一LDP "request"报文。当边缘LSR接
+收到从在LDP "mapping"报文中顺流LSR标签绑定信息的回答的时候，标签被存储在作为
+FEC输出标签的标签信息库（Label Information Base）（LIB）中。"mapping"报文可以包含"hop 
+count"对象，其代表当使用这个标签时一包（packet）将通过FR-LSR域到达出口处（Egress）
+FR-LSR的转发站（hops）数目。这个信息可以为TTL计算被存储。一旦完成，LSR可以使
+用MPLS在那个FEC向前传递包。
+
+   	当FR-LSR域中边缘集合中的成员为一FEC接收到从FR-LSR（发来）的LDP "request"
+报文的时候，它意味着它是出口处FR-LSR（Egress-FR-LSR）。它分配标签，在它的标签信
+息库（LIB）中创建新的条目（entry），放置那个标签在输入标签（incoming label）条目
+的成分中，并且返回（通过LDP）一包含分配标签回退的"mapping"报文到LDP请求发源地。
+"mapping"报文包含"hop count"对象值设置为1。
+
+   	当一路由计算导致一边缘LSR改变下一个转发站的时候，和前者下一个转发站（former 
+next hop）在FR-LSR 域中，边缘LSR应该通知前者（经由一LDP"release"报文）下一个
+转发站，标签绑定与路由关联不再需要。
+
+   	当一帧中继LSR（Frame Relay-LSR）为某些路由（FEC）从通过LC-FR接口连接到FR-LSR
+的LDP同位体（peer）接收到一LDP"request"报文的时候，FR-LSR执行下列动作：
+
+     - 分配一个标签，在标签信息库(LIB)创建一新的实体，放置那个标签在输入的实体的
+标签成分中；
+
+     - 对于那个路由（FEC）顺流地发送一LDP"request"报文到下一个转发站LSR，繁
+殖"request"（报文）；
+
+   	在"ordered control（次序控制）"模式[ARCH]中，在作为对"request"（报文）（"ordered 
+control" approach [ARCH]）回答的逆流"mapping"（报文）返回之前，FR-LSR将等待为"request"
+（报文）随着"mapping"报文顺流地被回答。在这个情况，FR-LSR增加顺流接收到的转发站
+数值和在逆流返回的"mapping"（报文）中使用。
+
+   	另一种选择，FR-LSR可以不等待顺流绑定返回逆流绑定（"independent control" 
+approach [ARCH]）。在这个情况中，在"mapping"（报文）中为转发站数目（hop count）使
+用保留值，表示'未知（unknown）'。为转发站数目正确的值随后将被返回，如同下面描绘
+那样。
+
+   	既然在"ordered（次序的）"和"independent（独立的）"两方面控制有优点和缺点，这
+个作为工具处理，或者由配置选择。
+
+   	一旦作为回答FR-LSR从下一个转发站接收到在LDP "mapping"报文中的标签绑定，放
+置标签到LIB实体的外出标签成分。
+
+   	注意FR-LSR，或者FR-LSR域的边缘集合成员可以从同样的FR-LSR得到多重捆绑的
+需求为同样的路由（FEC）。它必须为每一"request"产生一新"mapping"（假定有适当的资源
+这样做），和保留任何现存的mapping(s)。对于每一收到的"request"，FR-LSR应该也产生一
+朝着下一个转发站为路由（FEC）新捆绑的"request"。
+
+   	当一路由计算使一FR-LSR为一路由（FEC）改变下一个转发站的时候，FR-LSR应该
+通知前者下一转发站（经由一LDP "release"报文）和路由关联的标签绑定不再需要。
+
+   	当LSR收到一标签绑定不再被需要的通知的时候，LSR可以释放（deallocate）与绑定
+关联的标签和撤消绑定。这个模式是"conservative label retention mode（保守标签保留模式）
+" [ARCH]。这种情况中，FR-LSR收到这样的通知和撤消绑定，它应该为路由通知下一个转
+发站标签绑定不再需要。如果LSR没有撤消绑定（FR-LSR被配置在"liberal label retention 
+mode（自由标签保留模式）" [ARCH]中），它可以重用绑定，尽当它以同样的转发站数目为
+同样的路由接收到原始（originally）绑定被创建的请求。
+
+   	当路由改变的时候，标签绑定从路由偏离前一路由点（point）被重建。逆流地那点的
+LSRs（一个例外，下文说明）对改变是不注意的（oblivious）。无论何时LSR为特定的路
+由改变它的下一个转发站时，如果新的下一转发站是一FR-LSR或者通过LC-FR接口可到达
+的边缘集合的成员，那么对于每一个它的相关联路由的LIB入口，LSR应该请求（通过LDP）
+从新的下一转发站的绑定。
+
+   	当FR-LSR从顺流的邻居接收到一标签绑定的时候，它可能已经为这个路由到逆流邻居
+提供一符合的标签绑定，因为它使用"independent control"或者因为顺流的新的绑定是路由改
+变的结果。在这个情况中，它应该从新绑定提前转发站计数和增加1。如果新转发站计数是
+不同于那个从先前表达逆流的邻居（包括给定逆流的邻居的值是'unknown'的情况），FR-LSR
+必须把改变通知逆流的邻居。直到它到达边缘LSR的入口处，每一FR-LSR依次增加转发
+站计数和逆流地通过它。
+
+   	无论何时FR-LSR发起一标签绑定请求到它的下一转发站LSR作为从另一个（逆流的）
+LSP接收标签绑定请求的结果，和请求到下一个转发站LSP是不满足的（时候），FR-LSR
+应该在接收到请求回答中撤消创建的绑定，和通知请求者（通过LDP "withdraw"报文）。
+
+   	当一LSR确定它与另一LSR已经失去它的LDP会话（session）的时候，采取下列动
+作：
+
+    - 必须（MUST）丢弃任何经过这个连接获得的绑定信息；
+
+    - 对于任何作为接收从另一端请求标签绑定结果被创建的标签绑定，LSR可以撤消这
+些绑定（和释放标签相关的这些绑定）。
+
+7.2标签空间的有效率使用 - 合并FR-LSRs
+   	上述讨论假定边缘LSR将请求一标签为在FR-LSR域中它的已经有下一转发站的路由
+表每一前缀。事实上，在相当大的程度上减少标签的数目是可能的，需要通过边缘LSR请
+求几条路由代替一标签。在路由（地址前缀）和标签中间多对一（many-to-one）映射的使
+用应用Forwarding Equivalence Classes （as described in [ARCH]）的概念，提供一机制保存
+（conserve）标签的数目。
+
+   	注意保存标签空间（VC合并）可以在帧传输中需要帧中继分段（fragmentation）的情
+况下被限定。问题是帧中继分段必须被依次传送，例如有区别的帧的分段一定不能被交错。
+如果分段FR-LSR保证能得到依次传送在帧的所有分段中，而没有和其他帧分段交错，那么
+标签保存（VC合并）能被执行。
+
+   	当标签保存是使用的时候，当一FR-LSR接受到从为某些FEC逆流的LSR捆绑的需求，
+并且确实已经有一个为那个FEC输出的标签绑定的时候，它不再需要发行顺流的捆绑的请
+求。相反，它可以分配一个输入的标签和返回绑定到那个逆流请求者中的标签。从请求者以
+那个标签作为顶端标签接受包，在为那个FEC以现存的输出标签代替标签之后将被转发。
+如果FR-LSR还没有一个为那个FEC输出标签绑定，但是确实有一个未完成的请求，它不
+需要发行另一请求。这个意味着在标签保存的情况中，FR-LSR必须为每一个逆流的请求以
+一新绑定回答，但是它可以需要顺流地发送一捆绑的请求。
+
+   	在标签保存情况中，如果路由表的改变导致FR-LSR为它的FECs之一去选择一新的下一
+转发站，它可以（MAY）从前者下一转发站为路由释放绑定。如果它还没有为新的下一转
+发站相应的绑定，它必须请求一个（注意选择依赖于标签保留模式[ARCH]）。
+
+   	如果得到一个新的绑定，其包含的转发站数目不同于原有的绑定，FR-LSR必须计算新
+的转发站数目：增加1，如果不同于"unknown"，并且通知为这个新值的FEC有标签绑定的
+逆流的邻居。为保证环路将被探测到，如果新的转发站数目超出"maximum"（最大）值，为
+这个FEC的标签值必须从所有其绑定先前发送的逆流的邻居取消。
+7.3 帧中继所特有的LDP报文
+   	在两个帧中继"LDP-peer" LSRs之间交换的标签分布协议[LDP]（Label Distribution 
+Protocol）可以含有帧中继特有的信息，如下：
+
+   "帧中继标签范围"（"Frame Relay Label Range"）：
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Reserved    |Len|               Minimum DLCI                  |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Reserved        |               Maximum DLCI                  |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   包含下列的域：
+
+   Reserved（保留）
+这个域被保留。它们必须在发送端置零，在接收端必须被忽略。
+
+   Len （长度）
+这个域指定DLCI的位数（bits）。下列的值被支持：
+
+          Len  DLCI bits
+
+          0     10
+          2     23
+
+      Len值1和3保留将来使用。
+
+   Minimum DLCI
+这个23位域是被原始FR-LSR支持的数据链路标识（Data Link Connection 
+Identifiers） (DLCIs)块的下界二进制值。Minimum DLCI在这个域是右对齐的和在前
+面的位应该被置0。
+
+   Maximum DLCI
+这个23位域是被原始FR-LSR支持的数据链路标识（Data Link Connection 
+Identifiers） (DLCIs)块的上界二进制值。Minimum DLCI在这个域是右对齐的和在前
+面的位应该被置0。
+
+   "帧中继合并"（"Frame Relay Merge"）：
+
+          0 1 2 3 4 5 6 7
+         +-+-+-+-+-+-+-+-+
+         | Reserved    |M|
+         +-+-+-+-+-+-+-+-+
+
+   包含下列的域:
+
+   合并（Merge）
+一位（bit）域指定FR-LSR的合并能力：
+
+      Value（值）            Meaning（含义）
+
+        0                    Merge NOT supported（合并不支持）
+        1                    Merge supported（合并支持）
+
+支撑VC合并的FR-LSR必须（MUST）保证分段的帧从不同的输入DLCIs和输出DLCI
+交错。
+
+   保留（Reserved）
+这个域被保留。它们必须在发送端置零，在接收端必须被忽略。
+
+   和"帧中继标签"（"Frame Relay Label"）：
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Reserved    |Len|                       DLCI                  |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   包含下列的域：
+
+   保留（Reserved）
+这个域被保留。它们必须在发送端置零，在接收端必须被忽略。
+
+   Len （长度）
+这个域指定DLCI的位数（bits）。下列的值被支持：
+
+          Len  DLCI bits
+
+          0     10
+          2     23
+
+     Len值1和3保留将来使用。
+
+   DLCI
+帧中继标签的二进制值。当在帧中继数据链路头（参加部分4）一部分时，标签值
+的标志位数（10或者23）被编码到数据链路连接标识符（Data Link Connection Identifier）
+（DLCI）域。
+
+8.安全考虑
+   	这部分考虑的安全方面：
+
+      (a) 帧传输
+
+      (b) 标签发布
+
+MPLS包装还没有影响到验证（authenticated）或者加密（encrypted）的网络层包，
+其被验证的或者加密的IP包将会没有改变。
+
+   	MPLS协议没有它自己的机制去避免包的错误引址（misdirection）或者避免意外的或
+者恶意（行为）LSR的扮演的危害。
+
+   	意外改变或者伪造已存在的帧中继数据链路层帧头的DLCI域，或者潜在（关系到）随
+后标签栈中一个或多个域（将）影响帧的转发。
+
+   	标签发布机制能通过施加适当水平的安全于隐藏着的协议携带标签信息 —— 验证或
+加密 —— 参见[LDP]。
+
+9.确认
+   	这个文档的初始版本来自（基于）ATM之上的标签转换（Label Switching over ATM）
+文档。
+
+   	感谢来自（按字母顺序）Dan Harrington, Milan Merhar, Martin Mueller, Eric Rosen
+的巨大评论和建设性的评语。以及感谢George Swallow的使用空（null）包装的建议，和
+Eric Gray的评论。
+
+   	同时也感谢Nancy Feldman 和 Bob Thomas为他们在包含对帧中继LSRs所特有的LDP
+报文方面的合作。
+
+10.参考资料
+   [MIFR]  Bradley, T., Brown, C. and A. Malis, "Multiprotocol
+           Interconnect over Frame Relay", RFC 2427, September 1998.
+
+   [ARCH]  Rosen, E., Callon, R. and A. Vishwanathan, "Multi-Protocol
+           Label Switching Architecture", RFC 3031, January 2001.
+
+   [LDP]   Andersson, L., Doolan, P., Feldman, N., Fredette, A. and R.
+           Thomas, "Label Distribution Protocol", RFC 3036, January
+           2001.
+
+   [STACK] Rosen, E., Rehter, Y., Tappan, D., Farinacci, D., Fedorkow,
+           G., Li, T. and A. Conta, "MPLS Label Stack Encoding", RFC
+           3032, January 2001.
+
+   [ATM]   Davie, B., Lawrence, J., McCloghrie, M., Rosen, E., Swallow,
+           G., Rekhter, Y., and P. Doolan, "Use of Label Switching with
+           ATM", RFC 3035, January 2001.
+
+   [ITU]   International Telecommunications Union, "ISDN Data Link Layer
+           Specification for Frame Mode Bearer Services", ITU-T
+           Recommendation Q.922, 1992.
+
+   [FRF]   Frame Relay Forum, User-to-Network Implementation Agreement
+           (UNI), FRF 1.1, January 19, 1996.
+
+11.作者地址
+   Alex Conta
+   Transwitch Corporation
+   3 Enterprise Drive
+   Shelton, CT 06484
+
+   Phone: 1-203-929-8810
+   EMail: aconta@txc.com
+
+
+   Paul Doolan
+   Ennovate Networks
+   60 Codman Hill Rd
+   Boxborough MA 01719
+
+   Phone: 1-978-263-2002
+   EMail: pdoolan@ennovatenetworks.com
+
+
+   Andrew G. Malis
+   Vivace Networks, Inc.
+   2730 Orchard Parkway
+   San Jose, CA 95134
+   USA
+
+   Phone: 1-408-383-7223
+   Fax:   1-408-904-4748
+   EMail: Andy.Malis@vivacenetworks.com
+
+12.完整版权声明
+   	版权（C）因特网协会（2001）。版权所有。
+
+   	这个文档和它的翻译可以拷贝和分配给其他人，以及有关评论或者别样的解释或者其应
+用的帮助等派生工作可以被准备、拷贝、发表和发布，其整体或者部分没有受到任何限制，
+提供上述版权通知以及本段落应被包含在所有这样的拷贝和派生工作中。然而，这个文档本
+身不可以以任何方式修改，例如移走版权通知或者Internet协会或其他Internet组织的参考，
+除非为了发展Internet标准（其版权程序定义在Internet Standards进程如下），或者需要翻译
+成除英语以外的其他语言。
+
+   上述限制允许授权是持久的并且将不被Internet协会或者它的继承人隐藏或者转让。
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+确认
+   	为RFC编辑功能资助现在由因特网协会（Internet Society）提供。
+
+译者注：对于本文档的完整版权声明原文如下：
+
+Full Copyright Statement
+
+   Copyright (C) The Internet Society (2001).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+
+RFC3034——Use of Label Switching on Frame Relay Networks Specification
+标签转换在帧中继网络说明书中的使用
+
+
+2
+RFC文档中文翻译计划

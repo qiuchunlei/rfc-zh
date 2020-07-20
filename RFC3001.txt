@@ -1,0 +1,200 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：洪卫林（hongwl   hongwl@eyou.com）
+译文发布时间：2001-7-26
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+
+
+Network Working Group                                        M. Mealling
+Request for Comments: 3001                       Network Solutions, Inc.
+Category: Informational                                    November 2000
+
+对象标识符的URN名称空间
+（A URN Namespace of Object Identifiers）
+
+本备忘录的状态
+
+本备忘录为Internet社区提供信息。它没有规范任何一种Internet标准。本备忘录的发
+布不受任何限制。
+
+版权声明
+
+Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+摘要
+
+   这篇文档描述了包含对象标识符（OIDs）的统一资源名称（URN）空间。
+
+目录
+1.介绍	2
+2.规范模板	2
+3.实例	4
+4.安全考虑	4
+5.致谢HARALD ALVESTRAND	4
+6.参考书目	4
+7.作者地址	5
+8.版权声明	5
+9．致谢	6
+
+
+1.介绍
+
+   一个对象标识符就是一序列以某种方式定界的数字。规则大体上这样规定，只要把一个
+对象标识符(OID)分配给了一个实体，这个实体就有能更进一步地从这个OID继承的单独判
+断能力。OIDs的一些例子包括：
+?	1.3.6.1 – the Internet IOD
+?	1.3.6.1.4.1 –  IANA－分配给公司的OIDs，用于私有的管理信息库（MIBs）以及诸如                      
+此类的东西
+?	1.3.6.1.2.1.27 – 应用管理信息库（MIB）
+?	0.9.2342.19200300.100.4 – 用在目录导航工程中的对象标识符来标识X..500对象类。这      
+个主要在RFC-1274中定义的
+
+这篇文档说明了“老的”URN名称空间[1]。这个名称空间是为了把像在ASN.1[2]中规
+范的对象标识符编码成URI。
+
+名称空间规范是用于正式的名称空间。
+2.规范模板
+名称空间ID：
+    
+"旧版"要求的。
+
+注册信息：
+
+注册版本号：1
+    
+注册日期：2000-04-30
+
+名称空间的声明注册人：
+
+在这里我需要帮助的。我不适合成为注册人，因此实际上应把谁放到这里呢？
+
+IOS/IEC联合技术委员会 1 － 子委员会 6（即实际真正权威机构）是ASN.1
+规范本身，但是目前SC6才是有权威解释它的意思的委员会。
+
+结构声明：
+
+        标识符的NSS部分遵循出自于RFC 1778 章节 2.15[3]的字符串编码规则，而
+RFC 1778 章节 2.15[3]规范了一序列有间隔的数字，而且在它左边的是最重要的
+数字以及在它的右边是最不重要的数字。
+
+        因为对象标识符是十分简单的，因此预测它将不会有什么变化，以及许多年
+以来一直是标准化的且没有什么变化的。
+
+相关辅助文件：
+
+    相关文档出自于X.660/Amd 2 | ISO/IEC 9834-1/Amd 2 [2]。
+
+标识符的唯一性考虑：
+
+        OIDs的分配规则要求每个OID在OID空间中是唯一的，而且不能重分配或者
+重使用这个OID。通过参考这个URN名称空间继承了这些规则。
+
+标识符的持续性考虑：
+
+        有关OIDs使用的规则要求这些OIDs一旦分配了而不可重使用。通过参考这
+个URN名称空间继承了这些规则。
+
+标识符分配过程：
+        一旦把一个OID分配给某个实体之后，这个实体就能构建与分配在这个特别
+OID下新的OIDs。多重实体可以对外分配新的OIDs。最顶端的三层是如下预分配
+的：
+
+        0 --  ITU-T分配的
+        1 --  ISO分配的
+        2 --  ITU-T/ ISO联合分配的
+
+    对于Internet很重要的几个分配的OIDs是：
+    
+1.3.6.1 – the Internet IOD
+1.3.6.1.4.1 –  IANA－分配给公司的OIDs，用于私有的管理信息库（MIBs ）
+以及诸如此类的东西
+标识符决议过程：
+
+现在没有定义决议原理。
+
+词汇等同性规则：
+
+    OIDs是由多重数字与多重“.”字符组成的。通过准确的字符串匹配达到词汇等同性。
+
+顺应URN语法：
+
+    没有额外的保留字符。
+
+确认原理：
+
+    没有。
+
+范围：
+
+    全局性。
+
+3.实例
+
+下面的例子摘自于介绍中的OIDs实例：
+
+    urn:oid:1.3.6.1
+    urn:oid:1.3.6.1.4.1
+    urn:oid:1.3.6.1.2.1.27
+    URN:OID:0.9.2342.19200300.100.4
+
+4.安全考虑
+
+   能使用无法证实的OIDs一直是与生具有的。
+
+5.致谢Harald Alvestrand
+
+   作者想感谢Harald Alvestrand，因为我的实例都使用了与参考了他的OID数据库。
+
+6.参考书目
+
+[1]  Moats, R., "URN Syntax", RFC 2141, May 1997.
+
+   [2]  CCITT, "Specification of Basic Encoding Rules for Abstract
+        Syntax Notation One (ASN.1)", CCITT Recommendation X.209,
+        January 1988.
+
+   [3]  Howes, T., Kille, S., Yeong, W. and C. Robbins, "The String
+        Representation of Standard Attribute Syntaxes", RFC 1778, March
+        1995.
+
+7.作者地址
+
+   Michael Mealling
+   Network Solutions, Inc.
+   505 Huntmar Park Drive
+   Herndon, VA  22070
+   US
+
+   Phone: +1 770 935 5492
+   EMail: michaelm@netsol.com
+   URI:   http://www.netsol.com
+
+8.版权声明
+
+Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+只要在所有复本与推导性工作中包含上面的版权声明和这段文字，就可以全部地或者部
+分地且没有任何限制地复制这篇文档与其译本以及把它提供给其它文档，同样也可以准备、
+复制、出版与发行推导性工作，而且需要评述此推导性工作否则就得解释它，或者辅助此推
+导性工作的实现。然而，此文档本身不可以做任何修改，诸如删除版权声明或者因特网社区
+或其它因特网组织的涉及，除了当需要开发因特网标准的目的时之外且在此种情况下必须遵
+循在因特网标准过程中定义的版权程序，或者除了当要求把它译成其它语言（即不是英文）
+的目的时之外。
+在上面准予的有限的许可是永久性的，而且因特网社区或者它的继承者或指派者都将不
+会废除它。
+在此包含的这篇文档与信息是基于“AS IS”而提供的，并且因特网社区与因特网工程
+任务组织声明了所有的授权、表达或含义，且包含对任何授权的限制，比如这里信息的使用
+不会违反任何授权或者出于特殊目的的商品性或适切性的任何含蓄授权。
+
+9．致谢
+感谢因特网社区当前为RFC编辑提供了功能基金。
+
+RFC3001 —A URN Namespace of Object Identifiers   对象标识符的URN名称空间
+
+
+1
+RFC文档中文翻译计划 

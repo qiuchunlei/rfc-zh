@@ -1,0 +1,547 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：boniter（boniter@etang.com）
+译文发布时间：2001-11-7
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须保
+留本文档的翻译及版权信息。
+
+
+Network Working Group                                              H.Nielsen
+RFC: 2774                                                             P. Leach
+Category: Experimental                                                 Microsoft
+                                                                    S. Lawrence
+                                                               Agranat Systems
+2000年2月
+
+                                 HTTP扩展框架
+（RFC2774——An HTTP Extension Framework）
+
+本备忘录的状态
+    本备忘录为Internet定义了一个实验的协议。它本不属于任何已详细说明的Internet标准。
+仍需进一步的探讨和改进。此备忘录的发行是无约束的。
+
+版权声明
+   Copyright (C) The Internet Society (2000).  All Rights Reserved.
+
+IESG 注释
+     这篇文章最初是作为推荐标准而提出的。但是，由于最终确认时的综合考虑以及在HTTP工
+作组中，它是作为一篇实验性文档而提出的。这并不是说这篇文章有任何技术上的缺陷；更
+恰当地说，这更全面地涉及到是否这篇文章确实在HTTP的变革方面提出了与社会上大多数人
+不同的新的见解。再此决定之前需要更多的研究和讨论。
+     
+     同样需要注意的是当HTTP被用作其它协议的基础时，它可能有必要和应该适当地用到一些
+其它扩展的机制，增加或代替一些东西，在这里会详细说明。因此这篇文章不应该被看作是
+扩展HTTP的蓝图，但它所详细说明的机制可能在具体情况中非常有用。
+
+概要
+     应用程序的广泛延伸已经提出了各式各样的HTTP协议的扩展。当前的协作横跨了一个巨
+大的范围，包括分布式创造，协作，打印，和细微的程序响应机制。这些HTTP的扩展并不是并
+列同等的，因为还没有任何的框架标准来定义它们，因此它们便相互独立起来。这篇文章描述
+了一个一般性的HTTP扩展机制，试图缓和这些独立的协议和公众规范之间的矛盾，并让那些使
+用HTTP协议的客户端，服务器和代理兼容这些扩展的应用程序。这个提议用全球化独一无二的
+标识符连接了每一个扩充，而且用HTTP的标题字段来显示这些扩展的标识符，并讲述了与他们
+有关的通讯延伸的信息。
+
+
+
+目录
+1. 序论	3
+2. 协定表记法	3
+3. 扩展申明	3
+3.1 标题字段前缀	4
+4. 扩展标题字段	5
+4.1 End-to-End 扩展	5
+4.2 Hop-by-Hop 扩展	5
+4.3 标题字段扩展响应	6
+5．强制HTTP请求	6
+5.1 强制请求的实现	7
+6. 强制HTTP响应	7
+7.  510不扩展	8
+8.  发布扩展	8
+9.  缓冲考虑	8
+10.  安全考虑	9
+11.  参考书目	9
+12.  感谢	9
+13.  作者地址	9
+14.  交互式协议概要	10
+15. 例子	11
+15.1  使用源服务器的代理	11
+15.2  通过 HTTP/1.1 Proxy 的源服务器用户代理	11
+15.3  通过 HTTP/1.0 Proxy 的源服务器用户代理	12
+全部版权陈述	13
+感谢	14
+
+
+
+1. 序论
+ 
+    这个提议原意是用来缓和私人协定和大众规范的冲突；并调和由软件构成的HTTP客户与服务器
+之间的动态扩展矛盾。其扩展能力的方式如下：
+o 扩展单一的HTTP信息；
+o 引入新的符号；
+o 为新的应用程序开起源HTTP协议；
+o 协议间的转换，这些协议一旦开启，就能在原始的一堆协议中不受约束的运行；
+这个提议预计在如下地方起作用：
+o 一些当事人创建并详细说明了一个扩展；他们指定给其一个全球内唯一的URI，而且制定了
+在这个地址可用扩展的一个或多个表现法（见第8节）。
+o 一个实现此扩展机制（后来称为代理）的HTTP用户或服务器通过在HTTP信息中的扩展声明所
+涉及到的URI定义了这个扩展的用途（见第3节）。
+o 实现扩展声明的HTTP应用程序（后来成为终端）能演绎怎样合适的中断基于扩展声明的延伸
+信息。
+这个建议使用了HTTP/1.1的特性，并通过让扩展程序与现有的HTTP应用程序共存的方式实现与
+HTTP/1.0相兼容。应用程序实现此建议必须基于HTTP/1.1（或者是HTTP的更高版本）。
+
+2. 协定表记法
+    这篇说明书使用了与 RFC 2068 [5] 相同的表记法惯例和基本分析构架。特别是BNF的结构记法，
+例如文章中的"token", "quoted-string", "Request-Line", "field-name", 和
+"absoluteURI"，与 RFC 2068 [5] 所解释的一样。
+    文档中的关键字"MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY",和"OPTIONAL"与 RFC 2119 [6] 所
+解释的一样。
+    这个建议不同于详细说明的 URLs [8] 的特点，不能潜在地用 URNs 来表达（见第8节）。
+    因此，更多一般性的术语 URI [8] 贯穿于这篇规范书的始终。
+
+3. 扩展申明
+    扩展申明适用于指示已经适用于一个信息的扩展和可能保留的标题namespace的一部分，藉着
+标题字段的前缀来进行识别（见3.1）。这个区段定义了扩展声明的本身；第四节定义了正在使用
+扩展声明的标题字段的设定。
+这个规范并不定义任何适用于信息扩展的分枝或是两个扩展在逻辑上能或是不能在同一信息中
+共存。它只是一个用来描述被应用的扩展和最终接受者为了在信息中合理地解释扩展声明可能或必
+须做的一个框架。
+扩展声明的语法如下：
+       ext-decl     = <"> (绝对URI | 字段名 ) <">
+                         [ namespace ] [ decl-扩展 ]
+
+       namespace     = ";" "ns" "=" 标题前缀
+       标题前缀   = 2*DIGIT
+
+       decl-扩展= *( decl-ext )
+       decl-ext        = ";" 表征[ "=" ( 表征 | 引用串 ) ]
+    一个扩展被一个绝对的全球独一无二的URI或字段名所识别。一个字段名必须在IETF标准方面唯
+一的叙述一个标题字段的定义，见RFC[3]。一个URI能清楚地从冒号（“：”）标记识别一个字段名。
+标题名的支持如同扩展提供了使分散的扩展到扩展的转变策略一样，按照IETF标准定义RFC映射在全
+球独一无二的URI空间和在IETF标准定义RFC的特征之间，这个特征已按照第8节描述的方法被定义。
+    扩展声明的例子是：
+      “http://www.company.com/extension”；ns=11
+      “Range”
+    一个代理人可能使用decl-扩展机制来包含可选择的扩展声明参数但不能保证这些参数能被接
+受者清楚地辨认出来。一个代理人不能使用decl-扩展来通过扩展例证数据，这些数据可能通过标题
+字段前缀的值进行验证（见第3.1节）。为被识别的decl-ext参数应该被忽略并且在转寄扩展声明是
+不能被代理移动。
+
+3.1 标题字段前缀
+    标题字段前缀是一个动态产生的串。所有在信息中与此串相匹配的标题字段，使用串的前缀匹
+配，属于此扩展声明。标题字段前缀允许一个扩展声明动态地保留在一个协议信息中的标题空间的
+子空间，为了避免标题字段名的冲突并允许多样化的声明使用适用于相同信息的没有冲突的同一扩
+展。使用标题前缀的标题字段有如下形式：
+    前缀标题=匹配的前缀 字段名
+    匹配的前缀=标题前缀“-”
+    线性的白色空间（LWS）不能在标题前缀与“-”或匹配的前缀与字段名之间被使用。串的前缀
+匹配算法则被用于匹配的前缀串。
+使用数字的一个组合的前缀格式和“-”保证没有扩展生命能保留全部的标题字段名空间。标题
+前缀机制已超过了其他的引用参数实现交互扩展的解决办法，因为它的建立是基于或因此考虑到使
+得新的扩展与现有的HTTP特征更容易整合的标题。
+代理不允许在同一信息中重复地使用标题前缀，除非扩展明确规定（见第4.1节的一个扩展声明
+的最终接受者的讨论）。
+客户端在产生标题前缀值时，就像在响应中多样化的标题字段的简便用途一样，在此多样化被
+认为是需求扩展声明的功能，应该尽可能地一致（见[5]，第13.6节）。
+包含在变化的标题字段值中的前缀标题的标题字段的服务器必须同样包含相应的扩展声明的域
+名，作为其值的一部分。例如，如果一个响应依赖于16-use-transform的标题字段的值，而这个字
+段在请求中已被可选择的扩展声明所定义，那么在响应中的多样化的标题字段可能如下：
+Vary：Opt，16-use-transform
+需要注意的，标题前缀的一致性不是在信息中包含一个扩展声明的替代：带标题前缀值的标题
+字段在同一信息中的扩展声明中不被定义，在这篇规范书中也不被定义。
+标题前缀值的例子如下：
+12
+15
+23
+旧的应用软件可能介绍独立于此扩展机制的标题字段，就可能造成与前缀机制描述的标题字段
+的潜在冲突。为了使这种风险最小化，前缀必须包含至少两个阿拉伯数字。
+
+4. 扩展标题字段
+这个提议介绍了两种类型的扩展声明的实力：强制性的和可选择性的，和这两种类型扩展声
+的应用范围：Hop-by-Hop及End-to-End（见第4.1节与第4.2节）。
+    一个强制的扩展声明指出最终接受者在处理信息或是提交错误报告时必须参考并使用由扩展给
+定的规则(见第5节和第7节)。
+    一个可选择的扩展声明指出扩展最终接受者在处理信息时可能参考或使用由扩展声明给定的规
+则，或是完全忽视扩展声明。代理也许就不能识别是否最终接受者明白通过可选择性扩展或是简单
+地忽视扩展声明后扩展所涉及的。
+    扩展的实力与范围的合并详细说明了一个2*2的矩阵，由于四个新的全面的HTTP标题字段而十分
+著名：Man, Opt, C-Man, and C-Opt。（见第4.1节与第4.2节；同样在附录14中，有一张源服务器
+与代理的交互作用表。）
+    这标题字段是普通的标题字段，就像扩展实际应用于HTTP信息中所描述的一样。如果适当的话，
+可选择的声明也许能被应用于任何的HTTP信息（见第5节，怎样将强制扩展声明应用于请求中和第6
+节，在响应中怎样应用它们）。
+4.1 End-to-End 扩展
+    End-to-End声明必须被传送带扩展的最终接受者。全面的标题字段Man和Opt是End-to-End标题
+字段并被如下定义：
+    强制       =“Man”“：”1#ext-decl
+    可选择     =“Opt”“：”1#ext-decl
+    例如
+HTTP/1.1 200 OK
+       Content-Length: 421
+       Opt: "http://www.digest.org/Digest"; ns=15
+       15-digest: "snfksjgor2tsajkt52"
+       ……
+    一个End-to-End强制扩展声明的最终接受者必须运用扩展声明，像第5节和第6节所描述的一样。
+
+4.2 Hop-by-Hop 扩展
+    Hop-by-Hop扩展声明只对单一的HTTP连接有意义。在HTTP/1.1，C-Man，C-Opt和所有被
+C-Man,C-Opt定义的由匹配标题前缀值的标题字段必须被连接标题字段所保护。也就是说，这些标题
+字段将被包含，作为连接标题字段指示（见[5]，第14.10节）。这两个标题字段有如下语法：
+    c-mandatory     = "C-Man" ":" 1#ext-decl
+     c-optional      = "C-Opt" ":" 1#ext-decl
+例如
+M-GET / HTTP/1.1
+       Host: some.host
+       C-Man: "http://www.digest.org/ProxyAuth"; ns=14
+       14-Credentials="g5gj262jdw@4df"
+       Connection: C-Man, 14-Credentials
+    一个Hop-by-Hop强制扩展声明的最终接受者必须运用扩展声明，像第5节和第6节所描述的一样。
+
+4.3 标题字段扩展响应
+    两个标题字段扩展响应被用于指出一个包含被最终接受者实行的强制扩展声明的请求，像第5.1
+节所描述的一样。标题字段扩展响应专门被用于确认扩展的服务，并不能携带其他任何信息。
+    Ext标题字段被用于指示所有在请求中被实行的End-to-End强制扩展声明：
+    ext         =“Ext"“：”
+    C-Ext标题字段响应别用于指示所有在请求中被实行的Hop-by-Hop强制扩展声明：	
+c-ext       =“C-Ext"“：”
+在HTTP/1.1中，C-Ext标题字段必须被标题连接所保护（见[5]，第14.10节）。
+Ext和C-Ext标题字段并不互相排斥；它们能在同一信息中同时出现，就像第5.1节所描述的
+一样。
+
+5．强制HTTP请求
+    一个HTTP请求，如果它包含至少一个强制扩展声明（使用Man或C-Man标题字段），就被称为
+强制请求。强制请求的方法名必须被加上前缀“M-”。例如，一个客户端可能在HTTP输出中表示管
+理约束权限如下：
+       M-PUT /a-resource HTTP/1.1
+       Man: "http://www.copyright.org/rights-management"; ns=16
+       16-copyright: http://www.copyright.org/COPYRIGHT.html
+       16-contributions: http://www.copyright.org/PATCHES.html
+       Host: www.w3.org
+       Content-Length: 1203
+       Content-Type: text/html
+       <!doctype html ...
+    一个遵守这篇规范的终端接收者受到强制请求必须按如下列出的步骤处理请求：
+        1.识别所有的强制扩展声明（包括Hop-by-Hop和End-to-End）；服务器可能忽视可选择
+声明，并不影响处理HTTP信息的结果；
+        2.检查1）中已识别的扩展而且决定他们是否用来支持此信息。如果不，返回510（无扩展）
+状态码（见第7节）；
+        3.如果2）的结果并不是返回510（无扩展）状态码，那么按照扩展的语义和已存在的在
+HTTP/1.1[5]中或HTTP的更高版本中详细说明了的HTTP方法名处理请求。HTTP方发明
+可以通过忽略方法名前缀“M-”来获得。
+        4.如果3）中的赋值成功而且强制请求完成。服务器必须像第5.1节所定义的作出响应。
+一台服务器不能不了解和服从在请求中的所有强制扩展就实现请求。
+    一个不作为强制扩展声明终端用户的代理在推进信息时不能移动扩展声明或是方法名前缀“M-”
+（见第5.1节，在强制扩展声明已经实现后怎样进行探测）。
+    一台服务器接收到一条HTTP/1.0（或更早版本的HTTP）信息，包含了连接标题必须，对此字段
+中的每一个连接记号，像连接记号用同样的名字移动并忽视任何来源于信息的标题字段。
+    一台服务器收到没有任何强制扩展声明来遵从并包含方法名前缀“M-”的强制扩展声明，必须
+返回510（无扩展）响应。
+    扩展名“M-”被此建议保留并不能用于其它的HTTP扩展。
+
+5.1 强制请求的实现
+    一台服务器不能要求实现任何扩展请求，除非它明白并能服从请求中的所有强制扩展声明。这
+一部分定义了一个以某种方式把信息传送给客户端的机制，它能与已存在的HTTP应用程序共同实行
+并能阻止损坏的服务器发送错误的信息，不理解方法就用200（OK）响应完成扩展请求。
+    如果任何End-to-End强制扩展声明是在已完成的扩展中，那么服务器就必须在响应中包含一个
+Ext响应标题字段。为避免一个Ext响应标题字段不注意地在一个HTTP/1.1高速缓冲寄存器中缓冲，
+响应必须包含无缓冲，缓冲控制指示。如果响应以其他方式进行缓冲，无缓冲，缓冲控制指示应该
+被限制在Ext标题字段内起作用：
+    HTTP/1.1 200 OK
+       Ext:
+       Cache-Control: no-cache="Ext"
+       ...
+    如果强制请求已经被一个HTTP/1.0中介代理传送，接着这就被直接地在请求线指示或是通过标
+题字段的HTTP/1.1地使用。如果真是这样，服务器必须包括一个等于或早于数据标题字段值的失效
+标题字段（见第9节，缓冲考虑的讨论）：
+      HTTP/1.1 200 OK
+       Date: Sun, 25 Oct 1998 08:12:31 GMT
+       Expires: Sun, 25 Oct 1998 08:12:31 GMT
+       Ext:
+       Cache-Control: no-cache="Ext", max-age=3600
+       ...
+    如果任何的Hop-by-Hop强制扩展声明在已实现的扩展中，那么服务器必须在响应中包含一个
+C-Ext响应标题字段。C-Ext响应标题字段必须被连接标题字段所保护（见[5]，第14.10节）。
+      HTTP/1.1 200 OK
+       C-Ext:
+       Connection: C-Ext
+    需要注意的是，Ext和C-Ext标题字段并不互相排斥；它们能在完成强制请求时，包括Hop-by-Hop
+和End-to-End强制扩展声明，同时在一个响应中出现。
+
+6. 强制HTTP响应
+    一台服务器在HTTP响应中并不包含强制扩展声明，除非它是给一个强制HTTP请求做的应答，
+而且这个请求的定义允许强制响应或是服务器更先进足以使接受者操纵扩展响应。一台服务器可能
+在任何HTTP响应中包含可选择的扩展声明（见第4节）。
+    如果客户是包含强制扩展声明的强制HTTP响应的终端接收者，客户或者不明白或者不想用这扩
+展声明，那么它应该放弃完全响应，把它视为一个500（Internet服务器错误）响应。
+
+7.  510不扩展
+    访问资源的机制并不在请求中。服务器应该返回所有发出扩展请求的客户的必要信息。扩展怎
+样详细地告知用户并不在这篇规范的讨论范围。
+    如果510响应包含了在初始请求中不存在的扩展信息，那么如果有理由相信它能根据510响应
+中提供的信息通过修改请求来实现扩展机制，客户端就有可能重复地发出请求。相反的，客户端可
+能对用户呈现出任何包含在510请求中的实体，这个实体可能与诊断信息相关。
+
+8.  发布扩展
+    当扩展协议的详细说明应该在扩展标识符的地址发布时，这篇规范就不需要它。唯一绝对的需
+求是扩展标识符应该是全球独一无二的标识符，而且这个独特的名字被用于独特的语义。
+    同样的，不需要应用程序来尝试包含在扩展声明中的扩展标识符的解析工作。唯一绝对的需求
+是应用程序不需与它不能识别的扩展（不管它是否尝试解决扩展标识符）保持一致。这篇文档没有
+为多久或多频繁一个应用程序可能尝试解析扩展标识符提供任何方针。
+    扩展标识符与规范的结合可能由发布规范来完成，这篇规范就涉及到扩展标识符。
+    强类推荐扩展标识符的完整性和持续性应该在扩展的寿命中被毫无疑问的维护和保持。应该注
+意不发布涉及到相同名字的有冲突的规范。即使当扩展规范在URI地址是可利用的，还必须小心在
+这个URI地址，扩展规范不随时间而发生变化。一个代理可能把标识符与老的语义结合，其它的可
+能把它与心的语义结合。
+    扩展标识符的能在如下排列的不同表现中可利用：
+    o由扩展语义定义的易读规格（见[7]中的例子），
+    o由扩展定义的实现语义的可下载的代码，
+    o由扩展提供的正式接口描述，
+    o由扩展语义定义的机器可读规格。
+    例如，一个执行规范的软件组件可能向人们易读的规格一样（通过商定的内容所区别）寄居在
+相同的地址。人们易读的表现法适用于证明扩展和鼓励使用，在软件的组件允许客户端及服务器的
+动态扩展。
+
+9.  缓冲考虑
+    使用由这篇文档定义的句法结构的扩展的用途可能在HTTP响应信息的可缓冲性，除了在第5.1
+节所描述的，有附加的含义。
+    扩展信息的创始人应该能够从扩展机制中决定是否扩展的存在与响应信息的缓存约束相抵触。
+如果一个扩展在响应的可缓冲性方面不需要很紧的约束，创造者必须包含适当的有缓冲标题字段的
+组合（缓冲控制，变更，期限），与有扩展语义的组合的必须级别所对应。
+
+10.  安全考虑
+    动态的扩展便利装置，如简介中描述的一样，包括了某一方公司（执行的提供者）所写的软件
+必须在另一个权威机构（生产主机软件的公司）下执行。这就使得主机公司对各式各样的由提供者
+进行攻击的木马开放，或是伪装在供应商名下执行的恶意的第三方公司。可以参考，RFC2046[4]中
+的例子，第4.5.2节关于这种风险的讨论。
+
+11.  参考书目
+    [1] Crocker, D.,“ARPA Internet文本信息的格式标准”，STD11,RFC 822,1982年8月。
+    [2] Berners-Lee, T.,Fielding, R. 与 H. Frystyk,“超文本传输协议——HTTP/1.0”，
+        RFC 1945,1996年5月。
+    [3] Bradner, S., “Internet 标准方法——修订3”，BCP 9,RFC 2026,1996年10月。
+    [4] Freed, N. 与 N. Borenstein,“多用途的Internet邮件扩展（MIME）第二部分：媒介类
+型”，RFC 2046，1996年11月。
+    [5] Fielding, R., Gettys, J., Mogul, J., Frystyk, H. 与 T.Berners-Lee,“超文本传输
+协议——HTTP/1.1”，RFC 2068，1997年三月。
+    [6] Bradner, S., “关键字用于使用在RFCs指出要求水平 ”，BCP 14,RFC 2119,1997年3
+月。
+    [7] Masinter, L.,“超文本Coffee Pot控制协议 (HTCPCP/1.0) ”，RFC 2324，1 1998年4
+月。
+    [8] Berners-Lee, T., Fielding, R. 与 L. Masinter,“统一资源标识符URI): 普通语法”，
+RFC 2396，1998年8月。
+    [9] Nielsen, H., Connolly, D. 与 R. Khare,“PEP – HTTP扩展机制”，正在发展中。
+
+12.  感谢
+    Roy Fielding, Rohit Khare, Yaron Y. Goland, 和 Koen Holtman，特别感谢他们在这篇规范
+书中所有段落注释中所作出的努力。同样感谢Josh Cohen, Ross Patterson, Jim Gettys, Larry 
+Masinter，和所有与PEP [9]有关的人。
+    所有环球网协会（W3C）职员的贡献是HTTP活跃性的一部分(见
+“http://www.w3.org/Protocols/Activity”）。
+
+13.  作者地址
+    Henrik Frystyk Nielsen
+    微软公司
+    1 Microsoft Way
+    Redmond, WA 98052, USA
+
+    EMail: frystyk@microsoft.com
+    Paul J. Leach
+    微软公司
+    1 Microsoft Way
+    Redmond, WA 98052, USA
+
+    EMail: paulle@microsoft.com
+
+    Scott Lawrence
+    Agranat Systems, Inc.
+    5 Clocktower Place, Suite 400
+    Maynard, MA 01754, USA
+
+    EMail: lawrence@agranat.com
+
+14.  交互式协议概要
+    下面的表格总结了适应或不适应HTTP代理和源服务器的强制建议的实力与范围标准的成果。这
+个总结预期是作为这篇文章的向导和索引，但有必要隐藏和不完善。这个总结不应该完全独立于这
+篇规范而被使用或是参考。
+                           表 1: 源服务器
+
+       Scope            Hop-by-hop                End-to-end
+
+     Strength      可选择的      必须的      可选择的     必须的
+                    (可能)       (必须)      (可能)       (必须)
+
+   无支持强制      标准处理   501(不执行)    标准处理     501(不执行)  
+                                     
+   无支持扩展      标准处理   510(不扩展)    标准处理     510(不扩展)
+     支持扩展      扩展处理     扩展处理     扩展处理      扩展处理
+
+
+                            表 2:代理服务器
+
+       Scope            Hop-by-hop                End-to-end
+
+     Strength      可选择的      必须的      可选择的     必须的
+                    (可能)       (必须)      (可能)       (必须)
+
+   无支持强制     精简扩展     501(不执行)    迅速扩展   501(不执行)
+                                  或隧道                    或隧道
+
+   无支持扩展     精简扩展     501(不执行)    迅速扩展    迅速扩展
+
+    支持扩展      扩展处理      扩展处理      扩展处理    扩展处理
+                   并精简        并精简       可能精简    可能精简
+
+15. 例子
+    下面的例子演示了HTTP/1.1请求与响应中强制使用的各种可能的用途。不需要过多解释的例子
+的信息就被省略了（指文章中的“……”）
+
+15.1  使用源服务器的代理
+               表3：直接指向源服务器的用户代理 
+    客户端发出一个带    M-GET/some-document HTTP/1.1
+有可选择性和强制    Opt:“http://www.my.com/tracking”
+性扩展的请求        Man:http://www.foo.com/privacy
+                    ……
+
+通过忽略可选择响应来接受强    HTTP/1.1 200 OK
+制的源服务器。一旦可选择响    Ext:
+应被忽略，客户端在这种情况    Cache-Control: max-age=120, no-cache=“Ext”
+下不可见。                    ……
+
+      表4：有多样化标题字段的源服务器
+发送强制扩展请    M-GET /p/q HTTP/1.1
+求的客户端        Man: "http://www.x.y/transform"; ns=16
+                  16-use-transform：xyzzy
+                  ……
+
+接受强制的源服务器   HTTP/1.1 200 OK
+   但需要基于请求扩展   Ext:
+   声明的相应的多样性   Vary: Man, 16-use-transform
+                        日期: 1998年19月25号星期日 08:12:31 GMT
+                        期限: 1998年19月25号星期日08:12:31 GMT
+            Cache-Control: no-cache="Ext", max-age=1000
+                    ……
+
+15.2  通过 HTTP/1.1 Proxy 的源服务器用户代理
+这两个例子演示了一个扩展请求怎样与HTTP/1.1代理相互作用。
+          表5：HTTP/1.1代理向前扩展请求
+发送带有可选择性        M-GET/some-document HTTP/1.1
+与强制性hop-by-hop      C-Opt:“http://www.meter.org/hits”
+扩展请求的客户端        C-Man:http://www.copy.org/rights
+                        Connection:C-Opt,C-Man
+                        ……
+
+HTTP/1.1代理向前请      M-GET/some-document HTTP/1.1
+求并获取连接标题         Via:1.1 new
+                         ……
+
+请求不包含任何归属      HTTP/1.1 510不扩展
+于M-GET方法的源服      ……
+务器失败
+
+      表6：HTTP/1.1 代理不向前扩展请求
+发送带有可选择性        M-GET/some-document HTTP/1.1
+与强制性hop-by-hop      C-Opt:“http://www.meter.org/hits”
+扩展请求的客户端        C-Man:http://www.copy.org/rights
+                        Connection:C-Opt,C-Man
+                        ……
+
+HTTP/1.1代理拒绝       HTTP/1.1 501不执行
+传输M-GET方法并        ……
+返回错误
+
+源服务器从不接受
+扩展请求
+
+15.3  通过 HTTP/1.0 Proxy 的源服务器用户代理
+    这两个例子演示了在信息路径上一个扩展请求怎样同一个HTTP/1.0代理相互作用。
+              表7：HTTP/1.0代理向前扩展请求
+    发送一个包含强制      M-GET/some-document HTTP/1.1
+扩展请求的客户端      Man:http://www.price.com/sale
+                      ……
+
+HTTP/1.0代理传输      M-GET/some-document HTTP/1.1
+不改变方法的HTTP/1.0  Man:http://www.price.com/sale
+请求                   ……
+
+源服务器接受声明并返回    HTTP/1.1 200 OK
+200响应和扩展确认。响     Ext:
+应能在HTTP/1.1缓冲器     日期：1998年10月25号星期日 08:12:31 GMT
+中缓冲10分钟。           期限：1998年10月25号星期日 08:12:31 GMT
+                              Cache-Control: no-cache="Ext", max-age=600
+                          ……
+
+          表8：HTTP/1.0与HTTP/1.1代理系列
+发送带有一个强制     M-GET /some-document HTTP/1.1
+和一个hop-by-hop     Man:“http://www.copy.org/rights”
+可选择扩展请求的     C-Opt:“http://www.ads.org/noads”
+客户端               Connection:C-Opt
+                     ……
+
+不改变方法并不遵守     M-GET /some-document HTTP/1.0
+   连接指示的HTTP/1.0     Man: "http://www.copy.org/rights"
+   代理的向前请求         C-Opt: "http://www.ads.org/noads"
+                          连接: C-Man
+                          ……
+
+HTTP/1.1代理清除       M-GET /some-document HTTP/1.1
+   (或忽视)可选择扩展     Man: "http://www.copy.org/rights"
+   并保持包含标题字段     C-Man: "http://www.ads.org/givemeads"
+   的静止状态。同样添     连接: C-Man
+   加一个hop-by-hop       通过: 1.0 new
+                           ……
+
+同样接受强制扩展的      HTTP/1.1 200 OK
+   源服务器。响应在        Ext:
+   HTTP/1.0缓冲器中不     C-Ext
+   可缓冲但在HTTP/1.1     连接：C-Ext
+   缓冲器中缓冲1个小时    日期: 1998年19月25号星期日 08:12:31 GMT
+                           期限: 1998年19月25号星期日08:12:31 GMT
+               Cache-Control: no-cache="Ext", max-age=1000
+                       ……
+
+HTTP/1.1代理移动       HTTP/1.1 200 OK
+hop-by-hop扩展，       Ext:
+承认并运送其他响应     日期：1998年10月25号星期日 08:12:31 GMT
+        期限：1998年10月25号星期日 08:12:31 GMT
+                            Cache-Control: no-cache="Ext", max-age=600
+                        ……
+
+全部版权陈述
+ 
+ Copyright (C) The Internet Society (2000).  All Rights Reserved.
+   
+This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+感谢
+Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+RFC2774——An HTTP Extension Framework                                          HTTP扩展框架 
+
+
+2
+RFC文档中文翻译计划

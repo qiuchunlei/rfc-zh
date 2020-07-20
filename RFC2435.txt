@@ -1,0 +1,887 @@
+组织：中国互动出版网（http://www.china-pub.com/）
+RFC文档中文翻译计划（http://www.china-pub.com/compters/emook/aboutemook.htm）
+E-mail：ouyang@china-pub.com
+译者：范晨 (fanchen  fan-chen@china.com)
+译文发布时间：2001-9-11
+版权：本中文翻译文档版权归中国互动出版网所有。可以用于非商业用途自由转载，但必须
+保留本文档的翻译及版权信息。
+
+
+Network Working Group                                       R. Pereira
+Request for Comments: 2435                        TimeStep Corporation
+Obsoletes: 2035                                               R. Adams
+Category: Standards Track                            Cisco Systems Inc.
+                                                         November 1998
+
+针对JPEG压缩视频的RTP荷载格式
+（RFC2435——RTP Payload Format for JPEG-compressed Video）
+
+
+本备忘录状态 
+本文档讲述了一种Internet通信的标准Internet跟踪协议,并对其改进提出了讨论和建
+议。请参考最新版本的"Internet Official Protocol Standards" (STD 1) 来获得本协议的
+标准化进程和状态，此备忘录的发布不受任何限制。
+版权注意
+版权归因特网协会（1998）所有，保留一切权利。
+
+摘要
+本文档描述了针对JPEG视频流的RTP荷载格式。此种包格式针对编码器参数基本不变化
+的实时视频流进行了优化。
+本文档是IETF下的视音频传输工作组的产品。意见或建议请发到该工作组的邮件列表
+conf@es.net或直接发给作者。
+   本备忘录的大部分与RFC2035一致，对协议的改动见附录D。
+
+目  录
+1. 简介	3
+2. 术语	3
+3. RTP上的JPEG	4
+4. RTP/JPEG包格式	4
+4．1 JPEG头	4
+4.1.1 类型特定：8比特	5
+4.1.2 分段偏移: 24比特	5
+3.1.3 类型: 8比特	5
+3.1.4 Q: 8比特	5
+3.1.5 宽度: 8比特	5
+3.1.6 高度: 8比特	5
+3.1.7 复位标记头	6
+3.1.8 量化表头	6
+3.1.9 JPEG荷载	7
+4.  讨论	7
+4.1类型域	7
+4.2 Q域	8
+4.3 分片和组装	9
+4.4 复位标记	9
+5.安全性问题	9
+原文作者地址	10
+参考文献	11
+附录 A	12
+附录 B	13
+附录 C	18
+附录 D	22
+版权声明	23
+
+1. 简介
+联合图像专家组（JPEG）标准[1,2,3]定义了一组针对连续色调静止图像的压缩算法。这
+个静止图像压缩算法同样也可以应用于视频压缩，把每一帧都当作一个独立的静态图像来进
+行压缩，然后再按次序进行传输。这样一种视频编码通常被称作运动JPEG(Motion-JPEG)。
+我们首先介绍JPEG的概况，然后描述RTP所支持的JPEG的子集，以及将JPEG帧通过
+RTP包来传输的机制。
+JPEG标准定义了四种操作模式：顺序DCT模式，渐进DCT模式，无损模式，以及分级模
+式。在不同的模式下，一幅图像用一个或多个“节”来表示，每一节（在JPEG标准中称为一
+帧）又进一步分成若干次扫描。在每一次扫描中，有一种到四种分量，这些分量代表着彩色
+信号的分量（例如“红绿蓝”或一个亮度分量和两个色差分量）。这些分量可以分开在不同
+的扫描中编码，也可以交织在一次单一的扫描中。
+每一帧或每一次扫描前面都有一个头，可选的压缩参数定义，例如量化表和哈夫曼编码
+表。头信息、可选参数以及一个定位符构成了一个头区段。每一个扫描都是一个经过熵编码
+的比特流，位于两个头区段之间。定位符是字节对齐的，并且不能在熵编码部分出现，这样
+对于扫描边界的确定就无需解析整个码流。
+压缩数据有三种表示格式：交换格式、紧缩格式和表格描述格式。交换格式包含在熵编
+码过程中用到的所有码表的定义，紧缩模式中省略了一些码表定义，假定他们在外部定义或
+在前面的图像中定义。
+JPEG标准并不关心组成图像的各个分量的含义或格式。诸如色彩空间和象素纵横比这些
+属性在JPEG码流的外部来定义。JPEG文件交换格式（JFIF）在应用标记段（APPO）提供这
+些额外信息，它是一个事实上的标准。简单说来，JFIF文件就是一个JPEG码流加上一个APPO
+段。对于视频来说，另外还有一些参数在外部定义，比如帧率，逐行扫描还是隔行扫描等等。
+尽管JPEG提供了一整套用于灵活压缩的算法，但是目前能够实现整套标准的低成本硬件
+还没出现。事实上，绝大部分JPEG硬件编解码器都只实现了其中的一个子集，也就是顺序
+DCT模式。典型的做法是，头区段信息由软件来解码，而用硬件来处理一个在YUV色彩空间
+中表示的经过熵编码的单一的扫描。
+一次扫描中包含了一系列最小编码单元（MCU），每个MCU定义了输出图像的一个小矩形
+快的数据。
+JPEG数据中的复位标记表示解码器应当在当前点复位它的状态。如JPEG中定义的那样，
+复位标记是唯一的能够嵌入在熵编码码流里的标记，但他们只能够在MCU的边界处出现。一
+个复位间隔是指两个复位标记之间的数据部分。每一帧的第一个复位间隔是一个例外，它们
+前面没有复位标记。当使用这些标记时，每一帧都由固定数目的复位间隔组成。      
+2. 术语
+本文档中出现的关键字“必须”，“必须不”，“要求的”，“应该”，“不应该”，“会”，“不
+会”，“建议”，“或许”，“可选的”按照RFC 2119[9]中的描述进行解释。
+3. RTP上的JPEG
+为了最大化硬件编解码器的互操作性，我们假定使用顺序DCT模式[1,附录F]，并且限
+制预定义的RTP/JPEG类型码为单一扫描的隔行图像。这甚至比基本JPEG更为严格，很多硬
+件实现都不能正确解码基本JPEG(例如，很多硬件不能解码逐行扫描)。
+实际上，在一个视频码流中，大部分表格描述的数据在一个视频码流中很少发生变化，
+这样在省略掉所有可以省掉的表格之后，RTP/JPEG数据就可以用紧缩格式来表示了。每一帧
+一开始是一个熵编码的扫描。同时存在于帧头和扫描头中的信息都在RTP/JPEG头中表示，
+RTP/JPEG头位于RTP头和JPEG荷载之间。
+类似于哈夫曼码表和色彩空间这样的参数在整个视频流的生命期中都保持不变，然而另
+一些参数则是可以变化的，例如量化表和图像大小（为了实现自适应码率传输，允许用户手
+工调节量化等级或分辨率）。因此RTP/JPEG头中分配了专门的数据域来表示这些信息。因为
+量化表中只有一个小子集是经常使用的，我们用一个短整数来表示整个量化表集。一些特定
+范围的值表示使用自定义的量化表，这种情况下量化表位于JPEG荷载之前。图像的宽和高是
+显式编码的。
+因为一个JPEG帧一般总比网络的最大包长要大，它必须被切分成若干个包。一种方法是
+在RTP下面的网络层来进行分片。但是，这种方法使得对于最终数据包流的码流控制及有丢
+包情况下的部分发送成为不可能，而且帧长有可能超过网络层的最大组装长度（详细信息参
+考[10]）。为了克服这些问题，RTP/JPEG在RTP层定义了一个简单的分片/组装方案。
+      
+4. RTP/JPEG包格式
+RTP的时间戳是以90000Hz采样的，同一帧的每一个包都必须有同样的时间戳。一帧的
+最后一个包的RTP标志位必须为1。
+
+4．1 JPEG头
+每一个包的RTP头之后都紧跟着一个JPEG头。这个头的前8个字节，称作“主JPEG头”，
+定义如下：
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | 类型特定      |              分段偏移                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      类型     |      Q        |       宽      |      高       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   同一个JPEG帧的的各个包的所有数据域，除了“分段偏移”之外，都必须保持一致。
+这个头之后可能会跟着一个复位头和/或量化表头，这取决于“类型”域和“量化”域的
+值。
+
+4.1.1 类型特定：8比特
+这个数据域的含义取决于“类型”域的值。如果没有指定，这个域必须为0并且被接收
+端忽略。
+4.1.2 分段偏移: 24比特
+分段偏移是当前包在整个JPEG帧中的偏移位置，以字节为单位，以网络字节次序编码（最
+重要位在前）。分段偏移加上当前包中的荷载数据长度不能超出2^24字节。
+3.1.3 类型: 8比特
+类型域给出了可能出现在JPEG紧缩格式表格描述或JPEG未定义的JFIF风格参数的信
+息。类型0－63在本文档或本文档将来的修改中定义，类型64－127与类型0－63相同，除
+了在主JPEG头后紧跟一个复位标记头，并且在JPEG数据中存在复位标记。类型128－255
+可以通过一个会话建立协议来动态定义（这不在本文档的讨论范围之内）。
+3.1.4 Q: 8比特
+Q域定义了当前帧的量化表。Q值为0－127时量化表可以通过类型域决定的一个参数来
+计算出来（具体计算方法见后）。Q值为128－255时会有一个量化表头出现在当前帧第一个
+包的主JPEG头之后。这个量化表头用来明确定义量化表。
+3.1.5 宽度: 8比特
+宽度域编码图像的宽度，以8象素为单位（例如，宽度为40表示图像宽度为320象素）。
+最大宽度为2040象素。
+3.1.6 高度: 8比特
+高度域编码图像的高度，以8象素为单位（例如，高度为30表示图像高度为240象素）。
+当编码交织视频时，这里表示的是一个视频场的高度，因为每个场是单独编码的。最大高度
+是2040象素。
+3.1.7 复位标记头
+在类型64－127时，复位标记必须紧跟在主JPEG头之后。它提供了正确解码一个包含复
+位标记的数据流所需要的额外信息。   
+
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           复位间隔            |F|L|          复位计数         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+复位间隔域给出了两个复位标记之间MCU的数目。它和JFIF头中DRI标记段的16比特
+值是一致的。这个值不能为零。
+   如果一帧中的复位间隔不能保证在包边界处对齐，F比特和L比特必须设为1，复位计数
+必须设为0x3fff。这样接收端就必须在解码之前首先重新组装整个帧。
+为了支持部分帧解码，必须把一帧分成若干块，每一块包含整数个复位间隔。复位计数
+域给出第一个复位间隔在当前块中的位置，从而接收端可以知道这些数据对应于当前帧的哪
+个部分。复位间隔长度的选取应能够使一个块完全放进一个包中。在这种情况下，F比特和L
+比特都必须设为1。然而，如果一个块要放在多个包里，只有第一个包的F比特设为1，也只
+有最后一个包的L比特设为1。
+3.1.8 量化表头
+Q值为128－255时，量化表头必须出现在主JPEG头之后（如果存在复位标记头，则位
+于复位标记头之后）。它提供了一种在带内描述与Q值对应的量化表的方法。
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      MBZ      |     精度      |             长度              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         量化表数据                            |
+   |                              ...                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   长度域给出了后面量化表数据的长度，以字节为单位。长度域为零表示当前帧没有量化表
+数据。详细信息参考4.2。如果长度域的值比剩余的字节数大，整个包必须丢弃。
+包含量化表数据时，表的个数取决于JPEG类型域的值。例如。类型0使用两个表（一个
+用于亮度分量，另一个用于色差分量）。每个表是一个64个值得数组，按zig-zag次序，与
+JFIF的DQT标记段一致。
+   对于每一个量化表，精度域的一个比特指示了表中系数的大小。如果这个比特为0，系数
+为8比特，表长度为64个字节。如果该比特为1，系数就是16比特的，表长度为128字节。
+对于16比特的表系数，字节次序是网络次序。精度域的最右边的比特对应于第一个表，后面
+的表依次对应于左边的下一个比特。超出表个数的那些比特必须被忽略。
+对于Q值为128－254的情况，Q值与量化表之间的映射必须是静态的，也就是说，保证
+接收端只需要读一次与某个Q值对应的量化表，就可以正确解码出所有用该Q值编码的帧。
+解码器不能依赖于任何以前的量化表，而需要在每帧都重新载入这些量化表。Q＝255并且长
+度为0的包是不允许的。
+
+3.1.9 JPEG荷载
+紧跟RTP/JPEG头的数据是包含一次扫描的熵编码的图像数据。这次扫描不包含扫描头，
+扫描头的信息可以从RTP/JPEG头中推出。扫描的结束可能是隐含的（整幅图象都已经完全解
+码），也可能是显式的，即跟着一个EOI标记。一次扫描可能会用一些未定义字节填充到任
+意长度（一些现存的硬件编解码器会在一帧图象的底部生成一些额外的行，解码器需要对它
+们进行哈夫曼解码来去除这些额外的行。
+类型码决定着复位标记是否存在。如果某种类型支持复位标记，数据包的复位头中必须
+包含一个非零的复位间隔值，并且复位标记必须是字节对齐的，以一个0xFF起始。另外的
+0xFF字节可以出现在复位间隔之中。在打包过程中，用这样的方法来进行对齐，例如字对齐，
+从而实现比较高效的拷贝。除此之外，复位标记不能出现在码流中的任何其它地方。不支持
+复位标记的类型的码流在任何地方都不能包含复位标记。在数据包中，如果熵编码产生了一
+个0xFF字节，则必须在它后面填充一个0x00字节。[见文献1的B.1.1.5]
+
+4.  讨论
+4.1类型域
+类型域定义了紧缩的表格描述和JPEG中未定义的额外的JFIF风格参数，因为这些信息
+在待传输的JPEG数据中不存在。
+类型域定义了三种取值范围。0－63的含义是固定的，在本文档或本文档的将来版本中
+定义。64－127与0－63的区别仅在于包含复位标记，并且在主JPEG头后紧跟着一个复位头，
+其余都完全一致。128－255是可以由一个会话建立协议来动态定义的（这不再本文的讨论范
+围之内）。
+对于第一类取值范围，类型0和类型1目前已经定义了，对应第二类范围中的类型64和
+类型65。类型0，1指的是基本DCT顺序模式、8比特采样、正方形象素、YUV三种颜色分量
+以及标准哈夫曼码表[在文献1的附录K.3中定义]，一次隔行扫描并带一个扫描分量选择子，
+来指示是分量1，2还是3。Y，U和V分量分别对应于分量1，2，3。分量1使用0号哈夫曼
+码表和0号量化表，分量2和3使用1号哈夫曼码表和1号量化表。
+类型码2－5定为保留，并禁止使用。基于本文档以前版本（RFC 2035）的应用应当更新
+对于类型64和类型65的解释，指示出有复位标记的存在。
+这两种RTP/JPEG类型当前的具体定义如下：
+
+            类型    分量   水平采样因子.垂直采样因子 量化表序号
+         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+         |       |  1 (Y)  |     2     |     1     |     0     |
+         | 0, 64 |  2 (U)  |     1     |     1     |     1     |
+         |       |  3 (V)  |     1     |     1     |     1     |
+         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+         |       |  1 (Y)  |     2     |     2     |     0     |
+         | 1, 65 |  2 (U)  |     1     |     1     |     1     |
+         |       |  3 (V)  |     1     |     1     |     1     |
+         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+采样因子说明类型0的视频的色度分量水平方向上二倍降采样（一般称为4：2：2），
+而类型1的视频的色度分量在水平和垂直两个方向上都二倍降采样（一般称为4：2：0）。
+类型0和类型1既可以用于传输渐进扫描的图象数据，也可以用于传输隔行扫描的图象
+数据。这两种不同的数据格式在主JPEG头中加以区分。具体定义如下：
+0：图象是渐进扫描的。在计算机显示器上，它可以按照制定的大小来显示。
+1：当前图像是隔行扫描视频信号的奇数场。主JPEG头中给出的高度是整个图象高度的
+一半。当前场应当与后面紧跟的偶数场一起重新恢复出整帧图象。偶数场的行恰好处
+于奇数场对应行的上方。
+2：当前图象是隔行扫描视频信号的偶数场。
+3：当前图象是隔行扫描视频信号的一场，但它将按整帧图象的大小来单独显示。在计算
+机显示器上，每一行都显示两遍，图象高度加倍。
+附录B中给出了将RTP/JPEG头中的信息变换到JPEG帧头和扫描头的C源码。
+
+4.2 Q域
+对于JPEG类型0和类型1（以及相应的类型64和65），Q值1－99的定义如下。其它
+128以下的值保留。
+类型0和类型1都需要有两个量化表。这些量化表的计算方法如下：对于1 <= Q <= 99，
+用JPEG组织的公式[5]来计算一个标量量化因子S：
+S = 5000 / Q          如果  1 <= Q <= 50
+  = 200 - 2 * Q       如果 51 <= Q <= 99
+然后把这个S值代入[1]中的表K.1和K.2（每个值都扩展到8比特）,就分别得到了量
+化表0和量化表1。计算量化表的C源码在附录A中给出。
+当Q值在128－255之间时，就需要使用动态定义的量化表。这些量化表既可以在带内定
+义，也可以在带外通过一个会话建立协议来定义。但在每一帧的第一个包中必须有一个量化
+表头。当量化表在带外定义时，可以通过将包头中的长度域设为0来省略掉量化表。
+当在带内传输量化表时，并不需要在每一帧都重复传送一遍。类似于带外的情况，不包
+含量化表的帧可以在包头中将长度域设置为0。尽管这样做减小了传输量化表带来的
+OVERHEAD，但是也带来了一些负面效应。一个新的接收者在收到完整量化表之前接收到的所
+有帧都不能够正确解码。
+
+4.3 分片和组装
+由于JPEG的每一帧都相当大，必须经过切分才便于传输。在将一帧切分成若干个包的过
+程中，应当避免在低层进行分片。如果要求支持部分帧解码，被切分出的每一个包就应当包
+含整数个复位间隔（如下）。组成同一帧的数据包的时间戳必须保持一致，并且最后一个包
+的RTP标记位必须为1。每个包的分段偏移域的值是这个包中数据在原来整个帧中的偏移位
+置，以字节为单位。这些包必须按照次序进行传输，并且它们所包含的图象数据不能重叠。
+   整个一帧图象以一个分段偏移为0的包为起始，并以一个RTP标记位为1的包为结束。可
+以通过RTP的顺序号或者分段偏移结合每个包的长度来检测丢包。数据的重组可以不使用分
+段偏移的数据（只使用RTP标记位和RTP顺序号），但是在出现包的乱序的情况下，就不可
+能通过简单的拷贝操作来实现图象数据的重组。而且，如果前一帧的最后一个包丢失的话，
+即使当前帧完好无损，接收段也不能够正常恢复出当前帧。
+4.4 复位标记
+复位标记插入在JPEG码流中，告诉接收端哈夫曼解码器和直流预测器应当在当前位置复
+位，并且允许从当前点开始进行部分解码。然而，为了充分实现部分解码，解码器必须知道
+一个复位间隔中包含的是哪些MCU。为此，原来的JPEG标准中在复位标记中提供了一个短的
+次序号域。但是对于典型的网络MTU长度来说，这个数域不够长，不能很好的处理丢包问题。
+因此，在RTP/JPEG的复位头中包含了额外的信息来处理这个问题。
+复位间隔的大小应当使得整数个复位间隔能够恰好放在一个数据包里。这样就可以保证
+这些包可以相互独立地进行解码。如果一个复位间隔的结束处超出了一个包的长度，可以使
+用复位标记头中的F比特和L比特来对它进行切分。但是这样生成的包的集合必须全部接收
+到，接收端才可以正确解码出那个复位间隔中的数据。
+一旦解码器接收到一个F和L都为1的包，或者是一连串的包，第一个F为1，最后一
+个L为1，它就可以开始解码了。起始MCU在整幅图象中的位置可以通过将复位计数的值与
+复位间隔的值相乘来确定。这样的一个包（或一连串包）可以包含任意数量的连续的复位间
+隔。
+为了兼容生成码流中就包含复位标记但无法按这些复位标记来分片的编码器，将复位计
+数域设为0x3FFF并且F和L均为1。这样一种模式意味着解码器必须对整幅图象首先进行重
+组，然后才能解码。
+
+5.安全性问题
+本文档中所定义的RTP包格式的安全性问题可以遵循[6]和[7]中的建议。这意味着媒体
+数据流的安全性是通过加密来实现的。因为对于媒体数据的压缩是端到端的，加密操作可以
+在压缩操作之后执行，这样在两种操作之间就不存在任何冲突。
+对于解码端计算量不均衡的压缩编码计数，存在一种潜在的拒绝服务的攻击威胁。攻击
+者可以在数据流中插入一些恶意的数据包，对于这些包的解码会导致解码器运算量过载。幸
+运的是，我们的压缩编码算法并没有明显的计算量不均衡现象。
+另一种潜在的拒绝服务威胁存在于我们提出的分片重组机制。接收端应当限制重组数据
+的总长，以避免资源耗尽。
+对于任何基于IP的协议，接收端在某些情况下可能会因为接收到过多的数据包而发生过
+载。网络层的鉴定机制可以将来自不明来源或恶意来源的数据包丢弃，但是这样做所带来的
+成本也是相当高的。在组播的环境里，删除某些源的数据包可以通过IGMP[8]的未来版本和
+组播路由协议来实现，从而允许用户来选择哪些数据源是允许的，哪些是不允许的。
+对于这种荷载格式的安全性考虑并不超出RTP规范中的内容。
+
+原文作者地址
+   Lance M. Berc
+   Systems Research Center
+   Digital Equipment Corporation
+   130 Lytton Ave
+   Palo Alto CA 94301
+
+   Phone: +1 650 853 2100
+   Email: berc@pa.dec.com
+
+   William C. Fenner
+   Xerox PARC
+   3333 Coyote Hill Road
+   Palo Alto, CA 94304
+
+   Phone: +1 650 812 4816
+   Email: fenner@parc.xerox.com
+
+   Ron Frederick
+   Xerox PARC
+   3333 Coyote Hill Road
+   Palo Alto, CA 94304
+
+   Phone: +1 650 812 4459
+   Email: frederick@parc.xerox.com
+
+   Steven McCanne
+   University of California at Berkeley
+   Electrical Engineering and Computer Science
+   633 Soda Hall
+   Berkeley, CA 94720
+
+   Phone: +1 510 642 0865
+   Email: mccanne@cs.berkeley.edu
+
+   Paul Stewart
+   Xerox PARC
+   3333 Coyote Hill Road
+   Palo Alto, CA 94304
+
+   Phone: +1 650 812 4821
+   Email: stewart@parc.xerox.com
+
+参考文献
+
+   [1]  ISO DIS 10918-1. Digital Compression and Coding of Continuous-
+        tone Still Images (JPEG), CCITT Recommendation T.81.
+
+   [2]  William B. Pennebaker, Joan L. Mitchell, JPEG: Still Image Data
+        Compression Standard, Van Nostrand Reinhold, 1993.
+
+   [3]  Gregory K. Wallace, The JPEG Sill Picture Compression Standard,
+        Communications of the ACM, April 1991, Vol 34, No. 1, pp. 31-44.
+
+   [4]  The JPEG File Interchange Format.  Maintained by C-Cube
+        Microsystems, Inc., and available in
+        ftp://ftp.uu.net/graphics/jpeg/jfif.ps.gz.
+
+   [5]  Tom Lane et. Al., The Independent JPEG Group software JPEG
+        codec.  Source code available in
+        ftp://ftp.uu.net/graphics/jpeg/jpegsrc.v6a.tar.gz.
+
+   [6]  Schulzrinne, H., Casner, S., Frederick, R. and V. Jacobson,
+        "RTP: A Transport Protocol for Real-Time Applications", RFC
+        1889, January 1996.
+
+   [7]  Schulzrinne, H., "RTP Profile for Audio and Video Conferences
+        with Minimal Control", RFC 1890, January 1996.
+
+   [8]  Fenner, W., "Internet Group Management Protocol Version 2", RFC
+        2236, November 1997.
+
+   [9]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
+        Levels", BCP 14, RFC 2119, March 1997.
+
+   [10] Kent C., and J. Mogul, "Fragmentation Considered Harmful",
+        Proceedings of the ACM SIGCOMM '87 Workshop on Frontiers in
+        Computer Communications Technology, August 1987.
+
+附录 A
+下面的代码用来通过一个Q因子值生成一个量化表：
+
+/*
+?	Table K.1 from JPEG spec.
+ */
+static const int jpeg_luma_quantizer[64] = {
+        16, 11, 10, 16, 24, 40, 51, 61,
+        12, 12, 14, 19, 26, 58, 60, 55,
+        14, 13, 16, 24, 40, 57, 69, 56,
+        14, 17, 22, 29, 51, 87, 80, 62,
+        18, 22, 37, 56, 68, 109, 103, 77,
+        24, 35, 55, 64, 81, 104, 113, 92,
+        49, 64, 78, 87, 103, 121, 120, 101,
+        72, 92, 95, 98, 112, 100, 103, 99
+};
+
+/*
+?	Table K.2 from JPEG spec.
+ */
+static const int jpeg_chroma_quantizer[64] = {
+        17, 18, 24, 47, 99, 99, 99, 99,
+        18, 21, 26, 66, 99, 99, 99, 99,
+        24, 26, 56, 99, 99, 99, 99, 99,
+        47, 66, 99, 99, 99, 99, 99, 99,
+        99, 99, 99, 99, 99, 99, 99, 99,
+        99, 99, 99, 99, 99, 99, 99, 99,
+        99, 99, 99, 99, 99, 99, 99, 99,
+        99, 99, 99, 99, 99, 99, 99, 99
+};
+
+/*
+?	Call MakeTables with the Q factor and two u_char[64] return arrays
+ */
+void
+MakeTables(int q, u_char *lqt, u_char *cqt)
+{
+  int I;
+  int factor = q;
+
+  if (q < 1) factor = 1;
+  if (q > 99) factor = 99;
+  if (q < 50)
+q = 5000 / factor;
+  else
+q = 200 – factor*2;
+
+  for (I=0; I < 64; I++) {
+int lq = (jpeg_luma_quantizer[I] * q + 50) / 100;
+int cq = (jpeg_chroma_quantizer[I] * q + 50) / 100;
+
+/* Limit the quantizers to 1 <= q <= 255 */
+if (lq < 1) lq = 1;
+else if (lq > 255) lq = 255;
+lqt[I] = lq;
+
+if (cq < 1) cq = 1;
+else if (cq > 255) cq = 255;
+cqt[I] = cq;
+  }
+}
+
+附录 B
+下面这段代码用来生成对应于那些RTP/JPEG中不存在的表描述数据的JPEG标记段。
+
+U_char lum_dc_codelens[] = {
+        0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
+};
+
+u_char lum_dc_symbols[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+};
+
+u_char lum_ac_codelens[] = {
+        0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d,
+};
+
+u_char lum_ac_symbols[] = {
+        0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12,
+        0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07,
+        0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08,
+        0x23, 0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0,
+        0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16,
+        0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28,
+        0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+        0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+        0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59,
+        0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+        0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,
+        0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+        0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98,
+        0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+        0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6,
+        0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5,
+        0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4,
+        0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2,
+        0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea,
+        0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
+        0xf9, 0xfa,
+};
+
+u_char chm_dc_codelens[] = {
+        0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+};
+
+u_char chm_dc_symbols[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+
+};
+
+u_char chm_ac_codelens[] = {
+        0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77,
+};
+
+u_char chm_ac_symbols[] = {
+        0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05, 0x21,
+        0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71,
+        0x13, 0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91,
+        0xa1, 0xb1, 0xc1, 0x09, 0x23, 0x33, 0x52, 0xf0,
+        0x15, 0x62, 0x72, 0xd1, 0x0a, 0x16, 0x24, 0x34,
+        0xe1, 0x25, 0xf1, 0x17, 0x18, 0x19, 0x1a, 0x26,
+        0x27, 0x28, 0x29, 0x2a, 0x35, 0x36, 0x37, 0x38,
+        0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
+        0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
+        0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68,
+        0x69, 0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78,
+        0x79, 0x7a, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+        0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96,
+        0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5,
+        0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4,
+        0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3,
+        0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2,
+        0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda,
+        0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9,
+        0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
+        0xf9, 0xfa,
+};
+
+u_char *
+MakeQuantHeader(u_char *p, u_char *qt, int tableNo)
+{
+        *p++ = 0xff;
+        *p++ = 0xdb;            /* DQT */
+        *p++ = 0;               /* length msb */
+        *p++ = 67;              /* length lsb */
+        *p++ = tableNo;
+        memcpy(p, qt, 64);
+        return (p + 64);
+}
+
+u_char *
+MakeHuffmanHeader(u_char *p, u_char *codelens, int ncodes,
+                  u_char *symbols, int nsymbols, int tableNo,
+                  int tableClass)
+{
+        *p++ = 0xff;
+
+        *p++ = 0xc4;            /* DHT */
+        *p++ = 0;               /* length msb */
+        *p++ = 3 + ncodes + nsymbols; /* length lsb */
+        *p++ = (tableClass << 4) | tableNo;
+        memcpy(p, codelens, ncodes);
+        p += ncodes;
+        memcpy(p, symbols, nsymbols);
+        p += nsymbols;
+        return (p);
+}
+
+u_char *
+MakeDRIHeader(u_char *p, u_short dri) {
+        *p++ = 0xff;
+        *p++ = 0xdd;            /* DRI */
+        *p++ = 0x0;             /* length msb */
+        *p++ = 4;               /* length lsb */
+        *p++ = dri >> 8;        /* dri msb */
+        *p++ = dri & 0xff;      /* dri lsb */
+        return (p);
+}
+
+/*
+?	Arguments:
+?	type, width, height: as supplied in RTP/JPEG header
+?	lqt, cqt: quantization tables as either derived from
+?	the Q field using MakeTables() or as specified
+?	in section 4.2.
+?	dri: restart interval in MCUs, or 0 if no restarts.
+ *
+?	p: pointer to return area
+ *
+?	Return value:
+?	The length of the generated headers.
+ *
+?	Generate a frame and scan headers that can be prepended to the
+?	RTP/JPEG data payload to produce a JPEG compressed image in
+?	interchange format (except for possible trailing garbage and
+?	absence of an EOI marker to terminate the scan).
+ */
+int MakeHeaders(u_char *p, int type, int w, int h, u_char *lqt,
+                u_char *cqt, u_short dri)
+{
+        u_char *start = p;
+
+        /* convert from blocks to pixels */
+        w <<= 3;
+        h <<= 3;
+
+        *p++ = 0xff;
+        *p++ = 0xd8;            /* SOI */
+
+        p = MakeQuantHeader(p, lqt, 0);
+        p = MakeQuantHeader(p, cqt, 1);
+
+        if (dri != 0)
+                p = MakeDRIHeader(p, dri);
+
+        *p++ = 0xff;
+        *p++ = 0xc0;            /* SOF */
+        *p++ = 0;               /* length msb */
+        *p++ = 17;              /* length lsb */
+        *p++ = 8;               /* 8-bit precision */
+        *p++ = h >> 8;          /* height msb */
+        *p++ = h;               /* height lsb */
+        *p++ = w >> 8;          /* width msb */
+        *p++ = w;               /* wudth lsb */
+        *p++ = 3;               /* number of components */
+        *p++ = 0;               /* comp 0 */
+        if (type == 0)
+                *p++ = 0x21;    /* hsamp = 2, vsamp = 1 */
+        else
+                *p++ = 0x22;    /* hsamp = 2, vsamp = 2 */
+        *p++ = 0;               /* quant table 0 */
+        *p++ = 1;               /* comp 1 */
+        *p++ = 0x11;            /* hsamp = 1, vsamp = 1 */
+        *p++ = 1;               /* quant table 1 */
+        *p++ = 2;               /* comp 2 */
+        *p++ = 0x11;            /* hsamp = 1, vsamp = 1 */
+        *p++ = 1;               /* quant table 1 */
+        p = MakeHuffmanHeader(p, lum_dc_codelens,
+sizeof(lum_dc_codelens),
+lum_dc_symbols,
+sizeof(lum_dc_symbols), 0, 0);
+        p = MakeHuffmanHeader(p, lum_ac_codelens,
+sizeof(lum_ac_codelens),
+lum_ac_symbols,
+sizeof(lum_ac_symbols), 0, 1);
+        p = MakeHuffmanHeader(p, chm_dc_codelens,
+sizeof(chm_dc_codelens),
+chm_dc_symbols,
+sizeof(chm_dc_symbols), 1, 0);
+        p = MakeHuffmanHeader(p, chm_ac_codelens,
+sizeof(chm_ac_codelens),
+chm_ac_symbols,
+sizeof(chm_ac_symbols), 1, 1);
+
+        *p++ = 0xff;
+        *p++ = 0xda;            /* SOS */
+        *p++ = 0;               /* length msb */
+        *p++ = 12;              /* length lsb */
+        *p++ = 3;               /* 3 components */
+        *p++ = 0;               /* comp 0 */
+        *p++ = 0;               /* Success table 0 */
+        *p++ = 1;               /* comp 1 */
+        *p++ = 0x11;            /* Success table 1 */
+        *p++ = 2;               /* comp 2 */
+        *p++ = 0x11;            /* Success table 1 */
+        *p++ = 0;               /* first DCT coeff */
+        *p++ = 63;              /* last DCT coeff */
+        *p++ = 0;               /* Successive approx. */
+
+        return (p – start);
+};
+
+附录 C
+下面这段代码用来阐明RTP/JPEG数据包分片和头的生成过程。
+
+   For clarity and brevity, the structure definitions are only valid for
+   32-bit big-endian (most significant octet first) architectures. Bit
+   fields are assumed to be packed tightly in big-endian bit order, with
+   no additional padding. Modifications would be required to construct a
+   portable implementation.
+
+/*
+?	RTP data header from RFC1889
+ */
+typedef struct {
+        unsigned int version:2;   /* protocol version */
+        unsigned int p:1;         /* padding flag */
+        unsigned int x:1;         /* header extension flag */
+        unsigned int cc:4;        /* CSRC count */
+        unsigned int m:1;         /* marker bit */
+        unsigned int pt:7;        /* payload type */
+        u_int16 seq;              /* sequence number */
+        u_int32 ts;               /* timestamp */
+        u_int32 ssrc;             /* synchronization source */
+        u_int32 csrc[1];          /* optional CSRC list */
+} rtp_hdr_t;
+
+#define RTP_HDR_SZ 12
+
+/* The following definition is from RFC1890 */
+#define RTP_PT_JPEG             26
+
+struct jpeghdr {
+        unsigned int tspec:8;   /* type-specific field */
+        unsigned int off:24;    /* fragment byte offset */
+        u_int8 type;            /* id of jpeg decoder params */
+        u_int8 q;               /* quantization factor (or table id) */
+        u_int8 width;           /* frame width in 8 pixel blocks */
+        u_int8 height;          /* frame height in 8 pixel blocks */
+};
+
+struct jpeghdr_rst {
+        u_int16 dri;
+        unsigned int f:1;
+        unsigned int l:1;
+        unsigned int count:14;
+};
+
+struct jpeghdr_qtable {
+        u_int8  mbz;
+        u_int8  precision;
+        u_int16 length;
+};
+
+#define RTP_JPEG_RESTART           0x40
+
+/* Procedure SendFrame:
+ *
+?	Arguments:
+?	start_seq: The sequence number for the first packet of the current
+?	frame.
+?	ts: RTP timestamp for the current frame
+?	ssrc: RTP SSRC value
+?	jpeg_data: Huffman encoded JPEG scan data
+?	len: Length of the JPEG scan data
+?	type: The value the RTP/JPEG type field should be set to
+?	typespec: The value the RTP/JPEG type-specific field should be set
+?	to
+?	width: The width in pixels of the JPEG image
+?	height: The height in pixels of the JPEG image
+?	dri: The number of MCUs between restart markers (or 0 if there
+?	are no restart markers in the data
+?	q: The Q factor of the data, to be specified using the Independent
+?	JPEG group's algorithm if 1 <= q <= 99, specified explicitly
+?	with lqt and cqt if q >= 128, or undefined otherwise.
+?	lqt: The quantization table for the luminance channel if q >= 128
+?	cqt: The quantization table for the chrominance channels if
+?	q >= 128
+ *
+?	Return value:
+?	the sequence number to be sent for the first packet of the next
+?	frame.
+ *
+?	The following are assumed to be defined:
+ *
+ * PACKET_SIZE                         - The size of the outgoing packet
+?	send_packet(u_int8 *data, int len)  - Sends the packet to the network
+ */
+
+u_int16 SendFrame(u_int16 start_seq, u_int32 ts, u_int32 ssrc,
+                   u_int8 *jpeg_data, int len, u_int8 type,
+                   u_int8 typespec, int width, int height, int dri,
+                   u_int8 q, u_int8 *lqt, u_int8 *cqt) {
+        rtp_hdr_t rtphdr;
+        struct jpeghdr jpghdr;
+        struct jpeghdr_rst rsthdr;
+
+        struct jpeghdr_qtable qtblhdr;
+        u_int8 packet_buf[PACKET_SIZE];
+        u_int8 *ptr;
+        int bytes_left = len;
+        int seq = start_seq;
+        int pkt_len, data_len;
+
+        /* Initialize RTP header
+         */
+        rtphdr.version = 2;
+        rtphdr.p = 0;
+        rtphdr.x = 0;
+        rtphdr.cc = 0;
+        rtphdr.m = 0;
+        rtphdr.pt = RTP_PT_JPEG;
+        rtphdr.seq = start_seq;
+        rtphdr.ts = ts;
+        rtphdr.ssrc = ssrc;
+
+        /* Initialize JPEG header
+         */
+        jpghdr.tspec = typespec;
+        jpghdr.off = 0;
+        jpghdr.type = type | ((dri != 0) ? RTP_JPEG_RESTART : 0);
+        jpghdr.q = q;
+        jpghdr.width = width / 8;
+        jpghdr.height = height / 8;
+
+        /* Initialize DRI header
+         */
+        if (dri != 0) {
+                rsthdr.dri = dri;
+                rsthdr.f = 1;        /* This code does not align Ris */
+                rsthdr.l = 1;
+                rsthdr.count = 0x3fff;
+        }
+
+        /* Initialize quantization table header
+         */
+        if (q >= 128) {
+                qtblhdr.mbz = 0;
+                qtblhdr.precision = 0; /* This code uses 8 bit tables only */
+                qtblhdr.length = 128;  /* 2 64-byte tables */
+        }
+
+        while (bytes_left > 0) {
+                ptr = packet_buf + RTP_HDR_SZ;
+                memcpy(ptr, &jpghdr, sizeof(jpghdr));
+
+                ptr += sizeof(jpghdr);
+
+                if (dri != 0) {
+                        memcpy(ptr, &rsthdr, sizeof(rsthdr));
+                        ptr += sizeof(rsthdr);
+                }
+
+                if (q >= 128 && jpghdr.off == 0) {
+                        memcpy(ptr, &qtblhdr, sizeof(qtblhdr));
+                        ptr += sizeof(qtblhdr);
+                        memcpy(ptr, lqt, 64);
+                        ptr += 64;
+                        memcpy(ptr, cqt, 64);
+                        ptr += 64;
+                }
+
+                data_len = PACKET_SIZE – (ptr – packet_buf);
+                if (data_len >= bytes_left) {
+                        data_len = bytes_left;
+                        rtphdr.m = 1;
+                }
+
+                memcpy(packet_buf, &rtphdr, RTP_HDR_SZ);
+                memcpy(ptr, jpeg_data + jpghdr.off, data_len);
+
+                send_packet(packet_buf, (ptr – packet_buf) + data_len);
+
+                jpghdr.off += data_len;
+                bytes_left -= data_len;
+                rtphdr.seq++;
+        }
+        return rtphdr.seq;
+}
+
+附录 D
+这一部分给出了本文档相对于RFC 2035的改动。这些改动着眼于尽可能保持新版本对于
+旧版本的兼容性。事实上，很多已经废弃的约定仍然能够在新版中正常地解码。尽管如此，
+我们仍然强烈反对在新版中使用一些旧地约定。
+    o   类型0和类型1现在可以编码隔行扫描的视频图象，用类型特定域中的两个比特给
+出指示即可。参见4.1节。
+o   JPEG工作组曾经就如何更灵活地描述JPEG量化表发生过争论。本备忘录允许通过使
+用一个可选地量化表头来显式地描述表系数。这些内容在节3.1.8和4.2中讨论。
+       
+
+o   在RFC 2035中，在类型域中描述复位标记的信息，这样就很难再加入新的类型。并
+且，类型特定域用于记录复位计数，这样其它的一些类型特定信息就无法编码。在
+本备忘录中，复位标记的指示移到了类型域中的一个特定比特位，并且加入了可选
+头来编码一些必要的额外信息，而把类型特定域留出来用于它本来的用途。对于部
+分帧解码的处理提高了码流的健壮性，能够对抗一定程度的丢包。详细信息参见
+3.1.7和4.4。
+
+版权声明
+   版权归Internet协会所有（1998）。保留所有权利。
+   本文及其译本可以提供给其他任何人，可以准备继续进行注释，可以继续拷贝、出版、发
+布，无论是全部还是部分，没有任何形式的限制，不过要在所有这样的拷贝和后续工作中提
+供上述声明和本段文字。无论如何，本文档本身不可以做任何的修改，比如删除版权声明或
+是关于因特耐特协会、其他的因特耐特组织的参考资料等。除了是为了开发Internet标准的
+需要，或是需要把它翻译成除英语外的其他语言的时候，在这种情况下，在Internet标准程
+序中的版权定义必须被附加其中。
+   上面提到的有限授权允许永远不会被Internet协会或它的继承者或它的下属机构废除。
+   本文档和包含在其中的信息以"As is"提供给读者，Internet社区和Internet工程任务
+组不做任何担保、解释和暗示，包括该信息使用不破坏任何权利或者任何可商用性担保或特
+定目的。
+
+
+
+
+RFC2435—RTP Payload Format for JPEG-compressed Video        针对JPEG压缩视频的RTP荷载格式
+
+
+1
+RFC文档中文翻译计划
